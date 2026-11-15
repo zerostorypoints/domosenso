@@ -1,0 +1,295 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { Window } from 'happy-dom';
+import { BUILTINS } from './contract.js';
+const win = new Window({url:'http://localhost/'});
+for (const key of ['document','customElements','HTMLElement','CustomEvent','Event','PointerEvent','ResizeObserver']) globalThis[key]=win[key];
+const renderer=await import('./frame-ui.js').catch(e=>e.code==='ERR_MODULE_NOT_FOUND'?{}:Promise.reject(e));
+const {FrameUI,validateSnapshot}=renderer;
+const image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+const reading=(value,unit='')=>({label:'Reading',value,unit,available:true,stale:false});
+function snapshot(){return {version:2,config:structuredClone(BUILTINS.classic),mode:'ambient',screen:'climate',connected:true,fetchedAt:new Date().toISOString(),timezone:'Europe/Zurich',capabilities:['weather','rooms','air','plants','status','media','mains','history','calendar','photos','lights','covers'],off:false,wind:false,readOnly:false,data:{weather:{label:'Outside',temperature:14,unit:'°C',condition:'sunny',available:true,stale:false,pressure:reading(1012,'hPa'),forecast:[{datetime:'2026-10-27T12:00:00Z',condition:'rainy',temperature:16,templow:8}]},rooms:[{label:'Living room',temperature:reading(21,'°C'),humidity:reading(45,'%'),color:'#69b6dd'}],air:[reading(650,'ppm')],assessment:{version:1,status:'good',coverage:'complete',evaluated:1,total:1,score:94},history:{temperature:[{label:'Living room',points:[[Date.now()-4000,20],[Date.now()-3000,null],[Date.now()-2000,21],[Date.now()-1000,22]]}],humidity:[],co2:[],pm25:[],power:[]},status:[{label:'Window',group:'Windows',value:'closed',available:true,stale:false}],plants:[{label:'Fern',moisture:reading(10,'%'),conductivity:reading(200,'µS/cm'),brightness:reading(200,'lx'),temperature:reading(21,'°C'),battery:reading(80,'%'),limits:{moisture:[15,60],conductivity:[350,2000],brightness:[500,100000]}}],media:{available:true,stale:false,state:'playing',title:'Demo song',artist:'Demo artist',album:'Demo album',artwork:image,position:20,duration:180,volume:.4,source:'Radio',sources:['Radio','Line in'],quality:'Lossless',details:['44.1 kHz']},mains:{power:reading(55,'W'),voltage:reading(229,'V'),history:[[1000,229],[2000,230]]},calendar:{date:'2026-10-26',offset:0,available:true,events:[{title:'Demo meeting',start:{dateTime:'2026-10-26T10:00:00Z'},end:{dateTime:'2026-10-26T11:00:00Z'}}]},photos:{image,caption:'Demo landscape',index:0,count:5},lights:[{label:'Desk',state:'on',brightness:.5,available:true,stale:false}],covers:[{label:'Shade',state:'open',position:80,available:true,stale:false}],runtime:{shieldUntil:null,approachEnabled:true}}};}
+function mount(s=snapshot()){assert.equal(typeof FrameUI,'function','portable FrameUI export exists');const el=new FrameUI();el.snapshot=s;document.body.append(el);el._shieldUntil=0;el.render();return el;}
+function screen(el,type){const s=structuredClone(el.snapshot);s.config.modes[1].screens=[{id:'test',title:'Test',duration:0,requires:[],widgets:[{id:'widget',type,layout:{x:0,y:0,w:12,h:12}}]}];s.mode='ambient';s.screen='test';el.snapshot=s;return el.shadowRoot.querySelector('[data-kind]');}
+const text=el=>el.shadowRoot.querySelector('main').textContent;
+const button=(el,action)=>el.shadowRoot.querySelector(`[data-action="${action}"]`);
+test.afterEach(()=>document.body.replaceChildren());
+test('portable exports validate and accept a complete Classic snapshot',()=>{assert.equal(typeof validateSnapshot,'function');assert.equal(validateSnapshot(snapshot()).version,2);});
+test('snapshot validation rejects unbounded data, unknown roles, unsafe images and invalid metadata',()=>{for(const change of [s=>s.version=1,s=>s.timezone='Invalid/Zone',s=>s.mode='unknown',s=>s.screen='unknown',s=>s.data.private='secret',s=>s.data.rooms=Array(65).fill(s.data.rooms[0]),s=>s.data.media.artwork='https://example.org/cover.png',s=>s.data.photos.image='data:image/svg+xml;base64,PHN2Zz4=',s=>s.data.media.volume=2,s=>s.data.history.temperature[0].points=[[1,Infinity]],s=>s.data.weather.forecast=Array(5).fill(s.data.weather.forecast[0]),s=>s.data.runtime.shieldUntil='invalid',s=>s.readOnly='false',s=>s.data.photos.image='data:image/png;base64,'+'A'.repeat(2800000),s=>s.data.rooms[0].label='x'.repeat(513)]){const s=snapshot();change(s);assert.throws(()=>validateSnapshot(s),/Invalid/);}});
+test('invalid snapshot does not replace the last rendered view',()=>{const el=mount(),bad=snapshot();bad.data.rooms='invalid';assert.throws(()=>el.snapshot=bad);assert.match(text(el),/Living room/);});
+test('recursive cycles and prototype objects are rejected',()=>{const s=snapshot();s.data.history.temperature[0].points.push(s.data.history);assert.throws(()=>validateSnapshot(s));const other=snapshot();other.data.media.details=[new Date()];assert.throws(()=>validateSnapshot(other));});
+test('Classic renders room humidity, forecast and pressure without HTML injection',()=>{const s=snapshot();s.data.rooms[0].label='<img src=x onerror=alert(1)>';const el=mount(s);assert.match(text(el),/45/);assert.match(text(el),/1,012/);assert.match(text(el),/hPa/);assert.match(text(el),/Rain/);assert.match(text(el),/<img src=x/);assert.equal(el.shadowRoot.querySelector('img[src=x]'),null);assert.ok(el.shadowRoot.querySelector('svg path'));});
+test('history breaks paths at unavailable samples and labels every series',()=>{const el=mount();screen(el,'history');const paths=el.shadowRoot.querySelectorAll('svg path');assert.ok(paths.length);assert.equal(Array.from(paths).reduce((n,p)=>n+(p.getAttribute('d').match(/M/g)||[]).length,0),2);assert.match(text(el),/Living room/);});
+test('all registry content renders real data',()=>{const el=mount();for(const [type,expected] of [['air','94'],['status','Windows'],['plants','Fern'],['media','Demo album'],['mains','229'],['media-controls','Line in'],['lights','Desk'],['covers','Shade'],['navigation','Controls'],['calendar','Demo meeting'],['photos','Demo landscape'],['clock',':']]){screen(el,type);assert.ok(text(el).includes(expected),`${type} exposes ${expected}`);}assert.equal(el.shadowRoot.querySelectorAll('script').length,0);});
+test('plant conditions expose moisture, fertiliser, light, temperature and battery',()=>{const el=mount();screen(el,'plants');for(const word of ['Water','Fertilise','light','21','80'])assert.ok(text(el).includes(word),word);});
+test('sparse data shows unavailable rather than invented readings',()=>{const s=snapshot();s.data={};const el=mount(s);for(const type of ['weather','rooms','air','history','status','plants','media','mains','media-controls','lights','covers','calendar','photos']){screen(el,type);assert.match(text(el),/Unavailable/,type);}});
+test('portrait override uses generated grid positions while retaining landscape',()=>{const el=mount();el.portrait=true;assert.equal(el.shadowRoot.querySelector('.grid').dataset.rows,'24');assert.equal(el.shadowRoot.querySelector('[data-widget="weather"]').style.gridColumn,'1 / span 12');el.portrait=false;assert.equal(el.shadowRoot.querySelector('.grid').dataset.rows,'12');assert.equal(el.shadowRoot.querySelector('[data-widget="weather"]').style.gridColumn,'5 / span 8');});
+test('German and Polish UI translates controls, English is default before a snapshot',()=>{const el=mount();for(const [locale,expected] of [['de','Lautstärke'],['pl','Głośność']]){const s=snapshot();s.config.locale=locale;el.snapshot=s;screen(el,'media-controls');assert.match(text(el),new RegExp(expected));}});
+test('media, lights, covers and calendar emit only bounded semantic actions',()=>{const s=snapshot();s.mode='controls';s.screen='controls';const el=mount(s),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));button(el,'play_pause').click();button(el,'toggle').click();button(el,'stop').click();const volume=button(el,'volume');volume.value='.6';volume.dispatchEvent(new Event('change'));assert.deepEqual(actions,[{kind:'media',action:'play_pause'},{kind:'light',action:'toggle',index:0},{kind:'cover',action:'stop',index:0},{kind:'media',action:'volume',value:.6}]);const calendar=snapshot();calendar.mode='controls';calendar.screen='calendar';el.snapshot=calendar;el._shieldUntil=0;el.render();button(el,'date-next').click();assert.deepEqual(actions.at(-1),{kind:'calendar',action:'date',value:1});});
+test('readonly offline stale paused shielded and unavailable controls cannot actuate',()=>{for(const change of [s=>s.readOnly=true,s=>s.connected=false,s=>s.fetchedAt='2000-01-01T00:00:00Z',s=>s.data.runtime.shieldUntil=new Date(Date.now()+60000).toISOString(),s=>s.data.media.stale=true,s=>s.data.media.available=false]){const s=snapshot();s.mode='controls';s.screen='controls';change(s);const el=mount(s),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));button(el,'play_pause').click();assert.deepEqual(actions,[]);el.remove();}const s=snapshot();s.mode='controls';s.screen='controls';const el=mount(s),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));el.paused=true;button(el,'play_pause').click();assert.deepEqual(actions,[]);});
+test('off remains black and wind is an overlay notice',()=>{const s=snapshot();s.wind=true;const el=mount(s);assert.ok(el.shadowRoot.querySelector('.wind'));s.off=true;el.snapshot=s;assert.ok(el.shadowRoot.querySelector('.sleep'));assert.equal(el.shadowRoot.querySelector('.grid'),null);});
+test('ambient tap asks for Controls and immediately shields follow-on controls',()=>{const el=mount(),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));el.shadowRoot.querySelector('.grid').click();assert.deepEqual(actions,[{kind:'navigation',action:'controls'}]);const s=snapshot();s.mode='controls';s.screen='controls';el.snapshot=s;button(el,'play_pause').click();assert.equal(actions.length,1);});
+test('vertical swipe navigates once and suppresses synthetic click',()=>{const el=mount(),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));const grid=el.shadowRoot.querySelector('.grid');grid.dispatchEvent(new PointerEvent('pointerdown',{clientX:100,clientY:200,bubbles:true}));grid.dispatchEvent(new PointerEvent('pointerup',{clientX:100,clientY:50,bubbles:true}));grid.click();assert.deepEqual(actions,[{kind:'navigation',action:'next'}]);});
+
+test('showScreen preview cannot actuate even when source snapshot permits controls',()=>{const el=mount(),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));el.showScreen('controls','controls');button(el,'play_pause').click();assert.deepEqual(actions,[]);});
+
+test('calendar rejects timestamps in its date-only view field',()=>{const s=snapshot();s.data.calendar.date='2026-10-26T12:00:00Z';assert.throws(()=>validateSnapshot(s),/Invalid/);});
+test('calendar controls respect thirty-day bounds and current date offsets',()=>{const s=snapshot();s.mode='controls';s.screen='calendar';s.data.calendar.offset=30;const el=mount(s),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));button(el,'date-next').click();assert.deepEqual(actions,[]);button(el,'date-today').click();assert.deepEqual(actions,[{kind:'calendar',action:'date',value:0}]);});
+test('state authority stays in snapshots while a pause blocks navigation',()=>{const el=mount(),actions=[];el.paused=true;el.addEventListener('frame-action',e=>actions.push(e.detail));el.shadowRoot.querySelector('.grid').click();assert.deepEqual(actions,[]);const s=snapshot();s.mode='controls';s.screen='controls';el.snapshot=s;assert.ok(button(el,'play_pause').disabled);el._shieldUntil=0;el.paused=false;assert.equal(button(el,'play_pause').disabled,false);});
+test('source, brightness and approach emit scoped indexed values',()=>{const s=snapshot();s.mode='controls';s.screen='controls';const el=mount(s),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));const source=button(el,'source');source.value='Line in';source.dispatchEvent(new Event('change'));const light=button(el,'brightness');light.value='.8';light.dispatchEvent(new Event('change'));button(el,'approach').click();assert.deepEqual(actions,[{kind:'media',action:'source',value:'Line in'},{kind:'light',action:'brightness',index:0,value:.8},{kind:'runtime',action:'approach',value:false}]);});
+test('control swipe up and down requests ambient and media',()=>{for(const [y,action]of [[50,'ambient'],[350,'media']]){const s=snapshot();s.mode='controls';s.screen='controls';const el=mount(s),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));const grid=el.shadowRoot.querySelector('.grid');grid.dispatchEvent(new PointerEvent('pointerdown',{clientX:100,clientY:200,bubbles:true}));grid.dispatchEvent(new PointerEvent('pointerup',{clientX:100,clientY:y,bubbles:true}));assert.deepEqual(actions,[{kind:'navigation',action}]);el.remove();}});
+
+test('existing semantic policies and evidence render air score and per-reading assessment',()=>{const s=snapshot();s.data.air=[{...reading(94,'/100'),metric:'score',policy:{higher_is_better:true,levels:[[80,'Good'],[60,'Raised'],[0,'High']],source:'Frame configuration'}}];s.data.assessment={version:1,status:'good',coverage:'complete',evaluated:1,total:1,evidence:[{sourceIndex:0,metric:'score',status:'good',ruleLabel:'Good',policySource:'Frame configuration',threshold:80,higherIsBetter:true}]};const el=mount(s);screen(el,'air');assert.match(text(el),/94/);assert.match(text(el),/Good/);assert.match(text(el),/Frame configuration/);});
+test('normalized brightness rejects values above one',()=>{const s=snapshot();s.data.lights[0].brightness=1.1;assert.throws(()=>validateSnapshot(s),/Invalid/);});
+test('plant history and temperature conditions are shown without invented thresholds',()=>{const s=snapshot();s.data.plants[0].problem='temperature low';s.data.plants[0].history=[[1000,10],[2000,11]];const el=mount(s);screen(el,'plants');assert.match(text(el),/Too cold/);assert.ok(el.shadowRoot.querySelector('svg path'));});
+
+test('history headings distinguish temperature and humidity in the climate composition',()=>{const el=mount();assert.match(el.shadowRoot.querySelector('[data-widget="temperature-history"] h2').textContent,/Temperature/);assert.match(el.shadowRoot.querySelector('[data-widget="humidity-history"] h2').textContent,/Humidity/);});
+test('invalid evidence cannot point outside permission-filtered air readings',()=>{const s=snapshot();s.data.assessment.evidence=[{sourceIndex:1,metric:'co2',status:'good',ruleLabel:'Good',policySource:'Frame configuration',threshold:800,higherIsBetter:false}];assert.throws(()=>validateSnapshot(s),/Invalid/);});
+test('music and controls background taps preserve show-controls and hold refresh',()=>{for(const [mode,id] of [['media','music'],['controls','controls']]){const s=snapshot();s.mode=mode;s.screen=id;const el=mount(s),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));el._shieldUntil=0;el.shadowRoot.querySelector('.grid').click();assert.deepEqual(actions,[{kind:'navigation',action:'controls'}]);el.remove();}});
+test('bulk controls and source skipping policy are represented by bounded actions',()=>{const s=snapshot();s.data.media.canSkip=false;const el=mount(s),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));screen(el,'media-controls');assert.equal(button(el,'next').disabled,true);screen(el,'lights');button(el,'all_off').click();screen(el,'covers');button(el,'stop_all').click();assert.deepEqual(actions,[{kind:'light',action:'all_off'},{kind:'cover',action:'stop_all'}]);});
+test('shield starts when delayed controls become visible',()=>{const original=Date.now;let time=original();Date.now=()=>time;try{const el=mount(),actions=[];el.addEventListener('frame-action',e=>actions.push(e.detail));el.shadowRoot.querySelector('.grid').click();time+=1500;const s=snapshot();s.mode='controls';s.screen='controls';el.snapshot=s;button(el,'calendar').click();assert.equal(actions.length,1);time+=701;el.render();button(el,'calendar').click();assert.equal(actions.length,2);}finally{Date.now=original;}});
+test('history accepts every supported mapped source including outside',()=>{const s=snapshot();s.data.history.temperature=Array.from({length:33},(_,i)=>({label:'Room '+i,points:[[1000,20],[2000,21]]}));s.data.history.co2=Array.from({length:64},(_,i)=>({label:'Sensor '+i,points:[[1000,600],[2000,650]]}));assert.equal(validateSnapshot(s),s);});
+test('calendar widgets in renamed ambient screens use detour swipe semantics',()=>{const el=mount(),actions=[];screen(el,'calendar');el.addEventListener('frame-action',e=>actions.push(e.detail));const grid=el.shadowRoot.querySelector('.grid');grid.dispatchEvent(new PointerEvent('pointerdown',{clientX:100,clientY:200,bubbles:true}));grid.dispatchEvent(new PointerEvent('pointerup',{clientX:100,clientY:50,bubbles:true}));assert.deepEqual(actions,[{kind:'navigation',action:'ambient'}]);});
+test('negotiated media capability flags disable only unsupported controls',()=>{const s=snapshot();s.data.media.controls={play_pause:true,previous:false,next:false,power:false,volume:false,source:false};const el=mount(s),actions=[];screen(el,'media-controls');el.addEventListener('frame-action',e=>actions.push(e.detail));for(const action of ['previous','next','power','volume','source'])assert.equal(button(el,action).disabled,true,action);assert.equal(button(el,'play_pause').disabled,false);button(el,'next').click();button(el,'play_pause').click();assert.deepEqual(actions,[{kind:'media',action:'play_pause'}]);});
+
+function hiFiSnapshot(screenId = 'hifisync-system') {
+  const s = snapshot();
+  s.mode = 'media';
+  s.screen = screenId;
+  const mode = s.config.modes.find(mode => mode.id === 'media');
+  for (const [id, title] of [['hifisync-system', 'System'], ['hifisync-room', 'Room']]) {
+    mode.screens.push({id, title, duration: 0, requires: [id], widgets: [
+      {id, type: id, layout: {x: 0, y: 0, w: 12, h: 12}},
+    ]});
+    s.capabilities.push(id);
+  }
+  s.data.hifisync = {
+    validUntil: new Date(Date.now() + 60_000).toISOString(),
+    stale: false,
+    snapshot: {
+      version: 1, revision: 'test-revision',
+      system: {
+        id: '731ba61b-a737-4b53-873e-a618711ee092', name: 'Listening system',
+        components: [{id: 'amp', label: 'Reference amplifier', role: 'amplifier', quantity: 1}],
+        rack: [['amp']],
+      },
+      room: {name: 'Listening room', widthM: 4, lengthM: 6, heightM: null, placements: []},
+    },
+  };
+  return s;
+}
+
+function swipe(target, dx, dy, pointerType = 'mouse') {
+  const options = {bubbles:true, pointerId:1, pointerType};
+  target.dispatchEvent(new PointerEvent('pointerdown', {...options, clientX:200, clientY:200}));
+  target.dispatchEvent(new PointerEvent('pointerup', {...options, clientX:200+dx, clientY:200+dy}));
+}
+
+test('the pilot uses the same fifteen-second duration on all three music pages', () => {
+  const screens = BUILTINS.hifisync.modes.find(mode => mode.id === 'media').screens;
+  assert.deepEqual(screens.map(({id,duration}) => [id,duration]), [
+    ['music',15], ['hifisync-system',15], ['hifisync-room',15],
+  ]);
+});
+
+test('System renders equipment and track with a left swipe in place of page buttons', () => {
+  const el = mount(hiFiSnapshot());
+  assert.match(text(el), /Reference amplifier/);
+  assert.match(text(el), /Demo song/);
+  assert.equal(Boolean(el.shadowRoot.querySelector('.hifi-nav')), false);
+  const actions = [];
+  el.addEventListener('frame-action', event => actions.push(event.detail));
+  swipe(el.shadowRoot.querySelector('h3'), -100, 8);
+  assert.deepEqual(actions, [{kind:'navigation',action:'next'}]);
+});
+
+test('right swipe on Room sends previous and vertical swipe still leaves Music', () => {
+  for (const [dx,dy,action] of [[100,0,'previous'],[0,-100,'ambient']]) {
+    const el=mount(hiFiSnapshot('hifisync-room')),actions=[];
+    el.addEventListener('frame-action', event => actions.push(event.detail));
+    swipe(el.shadowRoot.querySelector('h3'),dx,dy);
+    assert.deepEqual(actions,[{kind:'navigation',action}]);
+    el.remove();
+  }
+});
+
+test('Music offers a labelled swipe surface across every eligible page', () => {
+  for (const page of ['music','hifisync-system','hifisync-room']) {
+    const s=hiFiSnapshot(page);
+    s.config.locale='pl';
+    const el=mount(s),actions=[];
+    el.addEventListener('frame-action', event => actions.push(event.detail));
+    const hint=el.shadowRoot.querySelector('.music-swipe-hint');
+    assert.equal(hint?.textContent,'Przesuń w lewo lub w prawo');
+    swipe(hint,-100,0);
+    assert.deepEqual(actions,[{kind:'navigation',action:'next'}]);
+    el.remove();
+  }
+});
+
+test('passive rack graphics can page, while controls and equipment hit targets own the gesture', () => {
+  const s=hiFiSnapshot();
+  s.data.hifisync.snapshot.system.components[0].drawing={rackKind:'amp',widthCm:43,heightCm:15};
+  const el=mount(s),actions=[];
+  el.addEventListener('frame-action', event => actions.push(event.detail));
+  swipe(el.shadowRoot.querySelector('.hifisync-equipment button'),-100,0);
+  swipe(el.shadowRoot.querySelector('.sc-rack-hit'),-100,0);
+  assert.deepEqual(actions,[]);
+  swipe(el.shadowRoot.querySelector('.hifisync-drawing svg'),-100,0);
+  assert.deepEqual(actions,[{kind:'navigation',action:'next'}]);
+});
+
+test('HiFiSync identifies its two music pages in English and Polish', () => {
+  for (const [locale, roomName] of [['en','Room'], ['pl','Pokój']]) {
+    const s = hiFiSnapshot('hifisync-room');
+    s.config.locale = locale;
+    const el = mount(s);
+    assert.equal(el.shadowRoot.querySelector('.hifi-brand').textContent, 'HiFiSync');
+    assert.equal(el.shadowRoot.querySelector('h2').textContent, roomName);
+    el.snapshot = {...s, screen:'hifisync-system'};
+    assert.equal(el.shadowRoot.querySelector('.hifi-brand').textContent, 'HiFiSync');
+    el.snapshot = {...s, screen:'music'};
+    assert.equal(el.shadowRoot.querySelector('.hifi-brand'), null);
+    el.remove();
+  }
+});
+
+test('the Room drawing owns gestures in both views and the heading remains swipable', () => {
+  const s=hiFiSnapshot('hifisync-room');
+  Object.assign(s.data.hifisync.snapshot.room, {heightM:2.7,placements:[{role:'left',xM:1,yM:1,rotationDeg:0}]});
+  const el=mount(s),actions=[];
+  el.addEventListener('frame-action', event => actions.push(event.detail));
+  const header=el.shadowRoot.querySelector('h3');
+  swipe(header,-78,0);
+  swipe(header,-100,75);
+  const drawing=el.shadowRoot.querySelector('[data-testid=room-isometric]');
+  swipe(drawing.querySelector('svg'),-100,0);
+  assert.deepEqual(actions,[]);
+  return import('node:timers/promises').then(async ({setTimeout})=>{
+    Array.from(drawing.querySelectorAll('button')).find(button=>button.textContent==='Top view').click();
+    for(let attempt=0;drawing.querySelector(':scope > span')&&attempt<10;attempt++)await setTimeout(5);
+    assert.equal(Boolean(drawing.querySelector(':scope > span')),false);
+    swipe(drawing.querySelector('svg'),100,0);
+    assert.deepEqual(actions,[]);
+    swipe(header,100,0);
+    assert.deepEqual(actions,[{kind:'navigation',action:'previous'}]);
+  });
+});
+
+test('without a HiFiSync projection, horizontal gestures leave Now Playing alone', () => {
+  const s=hiFiSnapshot('hifisync-room');
+  delete s.data.hifisync;
+  const el=mount(s),actions=[];
+  el.addEventListener('frame-action', event => actions.push(event.detail));
+  assert.equal(Boolean(el.shadowRoot.querySelector('.music-swipe-hint')),false);
+  swipe(el.shadowRoot.querySelector('.media-info'),-110,0);
+  assert.deepEqual(actions,[]);
+  assert.match(text(el),/Demo song/);
+});
+
+test('an in-progress Music gesture cannot delay a missing private projection', () => {
+  const s=hiFiSnapshot('hifisync-room'),el=mount(s);
+  const heading=el.shadowRoot.querySelector('h3');
+  heading.dispatchEvent(new PointerEvent('pointerdown',{pointerType:'mouse',pointerId:1,clientX:200,clientY:200,bubbles:true}));
+  delete s.data.hifisync;
+  el.snapshot=s;
+  assert.doesNotMatch(text(el),/Listening room/);
+  assert.match(text(el),/Demo song/);
+});
+
+test('Room renders the dimensions without inventing speaker positions', () => {
+  const el = mount(hiFiSnapshot('hifisync-room'));
+  assert.match(text(el), /4.*6.*m/);
+  assert.ok(el.shadowRoot.querySelector('svg[data-own-gesture]'));
+  assert.equal(el.shadowRoot.querySelectorAll('[data-studio-speaker]').length, 0);
+  assert.match(text(el),/Top view/);
+  assert.doesNotMatch(text(el),/Isometric/);
+});
+
+test('an open Room hides itself on local expiry while disconnected', context => {
+  const now = Date.now();
+  const clock = context.mock.method(Date, 'now', () => now);
+  const s = hiFiSnapshot('hifisync-room');
+  s.connected = false;
+  const el = mount(s);
+  assert.match(text(el), /Listening room/);
+  clock.mock.mockImplementation(() => now + 60_001);
+  el._tick();
+  assert.doesNotMatch(text(el), /Listening room/);
+  assert.ok(el.shadowRoot.querySelector('[data-kind=media]'));
+  assert.equal(button(el, 'hifisync-next'), null);
+});
+
+test('the Room screen cannot show a projection without a room', () => {
+  const s = hiFiSnapshot('hifisync-room');
+  s.data.hifisync.snapshot.room = null;
+  const el = mount(s);
+  assert.doesNotMatch(text(el), /Listening room/);
+  assert.match(text(el), /Demo song/);
+});
+
+test('Room in top view without height retains a saved zero angle after selection', async () => {
+  const s = hiFiSnapshot('hifisync-room');
+  s.data.hifisync.snapshot.room.placements = [{role: 'left', xM: 1, yM: 1, rotationDeg: 0}];
+  const el = mount(s);
+  const target = el.shadowRoot.querySelector('[data-studio-speaker]');
+  target.dispatchEvent(new win.KeyboardEvent('keydown', {key:'Enter', bubbles:true}));
+  await new Promise(resolve=>setTimeout(resolve,0));
+  const detail = el.shadowRoot.querySelector('.room-studio-detail');
+  assert.match(detail.textContent, /Left speaker.*0°/);
+  assert.doesNotMatch(detail.textContent, /not saved/);
+});
+
+test('System groups components by role even when the snapshot order interleaves them', () => {
+  const s = hiFiSnapshot();
+  s.data.hifisync.snapshot.system.components.push(
+    {id: 'streamer', label: 'Network streamer', role: 'source', quantity: 1},
+    {id: 'power', label: 'Power amplifier', role: 'amplifier', quantity: 1},
+  );
+  const el = mount(s);
+  const groups = [...el.shadowRoot.querySelectorAll('[data-component-role]')];
+  assert.deepEqual(groups.map(group => group.dataset.componentRole), ['amplifier', 'source']);
+  assert.match(groups[0].textContent, /Reference amplifier.*Power amplifier/);
+});
+
+test('Room exposes the saved speaker identities in the active Studio locale', () => {
+  const s = hiFiSnapshot('hifisync-room');
+  s.config.locale = 'pl';
+  s.data.hifisync.snapshot.room.placements = [
+    {role: 'left', xM: 1, yM: 1, rotationDeg: null},
+    {role: 'right', xM: 2, yM: 0.8, rotationDeg: null},
+  ];
+  const el = mount(s);
+  const speakers = [...el.shadowRoot.querySelectorAll('[data-studio-speaker]')];
+  assert.match(speakers[0].getAttribute('aria-label'), /Lewa kolumna/);
+  assert.match(speakers[1].getAttribute('aria-label'), /Prawa kolumna/);
+});
+
+test('an unconditionally placed room widget still requires its negotiated capability', () => {
+  const s = hiFiSnapshot('hifisync-room');
+  s.config.modes.find(mode => mode.id === 'media').screens.at(-1).requires = [];
+  s.capabilities = s.capabilities.filter(capability => capability !== 'hifisync-room');
+  assert.doesNotMatch(text(mount(s)), /Listening room/);
+});
+
+test('bounded drawing metadata is accepted and the rack is mounted', () => {
+ const s=hiFiSnapshot();
+ s.data.hifisync.snapshot.system.components[0].drawing={rackKind:'amp',widthCm:43,heightCm:15};
+ const el=mount(s);
+ assert.ok(el.shadowRoot.querySelector('[data-hifisync-drawing="system"]'));
+ s.data.hifisync.snapshot.system.components[0].drawing.widthCm=1001;
+ assert.throws(()=>validateSnapshot(s), /Invalid/);
+});
+
+test('enhanced room uses the HiFiSync renderer with saved room placement', () => {
+ const s=hiFiSnapshot('hifisync-room');
+ s.data.hifisync.snapshot.system.components[0].drawing={rackKind:'amp',widthCm:43,heightCm:15};
+ const room=s.data.hifisync.snapshot.room;
+ room.heightM=2.7;
+ room.placements=[{role:'left',xM:1,yM:1,rotationDeg:0}];
+ const el=mount(s);
+ const view=el.shadowRoot.querySelector('[data-hifisync-drawing="room"]');
+ assert.ok(view);
+ el.snapshot={...s,fetchedAt:new Date().toISOString()};
+ assert.equal(el.shadowRoot.querySelector('[data-hifisync-drawing="room"]'),view);
+});
