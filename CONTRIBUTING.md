@@ -85,6 +85,10 @@ calendars or floor plans. A real home lives in its own repository.
 One source in `.ai/skills/<name>/SKILL.md`, linked for Claude Code (`.claude/skills/`) and Codex and
 Cursor (`.agents/skills/`) by `uv run tools/install_skills.py`.
 
+For a printable enclosure, bracket or stand, use the optional external `3d-print-designer` skill.
+[3D-print setup and workflow](docs/3D_PRINTING.md) covers installation for Codex and Claude Code,
+updates that preserve customizations, prerequisites, verification and where models belong.
+
 | skill | use it to |
 |---|---|
 | [onboard-home](.ai/skills/onboard-home/SKILL.md) | start a new home: interview, recommend components, `domosenso init`, add `backup`, stop at `deploy production --plan` |

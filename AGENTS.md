@@ -407,16 +407,18 @@ the plan's **coordinator**:
 
 ## Skills
 
-One source in `.ai/skills/<name>/SKILL.md` (front matter: `name`, equal to the directory name, and
-`description`; nothing else). `uv run tools/install_skills.py` links them where each agent looks:
-`.agents/skills/` (Codex, Cursor) and `.claude/skills/` (Claude Code). The links are committed; rerun
-the script after adding, renaming or removing a skill.
+Project skills: `.ai/skills/<name>/SKILL.md`; front matter only `name` (directory name) and
+`description`. After adding, renaming or removing one, run `uv run tools/install_skills.py` and
+commit its links in `.agents/skills/` (Codex, Cursor) and `.claude/skills/` (Claude Code).
+
+For printable parts, enclosures or mounts, follow [3D-print setup](docs/3D_PRINTING.md): check for
+`3d-print-designer`, install if needed within task authorization, and read it before modelling.
 
 | skill | use it to |
 |---|---|
-| `domosenso-website-audit` | audit domosenso.org around PR merges and component releases; prepare evidence-based content updates |
-| `onboard-home` | start a new home from an empty directory: interview, `domosenso recommend`, `init`, add `backup`, stop at `deploy production --plan` |
-| `add-component` | one component into an onboarded home, end to end: integrations, containers, ESPHome device files and firmware, render, deploy, verify |
+| `domosenso-website-audit` | audit domosenso.org at PR merges/releases; prepare content updates with evidence |
+| `onboard-home` | new home: interview, recommend, init, add backup; stop at `deploy production --plan` |
+| `add-component` | add to a home: integrations, services, firmware, render, deploy, verify |
 | `check` | run `tools/check-all.sh` and report pass or fail per step |
 | `check-home-upgrades` | audit released home updates |
 | `stage-home-update` | stage a chosen home update and preserve customizations |
