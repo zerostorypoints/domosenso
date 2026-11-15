@@ -70,7 +70,7 @@ def test_project_models_match_only_their_assembly(model, expected):
 
 def test_oled_peak_hold_and_bounded_drawing(tmp_path):
     data = config('audio-sensor-oled.yaml')
-    assert data['i2c'] == [{'id': 'oled_i2c', 'sda': 'GPIO7', 'scl': 'GPIO6', 'frequency': '100kHz'}]
+    assert data['i2c'] == [{'id': 'oled_i2c', 'sda': 'GPIO7', 'scl': 'GPIO6', 'frequency': '400kHz'}]
     display, = data['display']
     assert display['model'] == 'SSD1306 128x64' and display['address'] == 0x3C
     assert display['update_interval'] == '500ms'

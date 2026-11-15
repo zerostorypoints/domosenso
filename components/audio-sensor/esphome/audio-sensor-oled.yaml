@@ -4,7 +4,8 @@ i2c:
   - id: oled_i2c
     sda: GPIO7
     scl: GPIO6
-    frequency: 100kHz
+    # Full-frame writes are synchronous; 400 kHz reduces stalls in FFT publication.
+    frequency: 400kHz
 
 globals:
   - id: oled_peak_hold
