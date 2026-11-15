@@ -16,5 +16,5 @@ const files={'frame-ui.js':bundle,'ha-card.js':read('ha-card.js'),'schema.json':
 const manifest={name:'@domosenso/frame-ui',version,contract:2,sourceRevision:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),files:Object.fromEntries(Object.entries(files).map(([n,v])=>[n,sha(v)]))};manifest.contentHash=sha(JSON.stringify(manifest.files));manifest.sourceDirty=!!execFileSync('git',['status','--porcelain','--','packages/frame-studio','tools/build_frame_studio.mjs','tools/build_hifisync_drawings.mjs','tools/hifisync_drawings.tsx'],{cwd:root,encoding:'utf8'}).trim();
 const out=process.argv[2]?resolve(process.argv[2]):resolve(root,'integrations/domosenso_frame/custom_components/domosenso_frame/ui',version);mkdirSync(out,{recursive:true});
 for(const [n,v]of Object.entries(files))writeFileSync(resolve(out,n),v);
-for(const n of ['registry.json','templates.json','registry.js','contract.js','studio-model.js','studio.js'])writeFileSync(resolve(out,n),read(n));
+for(const n of ['registry.json','templates.json','registry.js','contract.js','studio-model.js','studio.js','renderer-i18n.js'])writeFileSync(resolve(out,n),read(n));
 writeFileSync(resolve(out,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');console.log('Frame UI '+version+' '+manifest.contentHash);

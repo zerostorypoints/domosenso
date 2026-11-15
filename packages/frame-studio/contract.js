@@ -1,6 +1,6 @@
 import {REGISTRY,BUILTINS} from './registry.js';
 export {REGISTRY,BUILTINS};
-export const UI_VERSION='0.2.6';
+export const UI_VERSION='0.2.7';
 export const STATES=['controls','ambient','media'];
 const caps=['temperature','air','weather','status','rooms','plants','media','mains','history','calendar','photos','lights','covers','hifisync-system','hifisync-room'];
 const fail=()=>{throw new Error('Invalid template configuration');};
@@ -21,9 +21,9 @@ export function validRect(r,type,portrait){
  const min=portrait?[3,2]:REGISTRY[type]?.min;
  return min&&r&&Object.keys(r).length===4&&['x','y','w','h'].every(k=>Number.isInteger(r[k]))&&r.x>=0&&r.y>=0&&r.w>=min[0]&&r.h>=min[1]&&r.x+r.w<=12&&r.y+r.h<=(portrait?24:12);
 }
-export function validateConfig(config){
+export function validateConfig(config,{runtimeMusic=false}={}){
  object(config,['version','name','locale','theme','modes']);if(config.version!==2||!['en','de','pl'].includes(config.locale)||!['classic','modern'].includes(config.theme))fail();text(config.name);list(config.modes,3,3);unique(config.modes.map(m=>m.id));
- for(const mode of config.modes){object(mode,['id','screens']);if(!STATES.includes(mode.id))fail();list(mode.screens,1,16);unique(mode.screens.map(s=>s.id));
+ for(const mode of config.modes){object(mode,['id','screens']);if(!STATES.includes(mode.id))fail();list(mode.screens,1,runtimeMusic&&mode.id==='media'?18:16);unique(mode.screens.map(s=>s.id));
   for(const screen of mode.screens){object(screen,['id','title','duration','requires','widgets']);id(screen.id);text(screen.title);if(screen.duration!==0&&(!Number.isInteger(screen.duration)||screen.duration<10||screen.duration>600))fail();list(screen.requires,0,16);unique(screen.requires);if(screen.requires.some(x=>!caps.includes(x)))fail();list(screen.widgets,1,12);unique(screen.widgets.map(w=>w.id));
    for(const w of screen.widgets){object(w,['id','type','layout','portrait','options'],['id','type','layout']);id(w.id);if(!REGISTRY[w.type])fail();object(w.layout,['x','y','w','h']);if(w.portrait)object(w.portrait,['x','y','w','h']);const options=w.options||{},rules=REGISTRY[w.type].options;object(options,Object.keys(rules),[]);for(const [k,v] of Object.entries(options)){const rule=rules[k];if(rule.enum?!rule.enum.includes(v):(!Number.isInteger(v)||v<rule.integer[0]||v>rule.integer[1]))fail();}}
    for(const portrait of [false,true]){const ps=positions(screen,portrait);for(let i=0;i<ps.length;i++){if(!validRect(ps[i],screen.widgets[i].type,portrait)||ps.slice(0,i).some(r=>intersects(r,ps[i])))fail();}}
