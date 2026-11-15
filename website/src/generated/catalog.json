@@ -902,9 +902,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.20.0",
-      "sourceTag": "ramka/0.20.0",
-      "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
+      "version": "0.21.0",
+      "sourceTag": "ramka/0.21.0",
+      "sourceCommit": "9379e567cf5bc9f5a3a92e589413591f74775452",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -1179,6 +1179,11 @@
           "required": false
         },
         {
+          "name": "hifisync_music",
+          "type": "bool",
+          "required": false
+        },
+        {
           "name": "dashboard_path",
           "type": "string",
           "required": false
@@ -1239,8 +1244,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9379e567cf5bc9f5a3a92e589413591f74775452/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9379e567cf5bc9f5a3a92e589413591f74775452/components/ramka/UPGRADE.md"
     },
     {
       "id": "timers",
