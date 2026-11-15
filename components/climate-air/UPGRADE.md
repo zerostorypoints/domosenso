@@ -3,18 +3,20 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
-## 0.3.1: the M5Stack Unit CO2L as an air sensor
+## 0.3.1 (2026-11-15): the M5Stack Unit CO2L as an air sensor
 
 The manifest recommends the M5Stack Unit CO2L next to the Ruuvi Air, and lists the `esphome`
-integration it reports through. Templates, inputs and entities are unchanged: a room's `air` with
-only `co2` already rendered in 0.3.0.
+integration it reports through. A room's `air` with only `co2` gets only the CO₂ limits (below).
+
+0.3.1 also carries the two entries below, merged after the `climate-air/0.3.0` tag but written as
+0.3.0 entries: new helpers and a seed automation, more than a patch number suggests.
 
 ### What a home does
 
-- Nothing. A home adding a CO2L sets the room's `air: {co2: sensor.<node>_co2}`, then `render` and
-  deploy.
+- Read the two entries below: they apply to a home updating from 0.3.0.
+- A home adding a CO2L sets the room's `air: {co2: sensor.<node>_co2}`, then `render` and deploy.
 
-## 0.3.0 (unreleased): the outside comfort range
+## 0.3.1 (2026-11-15): the outside comfort range
 
 With the home inputs' `outside`, new helpers `input_number.climate_air_outside_{temp_low,temp_high}`
 (and the humidity pair with outside humidity), seeded once (tokens `outside`, `outside.humidity`)
@@ -29,7 +31,7 @@ script.
   seed list, which an `input_text` holds to 255: a home already near the limit fails `render` with
   `climate-air: the seed list is <n> characters, input_text holds 255`.
 
-## 0.3.0 (unreleased): comfort and air thresholds
+## 0.3.1 (2026-11-15): comfort and air thresholds
 
 New comfort and air-limit helpers (`provides` in `component.yaml`, feature
 `thresholds`), plus `script.climate_air_thresholds_reset`. They appear once the home names
@@ -44,7 +46,7 @@ New comfort and air-limit helpers (`provides` in `component.yaml`, feature
   (`binary_sensor.<room>_too_*`, `binary_sensor.<room>_air_poor`, `sensor.climate_attention`) from
   the entity registry.
 
-## 0.3.0 (unreleased): component-backed assistant answers
+## 0.3.0 (2026-11-02): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
 Existing entities, helper values, dashboard preferences and automation actions are preserved.

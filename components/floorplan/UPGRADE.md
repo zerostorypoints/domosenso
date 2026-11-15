@@ -2,7 +2,7 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
-## Unreleased: Wi-Fi coverage (SPEC-044)
+## 0.5.0 (2026-11-15): Wi-Fi coverage (SPEC-044)
 
 - The **radio** layer shown alone carries the Wi-Fi map bar (a map per band some access point
   serves, Serving, Confidence), or the hint "No Wi-Fi access point on the plan: mark a point as an
@@ -32,7 +32,7 @@ Newest first. Each entry says what changed and what a home that already runs the
   **Outdoors** in the Walls tool. Optionally walk the home with `domosenso floorplan survey`. A
   `domosenso` command older than this catalog refuses a plan with the Wi-Fi keys.
 
-## Unreleased: the home's rooms name and colour the plan
+## 0.5.0 (2026-11-15): the home's rooms name and colour the plan
 
 - `floorplan-card` takes `rooms`, the home inputs' rooms (`[{id, name, area, climate?}]`):
   - a room's name, one string or one per language (HA's language, else `en`), replaces its HA
@@ -46,7 +46,7 @@ Newest first. Each entry says what changed and what a home that already runs the
 - What a home does: nothing, or `floorplan push` again to give the standalone floor plan the
   home's names.
 
-## Unreleased: options for a host page (a phone)
+## 0.5.0 (2026-11-15): options for a host page (a phone)
 
 - `floorplan-card` takes `area` (that area's room alone, fitted, read-only), `zoom: false` (a fixed
   plan the page scrolls past) and `chips: false` (the layer chips shown by the host through
@@ -61,7 +61,7 @@ Newest first. Each entry says what changed and what a home that already runs the
 - **What a home does:** nothing. Without the new options the card draws and behaves as before; the
   new events fire whether or not anything listens.
 
-## Unreleased: a room's own sensor colours it (#207)
+## 0.5.0 (2026-11-15): a room's own sensor colours it (#207)
 
 - On the climate maps (temperature, humidity), a room whose Home Assistant area names a
   temperature or humidity sensor takes its colour from that sensor; the other sensors in the room
@@ -69,7 +69,7 @@ Newest first. Each entry says what changed and what a home that already runs the
 - **What a home does:** nothing for rooms without such a sensor: they look as before. To use it,
   set the area's temperature and humidity sensors under Settings → Areas.
 
-## Unreleased: doors, windows and doorways on the plan
+## 0.5.0 (2026-11-15): doors, windows and doorways on the plan
 
 - **Openings** (SPEC-028 Amendment 9, draft): doors, windows, doorways and fixed glass on a floor
   (`"openings": [{"kind": "door", "rooms": [a, b], "at": [x, y], "width": 0.8, "entity": …}]`),
@@ -81,7 +81,7 @@ Newest first. Each entry says what changed and what a home that already runs the
   and save, or write them into `domosenso/floorplan.json` and `floorplan push`. A `domosenso`
   command older than this catalog refuses a plan with `openings`.
 
-## 0.4.0 (unreleased): component-backed assistant answers
+## 0.4.0 (2026-11-02): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
 Existing entities, helper values, dashboard preferences and automation actions are preserved.

@@ -20,4 +20,16 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen
       - run: npm ci
+      # The Release workflow tags a version only after the merge; refuse here what it would refuse
+      # there (tools/release_preflight.py), for the components this pull request changes.
+      - name: Release preflight
+        if: github.event_name == 'pull_request'
+        run: |
+          set -eu
+          git fetch --tags --force origin
+          holds=""
+          for id in $(grep -v '^#' .github/release-hold); do holds="$holds --hold $id"; done
+          uv run tools/release_preflight.py --changed-since "origin/$BASE_REF" $holds
+        env:
+          BASE_REF: ${{ github.base_ref }}
       - run: tools/check-all.sh

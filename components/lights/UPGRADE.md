@@ -3,7 +3,7 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
-## 0.4.0 (unreleased): optional assistant action metadata
+## 0.4.0 (2026-11-04): optional assistant action metadata
 
 Adds a private managed `domosenso/assistant-actions/lights.yaml` sidecar for explicit light on/off.
 This is descriptive metadata: no service is called and no write grant is enabled.
@@ -27,7 +27,7 @@ reverting tooling. Retain the compatible bridge/client until the change is verif
 migrate grants to changed bindings. Legacy schema-1 reads and timers remain supported for at
 least one minor version. See [protocol and limits](../../docs/ASSISTANT.md).
 
-## 0.3.0 (unreleased): component-backed assistant answers
+## 0.3.0 (2026-11-02): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
 Existing entities, helper values, dashboard preferences and automation actions are preserved.

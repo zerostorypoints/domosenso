@@ -2,13 +2,13 @@
 
 Newest first. Each entry says what changed and what a home that already runs the pocket has to do.
 
-## Unreleased: plants in hydroculture (SPEC-048)
+## 0.2.0 (2026-11-15): plants in hydroculture (SPEC-048)
 
 The Plants page leaves moisture and fertiliser out for a plant with `domosenso_medium:
 hydroculture`, never calls it thirsty, and its fine row reads "Fine · hydroculture, water by the
 gauge". Nothing to do.
 
-## Unreleased: the Wi-Fi survey (SPEC-045)
+## 0.2.0 (2026-11-15): the Wi-Fi survey (SPEC-045)
 
 - New inputs `wifi_survey` (needs `floorplan`), `wifi_ssid`, `wifi_scans`. With `wifi_survey: true` the
   render adds `packages/pocket.yaml` (`sensor.domosenso_wifi_reading`) and the System page a **Wi-Fi
@@ -18,7 +18,7 @@ gauge". Nothing to do.
   **Domosenso Wi-Fi** on the iPhone from the page and choose the Server in its Fire event action once;
   on Android turn on the Companion app's Wi-Fi sensors.
 
-## 0.1.0 (unreleased): areas from Home Assistant, area settings, Quick actions (SPEC-038)
+## 0.2.0 (2026-11-15): areas from Home Assistant, area settings, Quick actions (SPEC-038)
 
 - **The areas are Home Assistant's**, by their HA names (not translated), in floor order. Links use
   the HA area id: an old `#/area/<room id>` whose id is not an HA area goes to Areas. A room of the
@@ -45,7 +45,7 @@ gauge". Nothing to do.
   leave out of the checks or hide, the main sensors, the Quick actions) for the owner to confirm. A
   home that does nothing still works: all its HA areas show, Inside, with the sensors its inputs name.
 
-## 0.1.0 (unreleased): Media and its Sound tab
+## 0.1.0 (2026-11-05): Media and its Sound tab
 
 - **Media** (`#/media`) is built: artwork, progress, transport, volume, mute, source line and a
   player picker of the areas' `media` players (remembered per person, settings field
@@ -56,7 +56,7 @@ gauge". Nothing to do.
 - **What a home does:** nothing for Media. For Sound: set `sound: true` in the pocket's inputs
   with audio-sensor added, and name its Leq sensors under `sound_averages` if it has them.
 
-## 0.1.0 (unreleased): all sensors of an area, the floor plan
+## 0.1.0 (2026-11-05): all sensors of an area, the floor plan
 
 - An area page lists **All sensors** of its HA area by the catalog's categories (collapsed), each
   with a number opening its trend; with the new input `floorplan: true` it also shows the area's
@@ -66,7 +66,7 @@ gauge". Nothing to do.
   pocket's inputs, and run the floorplan component at the version with the card's `area`, `zoom`
   and `chips` options.
 
-## 0.1.0 (unreleased): Areas, a fixed bar, the bar per person
+## 0.1.0 (2026-11-05): Areas, a fixed bar, the bar per person
 
 - Rooms is **Areas** (`#/areas`, `#/area/<id>`); `#/rooms` and `#/room/<id>` redirect. The
   Outside (from `outside` / `weather`) is the last area.
@@ -74,14 +74,14 @@ gauge". Nothing to do.
   Home Assistant frontend user data (key `domosenso-pocket`).
 - **What a home does:** nothing; a bookmark of an old route keeps working.
 
-## 0.1.0 (unreleased): areas and the outside range
+## 0.1.0 (2026-11-05): areas and the outside range
 
 - The card's config gives each room its HA `area` (the home inputs' `area`, else the room id) and
   `thresholds.outside` (climate-air's outside helpers).
 - **What a home does:** name `area` on a room whose id is not its area's id; render climate-air
   too, for the outside helpers.
 
-## 0.1.0 (unreleased): first version
+## 0.1.0 (2026-11-05): first version
 
 - The phone dashboard: one panel view with `custom:pocket-app`, configured from the home inputs and
   climate-air's threshold helpers.
