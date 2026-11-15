@@ -1,26 +1,27 @@
 import './frame-ui.js';
 import {REGISTRY,BUILTINS,STATES,positions,place} from './contract.js';
 import {Draft,widgetAvailability} from './studio-model.js';
+import {translate} from './renderer-i18n.js';
 const drafts=new Map(),copy=x=>structuredClone(x);
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const button=(text,fn,cls)=>{const n=el('button',text,cls);n.type='button';n.onclick=fn;return n;};
 const bounded=(promise)=>Promise.race([promise,new Promise((_,reject)=>{const t=setTimeout(()=>reject(Error('Request timed out. Your draft is retained.')),15000);promise.finally(()=>clearTimeout(t)).catch(()=>{});})]);
 const labels={controls:'Controls',ambient:'Ambient',media:'Music'};
 export class FrameStudio extends HTMLElement {
- constructor(){super();this.attachShadow({mode:'open'});this.mode='ambient';this.sid='climate';this.selected=null;this.aspect='16/10';this.epoch=0;this.preview=false;this.filter='';this.readinessFilter='all';this.handleKey=e=>{if(e.key==='Escape'&&this.drag){this.drag=null;this.render();}};}
- set hass(value){const changed=this._hass?.connection!==value?.connection;this._hass=value;if(changed){this.epoch++;this.loading=false;this.busy=false;this.polling=false;this.load();}}
+ constructor(){super();this.attachShadow({mode:'open'});this.mode='ambient';this.sid='climate';this.selected=null;this.aspect='16/10';this.epoch=0;this.mappingRequest=0;this.preview=false;this.filter='';this.readinessFilter='all';this.handleKey=e=>{if(e.key==='Escape'&&this.drag){this.drag=null;this.render();}};}
+ set hass(value){const changed=this._hass?.connection!==value?.connection;this._hass=value;if(changed){this.epoch++;this.loading=false;this.busy=false;this.polling=false;this.mapping=null;this.mappingGroup=null;this.snapshot=null;if(this.draft)this.render();this.load();}}
  connectedCallback(){window.addEventListener('keydown',this.handleKey);this.timer=setInterval(()=>this.poll(),5000);if(this._hass&&!this.library)this.load();}
  disconnectedCallback(){clearInterval(this.timer);window.removeEventListener('keydown',this.handleKey);this.epoch++;this.loading=false;this.busy=false;this.polling=false;this.drag=null;}
  async call(name,fields={}){return bounded(this._hass.callWS({type:'domosenso_frame/'+name,...fields}));}
  get portrait(){return ['10/16','3/4'].includes(this.aspect);}
  key(){return [this.profile?.installationId,this._hass?.user?.id,this.endpoint,this.tid].join(':');}
  retain(){if(this.draft)drafts.set(this.key(),{draft:this.draft,base:this.base});}
- async load(){if(this.loading||!this._hass)return;const epoch=this.epoch;this.loading=true;try{const profile=await this.call('profile');if(epoch!==this.epoch)return;this.profile=profile;this.endpoints=profile.endpoints.filter(e=>e.studioVersion===2);this.endpoint=this.endpoint||this.endpoints[0]?.id;if(!this.endpoint)throw Error('No compatible frame is configured.');const library=await this.call('studio_library');if(epoch!==this.epoch)return;this.library=library;this.selectTemplate(this.tid||library.applied[this.endpoint]?.templateId||'classic');await this.loadMappings();await this.poll();}catch(e){if(epoch===this.epoch){this.error=String(e.message||e.code||e);this.render();}}finally{if(epoch===this.epoch)this.loading=false;}}
+ async load(){if(this.loading||!this._hass)return;const epoch=this.epoch;this.loading=true;try{const profile=await this.call('profile');if(epoch!==this.epoch)return;this.profile=profile;this.endpoints=profile.endpoints.filter(e=>e.studioVersion===2);if(!this.endpoints.some(e=>e.id===this.endpoint))this.endpoint=this.endpoints[0]?.id;if(!this.endpoint)throw Error('No compatible frame is configured.');const library=await this.call('studio_library');if(epoch!==this.epoch)return;this.library=library;this.selectTemplate(this.tid||library.applied[this.endpoint]?.templateId||'classic');await this.loadMappings();await this.poll();}catch(e){if(epoch===this.epoch){this.error=String(e.message||e.code||e);this.render();}}finally{if(epoch===this.epoch)this.loading=false;}}
  selectTemplate(id){this.retain();this.tid=this.library.templates[id]?id:'classic';const saved=this.library.templates[this.tid];const retained=drafts.get(this.key());this.draft=retained?.draft||new Draft(saved.config);this.base=retained?.base||JSON.stringify(saved.config);this.selected=null;this.error='';this.fixScreen();this.render();}
  fixScreen(){const m=this.draft.config.modes.find(m=>m.id===this.mode);if(!m.screens.some(s=>s.id===this.sid))this.sid=m.screens[0].id;}
  get dirty(){return this.draft&&JSON.stringify(this.draft.config)!==this.base;}
  change(fn){try{this.draft.change(fn);this.error='';this.retain();this.render();}catch(e){this.error='This change would create an invalid layout. Keep at least one screen per state and one widget per screen.';this.render();}}
- async poll(){if(!this.endpoint||this.polling||!this.isConnected)return;this.polling=true;const epoch=this.epoch,endpoint=this.endpoint;try{const snap=await this.call('studio_dashboard',{endpoint,offset:0,...(this.endpoints?.find(e=>e.id===endpoint)?.capabilitiesVersion===1?{capabilitiesVersion:1}:{}),...(this.endpoints?.find(e=>e.id===endpoint)?.hifisyncDrawingsVersion===1?{hifisyncVersion:1,hifisyncDrawingsVersion:1}:{})});if(epoch===this.epoch&&endpoint===this.endpoint){this.snapshot=snap;this.updatePreview();}}catch{if(epoch===this.epoch){if(this.snapshot)this.snapshot={...this.snapshot,connected:false};this.updatePreview();}}finally{if(epoch===this.epoch)this.polling=false;}}
+ async poll(){if(!this.endpoint||this.polling||!this.isConnected)return;this.polling=true;const epoch=this.epoch,endpoint=this.endpoint;try{const snap=await this.call('studio_dashboard',{endpoint,offset:0,...this.hiFiCapability(endpoint),...(this.endpoints?.find(e=>e.id===endpoint)?.capabilitiesVersion===1?{capabilitiesVersion:1}:{}),...(this.endpoints?.find(e=>e.id===endpoint)?.hifisyncDrawingsVersion===1?{hifisyncVersion:1,hifisyncDrawingsVersion:1}:{})});if(epoch===this.epoch&&endpoint===this.endpoint){this.snapshot=snap;this.updatePreview();}}catch{if(epoch===this.epoch){if(this.snapshot)this.snapshot={...this.snapshot,connected:false};this.updatePreview();}}finally{if(epoch===this.epoch)this.polling=false;}}
  async mutate(operation,fields){if(this.busy)return;this.busy=true;const epoch=this.epoch;this.error='';this.render();try{const result=await this.call('studio_library_update',{revision:this.library.revision,operation,...fields});if(epoch!==this.epoch)return;this.library=result;if(operation==='save'){if(this.tid!==fields.templateId){const original=this.library.templates[this.tid].config;drafts.set(this.key(),{draft:new Draft(original),base:JSON.stringify(original)});this.draft=new Draft(result.templates[fields.templateId].config);}this.tid=fields.templateId;this.base=JSON.stringify(this.draft.config);this.retain();}if(operation==='delete'){drafts.delete(this.key());this.draft=null;this.selectTemplate('classic');}this.notice=operation==='apply'?'Applied to this frame.':operation==='save'?'Template saved. Apply it when ready.':'Template deleted.';await this.poll();}catch(e){if(epoch===this.epoch)this.error=String(e.message||e.code||e)+' Your draft is retained.';}finally{if(epoch===this.epoch){this.busy=false;this.render();}}}
  save(asNew=false){const builtin=this.library.templates[this.tid].builtin;let id=this.tid;if(asNew||builtin){id='template-'+Array.from(crypto.getRandomValues(new Uint8Array(8)),v=>v.toString(16).padStart(2,'0')).join('');if(builtin&&this.draft.config.name===this.library.templates[this.tid].config.name)this.draft.change(c=>c.name+=' copy');}return this.mutate('save',{templateId:id,config:this.draft.config});}
  render(){if(this.drag)return;const root=this.shadowRoot;root.replaceChildren();const style=el('style');style.textContent=CSS;root.append(style);const app=el('main',undefined,'studio');root.append(app);const title=el('header');title.append(el('h1','Frame Studio'),el('p','Build a template → choose a state → arrange screens and widgets.'));app.append(title);
@@ -29,7 +30,7 @@ export class FrameStudio extends HTMLElement {
  const name=this.input('Template name',this.draft.config.name,v=>{this.draft.change(c=>c.name=v);this.retain();this.updateIndicators();},80);top.append(name);
  top.append(button('New blank',()=>{this.selectTemplate('blank');this.save(true);}),button('Save',()=>this.save()),button('Save as new',()=>this.save(true)));
  const remove=button('Delete',()=>this.mutate('delete',{templateId:this.tid}));remove.disabled=this.library.templates[this.tid].builtin||Object.values(this.library.applied).some(a=>a.templateId===this.tid);top.append(remove);
- const endpoint=this.select(this.endpoints.map(e=>[e.id,e.name]),this.endpoint,id=>{this.retain();this.endpoint=id;this.mapping=null;this.mappingGroup=null;this.loadMappings();this.draft=null;this.selectTemplate(this.library.applied[id]?.templateId||'classic');this.poll();});endpoint.setAttribute('aria-label','Frame');top.append(endpoint);
+ const endpoint=this.select(this.endpoints.map(e=>[e.id,e.name]),this.endpoint,id=>{this.retain();this.endpoint=id;this.mappingRequest++;this.mapping=null;this.mappingGroup=null;this.snapshot=null;this.loadMappings();this.draft=null;this.selectTemplate(this.library.applied[id]?.templateId||'classic');this.poll();});endpoint.setAttribute('aria-label','Frame');top.append(endpoint);
  this.apply=button('Apply to frame',()=>this.mutate('apply',{templateId:this.tid,endpoint:this.endpoint,renderer:2}),'primary');top.append(this.apply);app.append(top);this.indicators=el('p',undefined,'revision');app.append(this.indicators);this.updateIndicators();
  if(this.error)app.append(el('p',this.error,'error'));else if(this.notice)app.append(el('p',this.notice,'notice'));
  const states=el('nav',undefined,'states');for(const id of STATES)states.append(button(labels[id],()=>{this.mode=id;this.sid=this.draft.config.modes.find(m=>m.id===id).screens[0].id;this.selected=null;this.render();},id===this.mode?'active':''));app.append(states);
@@ -62,21 +63,107 @@ export class FrameStudio extends HTMLElement {
    }
   }
  }
- async loadMappings(){const epoch=this.epoch,endpoint=this.endpoint;if(this.endpoints?.find(e=>e.id===endpoint)?.capabilitiesVersion!==1)return;try{const result=await this.call('studio_mappings',{version:1,endpoint});if(epoch===this.epoch&&endpoint===this.endpoint){this.mapping=result;this.render();}}catch(e){if(epoch===this.epoch&&endpoint===this.endpoint){this.error=String(e.message||e)+' Source discovery unavailable.';this.render();}}}
- openMapping(type,options={}){this.mappingGroup=type==='media-controls'?'media':type==='calendar'?'calendars':type==='history'?(['co2','pm25'].includes(options.metric)?'air':options.metric==='power'?'mains':'rooms'):type;this.mappingDraft=copy(this.mapping?.mappings||{});this.error='';this.render();}
- async saveMapping(){if(this.busy||!this.mapping)return;const epoch=this.epoch,endpoint=this.endpoint,group=this.mappingGroup;this.busy=true;this.error='';this.render();try{const result=await this.call('studio_mappings_update',{version:1,endpoint,revision:this.mapping.revision,patch:{[group]:this.mappingDraft[group]}});if(epoch!==this.epoch||endpoint!==this.endpoint)return;this.mapping=result;this.mappingGroup=null;this.notice='Sources saved for this frame. Template unchanged.';await this.poll();}catch(e){if(epoch===this.epoch&&endpoint===this.endpoint)this.error=String(e.message||e)+' Mapping selections and template draft retained.';}finally{if(epoch===this.epoch){this.busy=false;this.render();}}}
+ hiFiCapability(endpoint=this.endpoint){
+  return this.endpoints?.some(frame=>frame.id===endpoint&&frame.hifisyncStudioVersion===1)?{hifisyncStudioVersion:1}:{};
+ }
+ async loadMappings(){
+  const epoch=this.epoch,endpoint=this.endpoint;
+  if(this.endpoints?.find(frame=>frame.id===endpoint)?.capabilitiesVersion!==1)return;
+  const request=++this.mappingRequest;
+  const current=()=>epoch===this.epoch&&endpoint===this.endpoint&&request===this.mappingRequest;
+  try{
+   const result=await this.call('studio_mappings',{version:1,endpoint,...this.hiFiCapability(endpoint)});
+   if(current()){this.mapping=result;this.render();}
+  }catch(e){
+   if(current()){this.error=String(e.message||e)+' Source discovery unavailable.';this.render();}
+  }
+ }
+ openMapping(type,options={}){
+  this.mappingGroup=['media-controls','hifisync-system','hifisync-room'].includes(type)?'media':type==='calendar'?'calendars':type==='history'?(['co2','pm25'].includes(options.metric)?'air':options.metric==='power'?'mains':'rooms'):type;
+  this.mappingDraft=copy(this.mapping?.mappings||{});
+  this.error='';
+  this.render();
+ }
+ async saveMapping(){
+  if(this.busy||!this.mapping)return;
+  const epoch=this.epoch,endpoint=this.endpoint,group=this.mappingGroup,request=++this.mappingRequest;
+  const current=()=>epoch===this.epoch&&endpoint===this.endpoint&&request===this.mappingRequest;
+  const capability=this.hiFiCapability(endpoint),patch={[group]:this.mappingDraft[group]};
+  if(group==='media'&&capability.hifisyncStudioVersion&&this.mappingDraft.hifisync!==this.mapping.mappings.hifisync){
+   patch.hifisync=this.mappingDraft.hifisync===true;
+  }
+  this.busy=true;
+  this.error='';
+  this.render();
+  try{
+   const result=await this.call('studio_mappings_update',{version:1,endpoint,...capability,revision:this.mapping.revision,patch});
+   if(!current())return;
+   this.mapping=result;
+   this.mappingGroup=null;
+   this.notice='Sources saved for this frame. Template unchanged.';
+   await this.poll();
+  }catch(e){
+   if(current())this.error=String(e.message||e)+' Mapping selections and template draft retained.';
+  }finally{
+   if(epoch===this.epoch){this.busy=false;this.render();}
+  }
+ }
+ uiText(key){
+  const template=this.library.applied[this.endpoint]?.templateId;
+  const locale=this.snapshot?.config?.locale??this.library.templates[template]?.config.locale??
+   this._hass?.locale?.language?.split('-')[0]??this.library.templates[this.tid]?.config.locale;
+  return translate(locale,key);
+ }
+ renderHiFiLink(root){
+  if(!this.hiFiCapability().hifisyncStudioVersion)return;
+  const draft=this.mappingDraft;
+  if(this.mapping.hifisyncInstalled!==true&&draft.hifisync!==true&&this.mapping.mappings.hifisync!==true)return;
+  const section=el('section',undefined,'hifisync-link');
+  const link=this.mapping.candidates?.media?.find(candidate=>candidate.entity===draft.media?.entity)?.hifisyncLink;
+  const names=el('dl');
+  for(const [key,value] of [['hifisync-system',link?.systemName],['hifisync-room',link?.roomName]]){
+   if(!value&&key==='hifisync-system')continue;
+   if(!value&&!link?.systemName)continue;
+   names.append(el('dt',this.uiText(key)),el('dd',value||this.uiText('hifi-setup-no-room')));
+  }
+  if(names.childElementCount)section.append(names);
+  const status=this.mapping.hifisyncInstalled!==true?'missing':
+   !draft.media?.entity?'no-player':link?.status??'unmatched';
+  const statuses=['loading','stale','select_system','select_player','reauth','unavailable','missing','no-player','unmatched'];
+  if(statuses.includes(status)){
+   section.append(el('p',this.uiText('hifi-setup-'+status),'hint'));
+   if(['select_system','select_player','reauth','unavailable','missing','unmatched'].includes(status)){
+    const repair=el('a',this.uiText(status==='reauth'?'hifi-setup-reauth-link':'hifi-setup-repair-link'));
+    repair.href='/config/integrations';
+    section.append(repair);
+   }
+  }
+  const label=el('label',undefined,'hifisync-toggle'),toggle=el('input');
+  toggle.type='checkbox';
+  toggle.checked=draft.hifisync===true;
+  toggle.disabled=this.mapping.hifisyncInstalled!==true&&!toggle.checked;
+  const title=this.uiText('hifi-setup-toggle');
+  toggle.setAttribute('aria-label',title);
+  toggle.onchange=()=>{draft.hifisync=toggle.checked;};
+  label.append(toggle,document.createTextNode(title));
+  section.append(label);
+  root.append(section);
+ }
  mappingSelect(kind,value,fn,label){const candidates=this.mapping?.candidates?.[kind]||[],options=[['','Choose a source…'],...candidates.map(c=>[c.entity,(c.suggested?'Suggested · ':'')+c.label+' · '+c.entity+(c.unit?' · '+c.unit:'')])];if(value&&!candidates.some(c=>c.entity===value))options.push([value,value+' · existing mapping']);const select=this.select(options,value||'',v=>fn(v||null));select.setAttribute('aria-label',label);return select;}
- renderMapping(root){const group=this.mappingGroup;root.append(el('h2','Sources · '+group),el('p','These sources belong to this frame. Templates and device grants are separate.','hint'));
+ renderMapping(root){const group=this.mappingGroup;root.append(el('h2',group==='media'?this.uiText('hifi-setup-sources'):'Sources · '+group),el('p','These sources belong to this frame. Templates and device grants are separate.','hint'));
  if(['plants','photos','navigation'].includes(group)){root.append(el('p',group==='navigation'?'Navigation uses installed scripts where configured, otherwise Home Assistant keeps the selected state.':'Use the installation YAML for this advanced mapping. Existing directories, plant limits and permission sources are preserved.'));root.append(button('Close sources',()=>{this.mappingGroup=null;this.render();}));return;}
  if(!this.mapping)return;const draft=this.mappingDraft;
  if(group==='weather')root.append(this.mappingSelect('weather',draft.weather,v=>draft.weather=v,'Weather source'));
- else if(group==='media')root.append(this.mappingSelect('media',draft.media?.entity,v=>draft.media=v?{entity:v}:{},'Media player'));
+ else if(group==='media'){
+  root.append(this.mappingSelect('media',draft.media?.entity,v=>{draft.media=v?{entity:v}:{};this.render();},this.uiText('hifi-setup-player')));
+  this.renderHiFiLink(root);
+ }
  else if(group==='mains'){for(const kind of ['power','voltage']){root.append(el('label',kind),this.mappingSelect(kind,draft.mains?.[kind],v=>{draft.mains={...draft.mains,[kind]:v};},kind+' source'));}}
  else {const rows=draft[group]||[];draft[group]=rows;for(const [i,row] of rows.entries()){const box=el('fieldset');box.append(el('legend','Source '+(i+1)));if(group!=='calendars')box.append(this.input('Source '+(i+1)+' label',row.label||'',v=>row.label=v));if(group==='rooms'){for(const kind of ['temperature','humidity'])box.append(el('label',kind),this.mappingSelect(kind,row[kind],v=>{if(v)row[kind]=v;else delete row[kind];},'Room '+(i+1)+' '+kind));}else if(group==='air'){box.append(this.select([['co2','CO₂'],['pm2_5','PM2.5'],['voc','VOC'],['nox','NOx'],...(row.metric==='score'?[['score','Installed score']]:[])],row.metric||'co2',v=>{row.metric=v;delete row.entity;this.render();}),this.mappingSelect(row.metric||'co2',row.entity,v=>row.entity=v,'Air '+(i+1)+' source'));}else box.append(this.mappingSelect(group,group==='calendars'?row:row.entity,v=>{if(group==='calendars')rows[i]=v;else row.entity=v;},'Source '+(i+1)));box.append(button('Remove source',()=>{rows.splice(i,1);this.render();}));root.append(box);}const add=button('Add source',()=>{rows.push(group==='calendars'?'':group==='air'?{label:'',metric:'co2'}:{label:''});this.render();});add.disabled=rows.length>=(group==='calendars'?16:32);root.append(add);}
  if(group==='air')root.append(el('p','Selecting a sensor adds measurements. Only an existing explicit installation policy can assess air quality.','hint'));
  root.append(button('Save sources',()=>this.saveMapping(),'primary'),button('Cancel sources',()=>{this.mappingGroup=null;this.render();}),button('Reload source mappings',async()=>{await this.loadMappings();this.mappingDraft=copy(this.mapping.mappings);this.render();}));
  }
- updatePreview(){if(!this.frame||!this.draft)return;const s=this.snapshot||{version:2,connected:false,fetchedAt:new Date().toISOString(),timezone:'UTC',capabilities:[],data:{}};this.frame.portrait=this.portrait;this.frame.snapshot={...s,config:this.draft.config,mode:this.mode,screen:this.sid,readOnly:true,off:false};}
+ updatePreview(){if(!this.frame||!this.draft)return;const {roomVisitId:_roomVisit,...s}=this.snapshot||{version:2,connected:false,fetchedAt:new Date().toISOString(),timezone:'UTC',capabilities:[],data:{}};this.frame.portrait=this.portrait;this.frame.snapshot={...s,config:this.draft.config,mode:this.mode,screen:this.sid,readOnly:true,off:false};}
  renderHandles(){this.canvas.querySelector('.handles')?.remove();if(this.preview)return;const layer=el('div',undefined,'handles');const screen=this.draft.screen(this.mode,this.sid);positions(screen,this.portrait).forEach((r,i)=>{const w=screen.widgets[i],box=el('div',undefined,'widget-box'+(this.selected===w.id?' selected':''));box.tabIndex=0;box.setAttribute('role','button');box.setAttribute('aria-label',REGISTRY[w.type].label+' widget');box.dataset.widgetId=w.id;this.rectStyle(box,r);box.append(el('span',REGISTRY[w.type].label,'widget-label'));box.onpointerdown=e=>{if(e.target.dataset.handle)return;this.startDrag(e,w.id,'move');};box.onkeydown=e=>{if(!e.key.startsWith('Arrow'))return;e.preventDefault();const dx=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0,dy=e.key==='ArrowDown'?1:e.key==='ArrowUp'?-1:0;const next={...r};if(e.shiftKey){next.w+=dx;next.h+=dy;}else{next.x+=dx;next.y+=dy;}if(this.draft.move(this.mode,this.sid,w.id,next,this.portrait)){this.selected=w.id;this.retain();this.render();this.shadowRoot.querySelector(`[data-widget-id="${w.id}"]`)?.focus();}};
  for(const handle of ['n','s','e','w','ne','nw','se','sw']){const n=el('span',undefined,'resize '+handle);n.dataset.handle=handle;n.setAttribute('aria-hidden','true');n.onpointerdown=e=>this.startDrag(e,w.id,handle);box.append(n);}layer.append(box);});this.canvas.append(layer);}
  rectStyle(node,r){node.style.left=r.x/12*100+'%';node.style.top=r.y/(this.portrait?24:12)*100+'%';node.style.width=r.w/12*100+'%';node.style.height=r.h/(this.portrait?24:12)*100+'%';}
@@ -90,5 +177,5 @@ export class FrameStudio extends HTMLElement {
  root.append(el('hr'));root.append(el('label','Language'),this.select([['en','English'],['de','Deutsch'],['pl','Polski']],this.draft.config.locale,v=>this.change(c=>c.locale=v)),el('label','Theme'),this.select([['classic','Ramka Classic'],['modern','Modern']],this.draft.config.theme,v=>this.change(c=>c.theme=v)));root.append(button('Reload saved library',()=>{this.library=null;this.load();}),el('p','Drafts stay in this browser session. Reloading the library retains your draft. Save as new to resolve a conflict.','hint'));
  }
 }
-const CSS=`:host{display:block;color:#182534;background:#f4f6fa;font:14px system-ui;--accent:#18645e}*{box-sizing:border-box}main{padding:22px;max-width:2000px;margin:auto}h1{font-size:25px;margin:0}header p,.hint,.revision{color:#607084}h2{font-size:15px;margin:0 0 14px}h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#65778a;margin:20px 0 8px}button,input,select{font:inherit;border:1px solid #ccd5df;border-radius:7px;padding:9px 12px;background:white;color:#203244;min-height:38px}button{cursor:pointer}button:hover{border-color:#18645e;background:#edf6f4}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #71bdb5;outline-offset:2px}button:disabled{opacity:.45;cursor:default}.primary,.active{background:var(--accent)!important;color:white!important;border-color:var(--accent)}.toolbar,.states,.screens{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0}.toolbar input{width:175px}.toolbar select{max-width:260px}.small{justify-content:flex-end}.states{gap:0;border-bottom:1px solid #cdd7e1;padding-bottom:12px}.states button{min-width:150px;font-size:16px}.screens button{border-radius:20px}.workspace{display:grid;grid-template-columns:200px minmax(300px,1fr) 220px;gap:18px;align-items:start}.library,.properties{padding:16px;background:white;border:1px solid #dbe2ea;border-radius:12px;max-height:850px;overflow:auto}.library input,.properties input,.properties select{width:100%;margin-bottom:10px}.library button,.properties button{display:block;width:100%;text-align:left;margin:6px 0}.library-item{touch-action:none}.library h4{font-size:11px;color:#65778a;margin:16px 0 4px}.library-entry{border-bottom:1px solid #e0e5eb;padding:5px 0}.library-entry .map-source{font-size:12px;min-height:30px;padding:5px 8px;color:#18645e}.library-entry p{margin:5px 0}.properties fieldset{min-width:0;margin:10px 0;border:1px solid #dbe2ea;border-radius:7px;padding:8px}.properties fieldset select{max-width:100%}.properties fieldset input{min-width:0}.properties label{display:block;margin:12px 0 6px}.canvas{position:relative;width:100%;background:#091220;border-radius:12px;overflow:hidden;box-shadow:0 6px 25px #15253a20}.canvas domosenso-studio-frame{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.handles{position:absolute;inset:0;background-image:linear-gradient(to right,#ffffff0d 1px,transparent 1px),linear-gradient(to bottom,#ffffff0d 1px,transparent 1px);background-size:8.333% 8.333%}.widget-box{position:absolute;border:1px dashed #bccfe066;cursor:grab;touch-action:none}.widget-box.selected{border:2px solid #72e2d1;background:#36bfaa0b}.widget-label{position:absolute;top:5px;left:5px;background:#122236dd;border-radius:4px;color:#fff;font-size:10px;padding:3px 5px;opacity:0}.widget-box:hover .widget-label,.widget-box.selected .widget-label{opacity:1}.resize{position:absolute;width:14px;height:14px;border:2px solid #b0fff1;background:#14584e;border-radius:3px;display:none;touch-action:none}.selected .resize,.widget-box:hover .resize{display:block}.n{top:0;left:50%;cursor:ns-resize}.s{bottom:0;left:50%;cursor:ns-resize}.e{right:0;top:50%;cursor:ew-resize}.w{left:0;top:50%;cursor:ew-resize}.ne{top:0;right:0;cursor:nesw-resize}.nw{top:0;left:0;cursor:nwse-resize}.se{bottom:0;right:0;cursor:nwse-resize}.sw{bottom:0;left:0;cursor:nesw-resize}.ghost{position:absolute;pointer-events:none;border:3px solid #75e6c7;background:#5de1c338;z-index:8}.ghost.invalid{border-color:#fb8c8c;background:#ee4b4b33}.error{color:#a22424;background:#fff0ed;padding:12px;border-radius:8px}.notice{color:#176659}.revision{font-size:12px}.hint{font-size:12px;line-height:1.5}hr{border:0;border-top:1px solid #e0e5eb;margin:20px 0}@media(max-width:1150px){.workspace{grid-template-columns:165px minmax(250px,1fr)}.properties{grid-column:1/-1;max-height:none;display:flex;gap:10px;flex-wrap:wrap;align-items:center}.properties>*{max-width:200px}.properties h2{width:100%;max-width:none}.properties button{width:auto}}@media(max-width:700px){main{padding:10px}.workspace{grid-template-columns:1fr}.library{max-height:220px}.library>div{display:flex;gap:6px;flex-wrap:wrap}.library h3,.library h4{width:100%}.library button{width:auto}.states button{min-width:90px}.properties{grid-column:1}.canvas{min-width:0}}`;
+const CSS=`:host{display:block;color:#182534;background:#f4f6fa;font:14px system-ui;--accent:#18645e}*{box-sizing:border-box}main{padding:22px;max-width:2000px;margin:auto}h1{font-size:25px;margin:0}header p,.hint,.revision{color:#607084}h2{font-size:15px;margin:0 0 14px}h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#65778a;margin:20px 0 8px}button,input,select{font:inherit;border:1px solid #ccd5df;border-radius:7px;padding:9px 12px;background:white;color:#203244;min-height:38px}button{cursor:pointer}button:hover{border-color:#18645e;background:#edf6f4}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #71bdb5;outline-offset:2px}button:disabled{opacity:.45;cursor:default}.primary,.active{background:var(--accent)!important;color:white!important;border-color:var(--accent)}.toolbar,.states,.screens{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0}.toolbar input{width:175px}.toolbar select{max-width:260px}.small{justify-content:flex-end}.states{gap:0;border-bottom:1px solid #cdd7e1;padding-bottom:12px}.states button{min-width:150px;font-size:16px}.screens button{border-radius:20px}.workspace{display:grid;grid-template-columns:200px minmax(300px,1fr) 220px;gap:18px;align-items:start}.library,.properties{padding:16px;background:white;border:1px solid #dbe2ea;border-radius:12px;max-height:850px;overflow:auto}.library input,.properties input,.properties select{width:100%;margin-bottom:10px}.library button,.properties button{display:block;width:100%;text-align:left;margin:6px 0}.library-item{touch-action:none}.library h4{font-size:11px;color:#65778a;margin:16px 0 4px}.library-entry{border-bottom:1px solid #e0e5eb;padding:5px 0}.library-entry .map-source{font-size:12px;min-height:30px;padding:5px 8px;color:#18645e}.library-entry p{margin:5px 0}.properties fieldset{min-width:0;margin:10px 0;border:1px solid #dbe2ea;border-radius:7px;padding:8px}.properties fieldset select{max-width:100%}.properties fieldset input{min-width:0}.properties label{display:block;margin:12px 0 6px}.canvas{position:relative;width:100%;background:#091220;border-radius:12px;overflow:hidden;box-shadow:0 6px 25px #15253a20}.canvas domosenso-studio-frame{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.handles{position:absolute;inset:0;background-image:linear-gradient(to right,#ffffff0d 1px,transparent 1px),linear-gradient(to bottom,#ffffff0d 1px,transparent 1px);background-size:8.333% 8.333%}.widget-box{position:absolute;border:1px dashed #bccfe066;cursor:grab;touch-action:none}.widget-box.selected{border:2px solid #72e2d1;background:#36bfaa0b}.widget-label{position:absolute;top:5px;left:5px;background:#122236dd;border-radius:4px;color:#fff;font-size:10px;padding:3px 5px;opacity:0}.widget-box:hover .widget-label,.widget-box.selected .widget-label{opacity:1}.resize{position:absolute;width:14px;height:14px;border:2px solid #b0fff1;background:#14584e;border-radius:3px;display:none;touch-action:none}.selected .resize,.widget-box:hover .resize{display:block}.n{top:0;left:50%;cursor:ns-resize}.s{bottom:0;left:50%;cursor:ns-resize}.e{right:0;top:50%;cursor:ew-resize}.w{left:0;top:50%;cursor:ew-resize}.ne{top:0;right:0;cursor:nesw-resize}.nw{top:0;left:0;cursor:nwse-resize}.se{bottom:0;right:0;cursor:nwse-resize}.sw{bottom:0;left:0;cursor:nesw-resize}.ghost{position:absolute;pointer-events:none;border:3px solid #75e6c7;background:#5de1c338;z-index:8}.ghost.invalid{border-color:#fb8c8c;background:#ee4b4b33}.error{color:#a22424;background:#fff0ed;padding:12px;border-radius:8px}.notice{color:#176659}.hifisync-link{border-block:1px solid #dbe2ea;margin:0 0 12px;padding:10px 0}.hifisync-link dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px}.hifisync-link dt{color:#607084}.hifisync-link dd{margin:0;overflow-wrap:anywhere}.hifisync-link a{color:var(--accent)}.properties .hifisync-toggle{display:flex;align-items:center;gap:8px}.hifisync-toggle input{width:22px;height:22px;min-height:0;margin:0;accent-color:var(--accent)}.revision{font-size:12px}.hint{font-size:12px;line-height:1.5}hr{border:0;border-top:1px solid #e0e5eb;margin:20px 0}@media(max-width:1150px){.workspace{grid-template-columns:165px minmax(250px,1fr)}.properties{grid-column:1/-1;max-height:none;display:flex;gap:10px;flex-wrap:wrap;align-items:center}.properties>*{max-width:200px}.properties h2{width:100%;max-width:none}.properties button{width:auto}}@media(max-width:700px){main{padding:10px}.workspace{grid-template-columns:1fr}.library{max-height:220px}.library>div{display:flex;gap:6px;flex-wrap:wrap}.library h3,.library h4{width:100%}.library button{width:auto}.states button{min-width:90px}.properties{grid-column:1}.canvas{min-width:0}}`;
 if(!customElements.get('domosenso-frame-studio'))customElements.define('domosenso-frame-studio',FrameStudio);
