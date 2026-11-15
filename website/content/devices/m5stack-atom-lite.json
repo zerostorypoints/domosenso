@@ -3,7 +3,7 @@
   "title": "M5Stack Atom Lite",
   "summary": "A compact board with three distinct installation roles.",
   "sourcePath": "devices/m5stack-atom-lite.yaml",
-  "sourceCommit": "a87cf1195028af78a2d358fcb8bc2a0212375b1b",
+  "sourceCommit": "10b863238b9d89208a60a6e3d9bd959d47a0f083",
   "components": [
     "bermuda-presence",
     "awnings",

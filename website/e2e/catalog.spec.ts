@@ -45,7 +45,7 @@ test('views explain ownership, default and configured pages',async({page})=>{
 });
 
 test('hardware and journal routes render on narrow screens',async({page},info)=>{
- for(const path of ['/components/','/components/ramka/','/devices/hlk-ld2410c/','/devices/cc1101/','/journal/','/journal/ramka-0-3-0/','/journal/ramka-0-4-0/','/journal/bermuda-bluetooth-proxy-setup/','/journal/atom-echos3r-home-assistant-assist/','/journal/mi-flora-home-assistant-setup/','/devices/m5stack-atom-echos3r/','/devices/shelly-pm-mini-gen3/','/devices/m5stack-module-cc1101/','/components/gate-remote/','/components/timers/']){
+ for(const path of ['/components/','/components/ramka/','/devices/hlk-ld2410c/','/devices/cc1101/','/journal/','/journal/ramka-0-3-0/','/journal/ramka-0-4-0/','/journal/bermuda-bluetooth-proxy-setup/','/journal/atom-echos3r-home-assistant-assist/','/journal/mi-flora-home-assistant-setup/','/devices/m5stack-atom-echos3r/','/devices/esp32-s3-im73d122/','/devices/shelly-pm-mini-gen3/','/devices/m5stack-module-cc1101/','/components/gate-remote/','/components/timers/']){
   const response=await page.goto(path);expect(response?.status()).toBe(200);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href',`https://domosenso.org${path}`);
@@ -63,7 +63,7 @@ test('hardware and journal routes render on narrow screens',async({page},info)=>
 test('no JavaScript retains catalog, views and journal content',async({browser})=>{
  const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();
  await page.goto('http://127.0.0.1:4336/components/');await expect(page.locator('.browser-card')).toHaveCount(14);
- await page.goto('http://127.0.0.1:4336/devices/');await expect(page.locator('.hardware-card')).toHaveCount(13);
+ await page.goto('http://127.0.0.1:4336/devices/');await expect(page.locator('.hardware-card')).toHaveCount(14);
  await page.goto('http://127.0.0.1:4336/components/ramka/');await expect(page.locator('#views')).toContainText('Home status');
  await page.goto('http://127.0.0.1:4336/journal/');await expect(page.locator('.journal-card')).toHaveCount(12);
  await expect(page.getByRole('link',{name:'Set up an M5Stack Atom in Home Assistant'})).toHaveAttribute('href','/journal/set-up-m5stack-atom-home-assistant/');
@@ -77,7 +77,7 @@ test('catalog sections lead from components to hardware and back from a guide',a
  await sections.getByRole('link',{name:/Hardware/}).click();
  await expect(page).toHaveURL(/\/devices\/$/);
  await expect(sections.getByRole('link',{name:/Hardware/})).toHaveAttribute('aria-current','page');
- await expect(page.locator('.hardware-card')).toHaveCount(13);
+ await expect(page.locator('.hardware-card')).toHaveCount(14);
  const photos=page.locator('.hardware-photo img');
  await expect(photos).toHaveCount(10);
  for(const photo of await photos.all()){

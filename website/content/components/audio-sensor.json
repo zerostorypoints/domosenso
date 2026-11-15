@@ -6,7 +6,8 @@
   "hardware": "required",
   "ui": "consumer",
   "deviceIds": [
-    "m5stack-atom-echos3r"
+    "m5stack-atom-echos3r",
+    "esp32-s3-im73d122"
   ],
   "views": [
     {
@@ -27,14 +28,15 @@
     }
   ],
   "setup": [
-    "Flash the M5Stack Atom EchoS3R over USB the first time with the device file the component writes; later updates go over Wi-Fi.",
+    "Choose Atom EchoS3R or the ESP32-S3 IM73D122 assembly. For the latter select board: esp32-s3-im73d122 and, only when wired, oled: true. Flash the matching device file over USB; the default factory image still targets Atom.",
+    "PDM has fixed microphone gain and no qualified LED strip. Existing Atom installations need no migration. Adding board inputs does not rewrite an existing owner-managed device file; follow the 0.5.0 upgrade notes.",
     "Adopt the board in Home Assistant through ESPHome and map its entities in the component's inputs.",
     "Calibrate the sound level against a reference meter, or keep the offset marked as an estimate.",
     "To see it on the tablet, set Ramka's music_visual, switch Live visualization on and choose the look on the Ramka settings dashboard; with audio-sensor 0.3.0 that page shows what the selected sensor can do, and its music source select offers no sensor (—). A board flashed before 0.2.0 needs the new firmware for the faster update rate; 0.3.0 needs no new flash."
   ],
   "id": "audio-sensor",
-  "version": "0.4.0",
-  "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+  "version": "0.5.0",
+  "sourceCommit": "10b863238b9d89208a60a6e3d9bd959d47a0f083",
   "evidencePaths": [
     "components/audio-sensor/component.yaml",
     "components/audio-sensor/README.md"
