@@ -1,0 +1,3 @@
+# Sam's study: a Roon zone on a fixed-volume DAC, into an amplifier Home Assistant controls.
+volume_bridges:
+  - {event: event.study_dac_roon_volume, amplifier: media_player.study_amplifier, steps: 2}

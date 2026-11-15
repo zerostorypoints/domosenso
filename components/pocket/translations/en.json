@@ -500,7 +500,8 @@
           "needs_fertiliser": "Needs fertiliser",
           "too_much_fertiliser": "Too much fertiliser",
           "low_battery": "Low battery"
-        }
+        },
+        "hydroculture": "Fine · hydroculture, water by the gauge"
       },
       "sections": {
         "label": "{name}: {head}, {status}",

@@ -210,3 +210,76 @@ def test_history_cutoff_requires_a_real_zoned_timestamp(tmp_path, before, valid)
     else:
         with pytest.raises(RenderError, match=r"plant\.fern\.legacy_moisture_history.*ISO 8601"):
             render_component(REPO / "components/plants", inputs, tmp_path, ["en"])
+
+
+# SPEC-048: a plant in hydroculture is judged on light and temperature; its sensor's prongs read
+# only the pebbles above the reservoir, so nothing about moisture or watering is rendered for it.
+HYDRO = {"entity": "plant.dragon_tree", "label": "Hall", "name": "Dragon tree", "medium": "hydroculture",
+         "min_temperature": 15}
+SOIL = {"entity": "plant.fern", "label": "Office", "name": "Fern"}
+
+
+def render_plants(tmp_path, plants):
+    render_component(REPO / "components/plants", {"plants": plants, "notify": "notify.fixture"}, tmp_path, ["en"])
+    return (yaml.safe_load((tmp_path / "package.yaml").read_text()),
+            yaml.safe_load((tmp_path / "assistant-bindings.yaml").read_text()))
+
+
+def test_hydroculture_plant_is_judged_on_light_and_temperature(tmp_path):
+    package, _ = render_plants(tmp_path, [HYDRO, SOIL])
+    plant = package["plant"]["dragon_tree"]
+    assert plant["sensors"] == {"brightness": "sensor.dragon_tree_illuminance",
+                                "temperature": "sensor.dragon_tree_temperature"}
+    assert not {"min_moisture", "max_moisture", "min_conductivity", "max_conductivity"} & set(plant)
+    assert plant["min_temperature"] == 15 and plant["min_brightness"] == 500
+    attrs = package["homeassistant"]["customize"]["plant.dragon_tree"]
+    assert attrs["domosenso_medium"] == "hydroculture"
+    assert set(attrs["domosenso_bands"]) == {"min_temperature", "min_brightness"}
+    assert "domosenso_medium" not in package["homeassistant"]["customize"]["plant.fern"]
+    assert set(package["plant"]["fern"]["sensors"]) == {"moisture", "conductivity", "brightness", "temperature"}
+
+
+def test_hydroculture_plant_has_no_watering_figures(tmp_path):
+    package, bindings = render_plants(tmp_path, [HYDRO, SOIL])
+    ids = {s["unique_id"] for s in package["sensor"]} | set(template_sensors(package))
+    assert "dragon_tree_illuminance_max_24h" in ids
+    for suffix in ("moisture_min_3h", "moisture_change_48h", "last_watered", "water_in_days"):
+        assert f"dragon_tree_{suffix}" not in ids
+        assert f"fern_{suffix}" in ids
+    reminder = next(a for a in package["automation"] if a["id"] == "plants_water_reminder")
+    assert "dragon_tree" not in yaml.safe_dump(reminder)
+    silent = next(a for a in package["automation"] if a["id"] == "plants_sensor_silent")
+    assert "sensor.dragon_tree_moisture" in silent["triggers"][0]["entity_id"]
+    unplaced = template_sensors(package)["plants_unplaced_in_soil"][1]["state"]
+    assert "'sensor.dragon_tree_moisture'" in unplaced
+    fields = {s["key"]: s["fields"] for s in bindings["subjects"]}
+    assert set(fields["plant.dragon_tree"]) == {"brightness", "temperature", "plant", "brightness_peak"}
+    assert "last_watered" in fields["plant.fern"]
+
+
+def test_only_hydroculture_plants_render_valid_yaml(tmp_path):
+    package, _ = render_plants(tmp_path, [HYDRO])
+    assert all(block for block in package["template"])
+    assert not any(a["id"] == "plants_water_reminder" for a in package["automation"])
+    assert set(template_sensors(package)) == {"plants_unplaced_in_soil"}
+
+
+@pytest.mark.parametrize("change, error", [
+    ({"min_moisture": 0}, r"plant\.dragon_tree: a hydroculture plant takes no moisture or conductivity band"),
+    ({"max_conductivity": 1500}, r"plant\.dragon_tree: a hydroculture plant takes no moisture or conductivity band"),
+    ({"medium": "pebbles"}, r"plant\.dragon_tree\.medium must be soil or hydroculture"),
+])
+def test_hydroculture_refuses_soil_bands_and_unknown_media(tmp_path, change, error):
+    with pytest.raises(RenderError, match=error):
+        render_plants(tmp_path, [{**HYDRO, **change}])
+
+
+def test_hydroculture_with_sources_keeps_the_stable_readings(tmp_path):
+    plant = {**HYDRO, "active_source": "proxy", "sources": {"proxy": {
+        "moisture": "sensor.b1_moisture", "conductivity": "sensor.b1_conductivity",
+        "brightness": "sensor.b1_illuminance", "temperature": "sensor.b1_temperature"}}}
+    package, _ = render_plants(tmp_path, [plant])
+    assert package["plant"]["dragon_tree"]["sensors"] == {
+        "brightness": "sensor.dragon_tree_reading_illuminance",
+        "temperature": "sensor.dragon_tree_reading_temperature"}
+    assert "dragon_tree_reading_moisture" in template_sensors(package)

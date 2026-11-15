@@ -100,7 +100,8 @@
       "list": {
         "plant": "Roślina",
         "days": "Ostatnie {count} dni"
-      }
+      },
+      "hydroculture": "Hydrokultura · podlewaj według wskaźnika"
     },
     "air": {
       "level": {

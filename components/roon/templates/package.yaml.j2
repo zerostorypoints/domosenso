@@ -1,0 +1,52 @@
+[%- from '_validate.jinja' import validate_bridges with context -%]
+[%- set bridges = inputs.volume_bridges | default([]) -%]
+[[ validate_bridges(bridges) ]]
+[%- if not bridges %]
+# No volume bridge: every zone's volume is Roon's own (the zone's device volume).
+{}
+[%- else %]
+# Roon's volume buttons for zones whose volume control in Roon is "Home Assistant: <zone> roon
+# volume" (SPEC-049). The roon integration fires one event per press and does not pass Roon's step
+# size, so each press makes `steps` calls on the amplifier; queued, so fast presses all arrive.
+automation:
+[%- for b in bridges %]
+[%- set zone = b.event[6:-12] %]
+[%- set steps = b.get('steps', 1) %]
+  - id: roon_volume_[[ zone ]]
+    alias: Roon volume [[ zone ]]
+    description: Roon's volume buttons on [[ b.event ]] turn [[ b.amplifier ]]
+    mode: queued
+    max: 20
+    triggers:
+      # An event entity's state is the time of its last event; a restart restores it from
+      # unavailable, which is not a press.
+      - trigger: state
+        entity_id: [[ b.event ]]
+        not_from: [unavailable]
+        not_to: [unavailable, unknown]
+    actions:
+      - choose:
+          - conditions: "{{ trigger.to_state.attributes.event_type == 'volume_up' }}"
+            sequence:
+              - repeat:
+                  count: [[ steps ]]
+                  sequence:
+                    - action: media_player.volume_up
+                      target: {entity_id: [[ b.amplifier ]]}
+          - conditions: "{{ trigger.to_state.attributes.event_type == 'volume_down' }}"
+            sequence:
+              - repeat:
+                  count: [[ steps ]]
+                  sequence:
+                    - action: media_player.volume_down
+                      target: {entity_id: [[ b.amplifier ]]}
+[%- if b.get('mute', true) %]
+          - conditions: "{{ trigger.to_state.attributes.event_type == 'mute_toggle' }}"
+            sequence:
+              - action: media_player.volume_mute
+                target: {entity_id: [[ b.amplifier ]]}
+                data:
+                  is_volume_muted: "{{ not is_state_attr('[[ b.amplifier ]]', 'is_volume_muted', true) }}"
+[%- endif %]
+[%- endfor %]
+[%- endif %]

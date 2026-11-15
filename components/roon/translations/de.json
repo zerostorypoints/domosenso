@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "description": "Ein Roon Core in Home Assistant: Jede Roon-Zone wird über die Core-Integration roon zu einem Mediaplayer, mit Wiedergabe und Pause, Spulen, Zufallswiedergabe, Wiederholen, Gruppieren, Übergeben und Roons eigener Bibliothek zum Durchsuchen. Für eine Zone, deren Verstärker Roon nicht steuern kann, stellen Roons Lautstärketasten über Home Assistant die Lautstärke dieses Verstärkers.",
+    "devices": {
+      "roon-core": {
+        "description": "Der Server, auf dem Roon läuft: ROCK auf einem Intel NUC, ein Nucleus oder Roon Server auf einem Computer oder NAS. Er hält die Bibliothek und schickt die Musik an die Zonen.",
+        "does": "Über die Core-Integration roon sieht Home Assistant jede Roon-Zone als Mediaplayer, steuert Wiedergabe und Lautstärke, übergibt die Warteschlange zwischen Zonen und gruppiert sie. Nichts verlässt das Heimnetz."
+      }
+    },
+    "assistant": {
+      "explain": {
+        "title": "Über Roon",
+        "description": "Roon macht jede Zone eines Roon Core zu einem Mediaplayer in Home Assistant und kann Roons Lautstärketasten an einen Verstärker weitergeben; die installierten Metadaten sagen nicht, was gerade läuft.",
+        "examples": [
+          "Was macht Roon?"
+        ]
+      }
+    }
+  }
+}

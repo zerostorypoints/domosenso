@@ -33,7 +33,10 @@
 //   list_rows: 7                       # optional: rows per list page
 //
 // "Watered" and "water in" come from sensor.<plant>_last_watered and sensor.<plant>_water_in_days
-// when they exist. Without `page` the card turns its pages every page_s and keeps the index in the
+// when they exist. A plant in hydroculture (the plants component's domosenso_medium, or `medium:
+// hydroculture` on a list item; SPEC-048) is judged on light and temperature: its sensor reads only
+// the pebbles above the reservoir, so the tile drops the water and fertiliser bars and the moisture
+// line and says it is watered by its gauge. Without `page` the card turns its pages every page_s and keeps the index in the
 // browser, so the next pass of the ambient loop continues where the last one stopped.
 
 import { createT, language } from "./lib/i18n.js";
@@ -97,7 +100,7 @@ class PlantsCard extends HTMLElement {
   _watched(hass) {
     const ids = [this._config.per_page, this._config.page_s, this._config.page].filter((v) => typeof v === "string");
     for (const id of Object.keys(hass.states)) {
-      if (id.startsWith("plant.") || /^sensor\..*_(last_watered|water_in_days|reading_status)$/.test(id)) ids.push(id);
+      if (id.startsWith("plant.") || /^sensor\..*_(last_watered|water_in_days|reading_status|illuminance_max_24h)$/.test(id)) ids.push(id);
     }
     return ids.map((id) => hass.states[id]);
   }
@@ -160,7 +163,8 @@ class PlantsCard extends HTMLElement {
       .sort()
       .map((id) => {
         const a = this._hass.states[id].attributes;
-        return { ...(a.domosenso_bands || {}), entity: id, room: a.domosenso_room, rooms: a.domosenso_rooms };
+        return { ...(a.domosenso_bands || {}), entity: id, room: a.domosenso_room, rooms: a.domosenso_rooms,
+                 medium: a.domosenso_medium };
       });
   }
 
@@ -184,7 +188,12 @@ class PlantsCard extends HTMLElement {
     }
   }
 
+  _hydro(p) {
+    return (p.medium || this._hass.states[p.entity]?.attributes?.domosenso_medium) === "hydroculture";
+  }
+
   _moistureId(p) {
+    if (this._hydro(p)) return undefined;
     const s = this._hass.states[p.entity];
     return p.moisture || (s && s.attributes.sensors && s.attributes.sensors.moisture);
   }
@@ -296,6 +305,7 @@ class PlantsCard extends HTMLElement {
   // line) and always takes in the watering threshold, drawn dashed.
   _chart(el, p, r) {
     const svg = el.querySelector("svg.chart");
+    if (r.hydro) { svg.innerHTML = ""; return; }
     const rows = this._moistureRows(p);
     const pts = rows.filter((x) => x.mean != null).map((x) => [x.start, x.mean]);
     if (pts.length < 2) { svg.innerHTML = ""; return; }
@@ -349,8 +359,11 @@ class PlantsCard extends HTMLElement {
                overflow: hidden; }
         .row .photo { height: 100%; border-radius: 0; }
         .row.top { background: none; border: none; color: var(--secondary-text-color); font-size: calc(3 * var(--u)); }
-        .rowname { display: flex; flex-direction: column; min-width: 0; }
-        .rowname .name { font-size: calc(4 * var(--u)); }
+        /* Fit the name, room and action inside one row, even on a full list page. */
+        .rowname { display: flex; flex-direction: column; min-width: 0;
+                   --row-text: min(var(--u), calc(var(--rh) / 14)); line-height: 1.1; }
+        .rowname .name { font-size: calc(4 * var(--row-text)); }
+        .rowname :is(.rm, .what) { font-size: calc(3.1 * var(--row-text)); }
         .rm, .what { font-size: calc(3.1 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
                      color: var(--secondary-text-color); min-height: 1.2em; }
         .what.act { color: var(--c); font-weight: 600; }
@@ -440,8 +453,11 @@ class PlantsCard extends HTMLElement {
     const a = (s && s.attributes) || {};
     const b = this._bands(p);
     const v = Object.fromEntries(GAUGES.map((g) => [g.key, parseFloat(g.value(a))]));
-    const m = this._meta(p);
+    const peak = parseFloat(this._hass.states[`sensor.${objectId(p.entity)}_illuminance_max_24h`]?.state);
+    if (Number.isFinite(peak)) v.brightness = peak;
     const readings = this._readingLabels(p);
+    if (this._hydro(p)) return this._readHydro(p, a, b, v, readings);
+    const m = this._meta(p);
     if (readings) {
       for (const g of GAUGES) {
         if (readings[g.key].stale || !Number.isFinite(v[g.key])) v[g.key] = readings[g.key].value;
@@ -464,6 +480,25 @@ class PlantsCard extends HTMLElement {
     if (acts.length && rank === 3) rank = 2;
     const state = rank < 3 ? "need" : m.inDays != null && m.inDays <= 3 ? "neutral" : "good";
     return { a, b, v, m, readings, rank, state, text: acts.join(" · ") };
+  }
+
+  // Hydroculture: light and temperature only; the soil readings are left out, not shown as missing.
+  _readHydro(p, a, b, v, readings) {
+    const m = { inDays: null, text: t(this._hass, "card.plants.hydroculture") };
+    v.moisture = NaN;
+    v.conductivity = NaN;
+    if (readings && !Number.isFinite(v.brightness)) v.brightness = readings.brightness.value;
+    const light = readings ? !readings.brightness.stale : true;
+    if (!Number.isFinite(v.brightness) || !light) {
+      return { a, b, v, m, readings, hydro: true, rank: 4, state: "neutral", text: t(this._hass, "card.plants.noReading") };
+    }
+    const acts = [];
+    if (v.brightness < b.brightness.lo) acts.push(t(this._hass, "card.plants.moreLight"));
+    const temp = String(a.problem || "");
+    if (!readings?.temperature.stale && temp.includes("temperature low")) acts.push(t(this._hass, "card.plants.tooCold"));
+    if (!readings?.temperature.stale && temp.includes("temperature high")) acts.push(t(this._hass, "card.plants.tooWarm"));
+    const rank = acts.length ? 2 : 3;
+    return { a, b, v, m, readings, hydro: true, rank, state: rank < 3 ? "need" : "good", text: acts.join(" · ") };
   }
 
   // The tiles of one page; built again only when the plants on it change.
@@ -522,6 +557,8 @@ class PlantsCard extends HTMLElement {
     for (const g of GAUGES) {
       const b = r.b[g.key], val = r.v[g.key];
       const row = el.querySelector(`[data-k="${g.key}"]`);
+      // Hidden, not removed: a list row keeps its columns.
+      row.style.visibility = r.hydro && g.key !== "brightness" ? "hidden" : "";
       row.querySelector(".gl").textContent = t(this._hass, g.label);
       row.title = r.readings?.[g.key].detail || "";
       const band = row.querySelector(".band");
@@ -562,7 +599,7 @@ class PlantsCard extends HTMLElement {
     if (!strip) {
       strip = document.createElement("div");
       strip.className = "strip";
-      strip.innerHTML = `<span class="pg"></span><div class="dots"></div><span class="cnt"></span>`;
+      strip.innerHTML = `<span class="pg"></span><span class="cnt"></span><div class="dots"></div>`;
       this._card.appendChild(strip);
     }
     strip.querySelector(".pg").textContent = `${page + 1} / ${pages}`;
@@ -656,7 +693,8 @@ class PlantsCard extends HTMLElement {
       if (bars) this._gauges(el, r);
       this._chart(el, p, r);
       const age = el.querySelector(".reading-age");
-      age.textContent = (list ? r.readings?.moisture.summary : r.readings?.moisture.detail) || "";
+      const shownAge = r.readings?.[r.hydro ? "brightness" : "moisture"];
+      age.textContent = (list ? shownAge?.summary : shownAge?.detail) || "";
       age.hidden = !r.readings;
       age.title = r.readings ? Object.values(r.readings).map((x) => x.detail).join("\n") : "";
       age.onclick = r.readings ? (event) => {

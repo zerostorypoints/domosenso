@@ -158,9 +158,10 @@ a water reservoir with a float gauge; common in Swiss and German homes). Then:
 - **Soil:** all four readings count; the bands are the species' or the defaults.
 - **Hydroculture:** say why only part of the sensor is used, before writing the inputs: the prongs
   reach only the pebbles above the water, so moisture stays near 0 % and conductivity at 0 whatever
-  the reservoir holds; light and temperature come from the sensor's head and are real. Set
-  `min_moisture: 0` and `min_conductivity: 0` for that plant, so it is judged on light and
-  temperature only and never pushes "needs water"; the float gauge stays the watering signal. Such
+  the reservoir holds; light and temperature come from the sensor's head and are real. Give that
+  plant `medium: hydroculture` (SPEC-048; no moisture or conductivity band with it), so it is judged
+  on light and temperature only and never pushes "needs water"; the float gauge stays the watering
+  signal. Such
   a sensor may never show on `sensor.plants_unplaced_in_soil` (it waits for moisture above 0): find
   it by its discovery name.
 - Read each new sensor's signal strength: below about -90 dBm it needs a nearer proxy.

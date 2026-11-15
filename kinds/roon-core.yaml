@@ -1,0 +1,6 @@
+# SPEC-049. A Roon Core (ROCK, Nucleus, Roon Server): the roon integration makes one config entry
+# per Core. Its hub device (manufacturer "Roonlabs") and the zones ("RoonLabs") differ only in case,
+# and match rules ignore case, so the entry is what is counted.
+id: roon-core
+match:
+  - entry: roon

@@ -331,6 +331,7 @@ it, or it does not go in.
 | now playing: what plays anywhere, else the first area's player | `lib/media.js` | Media's player pick (Media only) |
 | a backup is fair after 8 days, poor after 30 | `lib/system.js` | open |
 | a plant's battery is low under 15 % | `lib/plants.js` | open |
+| a plant in hydroculture (`domosenso_medium`, SPEC-048) shows no moisture or fertiliser and is judged on light and warmth; its fine row says it is watered by the gauge | `lib/plants.js` | the plants component's `medium` |
 
 ### 4.8 Wi-Fi survey (SPEC-045)
 

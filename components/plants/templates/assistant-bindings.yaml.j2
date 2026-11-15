@@ -3,10 +3,13 @@
 [%- for row in rows -%]
 [%- set item = inputs.plants[loop.index0] -%]
 [%- set fields = {} -%]
-[%- for role, entity in row.sensors.items() -%][%- set _ = fields.update({role: {'entity': entity}}) -%][%- endfor -%]
+[#- A hydroculture plant (SPEC-048) binds no soil reading and no watering figure: its watering
+    questions stay unanswered rather than read the pebbles. -#]
+[%- for role, entity in row.sensors.items() if not (row.hydro and role in ['moisture', 'conductivity']) -%][%- set _ = fields.update({role: {'entity': entity}}) -%][%- endfor -%]
 [%- for role, entity in {'plant': item.entity, 'last_watered': 'sensor.' ~ row.id ~ '_last_watered',
  'water_in_days': 'sensor.' ~ row.id ~ '_water_in_days', 'drying_rate': 'sensor.' ~ row.id ~ '_moisture_change_48h',
- 'brightness_peak': 'sensor.' ~ row.id ~ '_illuminance_max_24h'}.items() -%]
+ 'brightness_peak': 'sensor.' ~ row.id ~ '_illuminance_max_24h'}.items()
+   if not (row.hydro and role in ['last_watered', 'water_in_days', 'drying_rate']) -%]
 [%- set _ = fields.update({role: {'entity': entity}}) -%][%- endfor -%]
 [%- set label = row.name -%]
 [%- if row.names -%][%- set label = {'en': row.name} -%][%- for k,v in row.names.items() if k in ('en','de','pl') -%][%- set _ = label.update({k:v}) -%][%- endfor -%][%- endif -%]

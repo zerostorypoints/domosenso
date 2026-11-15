@@ -197,7 +197,7 @@ def test_every_existing_catalog_capability_has_a_canonical_projection_without_op
         artifact = metadata((root, manifest, definitions, bindings))
         assert {x['id'] for x in artifact['definitions']['capabilities']} == {x['id'] for x in definitions['capabilities']}
         total += len(definitions['capabilities'])
-    assert total == 40  # main's 39 and pocket.explain (feature/pocket)
+    assert total == 41  # main's 39, pocket.explain (feature/pocket) and roon.explain (SPEC-049)
 
 
 def test_catalog_accepts_only_declared_anchor_phrase_lists(component):

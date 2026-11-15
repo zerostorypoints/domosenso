@@ -34,13 +34,18 @@ gauge give it away.
 Pushing the sensor deeper does not help: the head is not made to sit in wet pebbles, and the
 reservoir is below the prongs' reach anyway. **The float gauge is the watering signal.**
 
-What a home does today (0.5.0), per hydroculture plant: set `min_moisture: 0` and
-`min_conductivity: 0`, so neither is ever low. Light and temperature stay judged; no watering push
-goes out and the Ramka and Pocket show no "thirsty" plant. "Last watered" and "water in" stay
-unknown for it, which is right: the sensor cannot see a watering. Tell the owner why, in these
-words or similar: *"In hydroculture the sensor only sees the dry pebbles at the top, so its moisture
-and fertility numbers stay near zero whatever the water level. We keep its light and temperature,
-which are real, and you water by the float gauge as before."*
+What a home does: give the plant `medium: hydroculture` (SPEC-048). It is then judged on light and
+temperature only: its `plant:` entry gets no moisture or conductivity sensor or band, it has no
+"last watered", "water in" or moisture statistics, the watering push leaves it out, and the Ramka
+and Pocket show it as "watered by the gauge" instead of a plant with missing readings. A moisture
+or conductivity band on such a plant fails the render. The raw readings stay in Home Assistant
+(and, with `sources`, in `sensor.<plant>_reading_*`), so switching back to soil needs no new
+binding. Before this setting a home set `min_moisture: 0` and `min_conductivity: 0`; replace both
+with `medium: hydroculture` (UPGRADE.md).
+
+Tell the owner why, in these words or similar: *"In hydroculture the sensor only sees the dry
+pebbles at the top, so its moisture and fertility numbers stay near zero whatever the water level.
+We keep its light and temperature, which are real, and you water by the float gauge as before."*
 
 - **A new sensor in a hydroculture pot may never trigger the new-sensor push**: that push waits for
   moisture above 0 %, and the pebbles may read 0. Find the sensor by its discovery name instead.
@@ -68,7 +73,7 @@ which are real, and you water by the float gauge as before."*
 No app is needed: Home Assistant tells which sensor went into which pot.
 
 First ask whether the plant grows in soil or in hydroculture (see above): in hydroculture only light
-and temperature mean anything, and step 4 sets its moisture and conductivity limits to 0.
+and temperature mean anything, and step 4 gives it `medium: hydroculture`.
 
 1. **Pull the battery tab and keep the sensor in the hand.** Within about a minute Home Assistant
    shows a Xiaomi BLE discovery, "Plant Sensor XXXX (HHCCJCY01)", under Settings → Devices &
@@ -81,6 +86,7 @@ and temperature mean anything, and step 4 sets its moisture and conductivity lim
    appears a few minutes after the others: rename once it is there.
 4. **Add the plant to the inputs**: `entity`, `label` (the room), `name`, `photo` (a file under the
    home's `www/`, about 800 px on the long side, served as `/local/...`) and any band of its own.
+   `medium: hydroculture` for a plant in pebbles (above).
    `name` and `label` may be given per language, `{en: Basil, de: Basilikum, pl: Bazylia}`: the
    first is Home Assistant's name, and each Ramka dashboard shows its own language. Render, deploy,
    restart; the push stops for that sensor because it is no longer unplaced.

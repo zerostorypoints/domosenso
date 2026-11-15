@@ -100,7 +100,8 @@
       "list": {
         "plant": "Pflanze",
         "days": "Letzte {count} Tage"
-      }
+      },
+      "hydroculture": "Hydrokultur · giessen nach Anzeiger"
     },
     "air": {
       "level": {

@@ -97,6 +97,8 @@ for manifest in components/*/component.yaml; do
     background "esphome-check $comp" tools/esphome-check.sh "$comp"
   fi
 done
+# plants with a plant in hydroculture: light and temperature only (SPEC-048).
+background "ha-check plants (hydroculture)" env INPUTS="$ROOT/tests/fixtures/plants-hydroculture.yaml" tools/ha-check.sh plants
 # pocket with the Wi-Fi survey: its package (SPEC-045).
 background "ha-check pocket (wifi survey)" env INPUTS="$ROOT/tests/fixtures/pocket-wifi-survey.yaml" tools/ha-check.sh pocket
 # ramka 0.2.0: climate, air, plants and photos left out, only the status page (SPEC-011 section 6.2).

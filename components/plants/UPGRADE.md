@@ -2,6 +2,23 @@
 
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
+## Unreleased: plants in hydroculture (SPEC-048)
+
+New optional key per plant, `medium: soil | hydroculture` (default `soil`). A hydroculture plant is
+judged on light and temperature only; it carries `domosenso_medium: hydroculture`, and has no
+moisture statistics, last watered, water in or watering push. A plant without `medium` renders
+exactly as before.
+
+### What a home does
+
+Nothing, unless it has plants in hydroculture. For each, add `medium: hydroculture` and remove any
+`min_moisture`, `max_moisture`, `min_conductivity` and `max_conductivity` it has (the render refuses
+them with it; a home that used `0` limits as a workaround drops them). Render, deploy, restart. The
+plant keeps its id and history; its four `sensor.<plant>_{moisture_min_3h,moisture_change_48h,
+last_watered,water_in_days}` become orphaned registry entries a home may remove. Update the Ramka
+and Pocket with it to show these plants as watered by the gauge; older cards show their raw
+readings without a moisture band.
+
 
 ## 0.5.0 (unreleased): choose a source and retain plant history
 

@@ -16,6 +16,7 @@ export function MobileNav() {
     }}>
       <Link href="/get-started/">Get started</Link>
       <Link href="/components/">Components</Link>
+      <Link href="/devices/">Hardware</Link>
       <Link href="/docs/">Docs</Link>
       <Link href="/how-to/">How-to</Link>
       <Link href="/journal/">Journal</Link>

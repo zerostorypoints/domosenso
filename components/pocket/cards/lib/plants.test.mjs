@@ -84,3 +84,35 @@ test("a home without plants, or a hidden one: nothing", () => {
   hass.entities["plant.yucca"] = { entity_id: "plant.yucca", hidden_by: "user" };
   assert.equal(find(plantsOf(hass, config), "plant.yucca"), undefined);
 });
+
+test("a recorded daily peak takes precedence over HA's low-light problem", () => {
+  const hass = plantsHass({
+    "plant.herbs": st("problem", { friendly_name: "Herbs", brightness: 100, max_brightness: 100, problem: "brightness low" }),
+    "sensor.herbs_illuminance_max_24h": st(650),
+  });
+  const herbs = find(plantsOf(hass, config), "plant.herbs");
+  assert.deepEqual(herbs.reasons, []);
+  assert.equal(herbs.readings.find((reading) => reading.reading === "illuminance").tone, "good");
+});
+
+test("a recorded low daily peak still gives light advice when the live sensor is unavailable", () => {
+  const hass = plantsHass({
+    "plant.herbs": st("ok", { friendly_name: "Herbs" }),
+    "sensor.herbs_illuminance": st("unavailable"),
+    "sensor.herbs_illuminance_max_24h": st(100),
+  });
+  assert.deepEqual(find(plantsOf(hass, config), "plant.herbs").reasons, ["needs_light"]);
+});
+
+test("hydroculture (SPEC-048): no moisture or fertiliser reading, never thirsty, judged on light", () => {
+  const hass = plantsHass();
+  const id = Object.keys(hass.states).find((e) => e.startsWith("plant.") && find(plantsOf(hass, config), e)?.reasons.includes("thirsty"));
+  assert.ok(id, "the demo has a thirsty plant");
+  hass.states[id].attributes = { ...hass.states[id].attributes, domosenso_medium: "hydroculture" };
+  const plant = find(plantsOf(hass, config), id);
+  assert.equal(plant.hydro, true);
+  assert.ok(!plant.reasons.includes("thirsty") && !plant.reasons.includes("too_wet"));
+  assert.ok(!plant.readings.some((r) => r.reading === "moisture" || r.reading === "conductivity"));
+  assert.ok(plant.readings.some((r) => r.reading === "illuminance"));
+  assert.notEqual(plant.rank, 0);
+});

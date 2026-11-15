@@ -116,6 +116,7 @@ and a manifest that says what it needs and which versions it was tested on.
 - **weather** — current weather and forecast from Met.no. Tested in 1 home.
 - **backup** — nightly full backup, catch-up after a restart, retention and a stale-backup alert. Tested in 1 home.
 - **remote-access** — Home Assistant from anywhere through a Cloudflare Tunnel, no open port. Tested in 0 homes.
+- **roon** — a Roon Core's zones as media players through the core roon integration, with Roon's volume buttons bridged to an amplifier Roon cannot control. Tested in 1 home; the volume bridge only in checks so far.
 
 Every component except remote-access runs in one home so far. Yours would be the second.
 

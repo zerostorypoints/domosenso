@@ -61,7 +61,9 @@ api:
 ```
 
 Name the CO₂ entity in the Ramka's `air` input as one room, for example
-`{label: Bedroom, room: bedroom, co2: sensor.<node>_co2}`.
+`{label: Bedroom, room: bedroom, co2: sensor.<node>_co2}`. With climate-air 0.3.1 or later, the
+room's `air: {co2: sensor.<node>_co2}` in the home inputs adds the CO₂ limits (fair and poor),
+which the Ramka settings dashboard changes.
 
 ## After the first start
 

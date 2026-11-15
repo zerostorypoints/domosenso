@@ -29,7 +29,7 @@ integrations:
 
 inputs:
   plants:                       # the Ramka's plants shape; name, sensors, the temperature band and check_days from 0.2.0; photo from 0.3.0
-    type: "list[{entity: plant.*, label, name?, room?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, active_source?, sources?, legacy_moisture_history?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]"
+    type: "list[{entity: plant.*, label, name?, room?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, active_source?, sources?, legacy_moisture_history?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?, medium?: soil|hydroculture}]"
     example: [{entity: plant.monstera, label: Living room, photo: /local/plants/monstera.jpg}]
   plant_defaults:               # a plant's own value wins, then this, then nothing (check_days: 3)
     type: map
@@ -70,6 +70,7 @@ provides:
     - {id: "sensor.<plant>_reading_{moisture,conductivity,illuminance,temperature}", stability: stable, note: "Opt-in numeric measurement with a stable ID across provider changes"}
     - {id: "sensor.<plant>_reading_status", stability: additive-only, note: "Opt-in metadata with readings by metric including last valid HA report at, value and availability"}
     - {id: "plant.<plant> attributes domosenso_reading_status and domosenso_legacy_moisture_history", stability: additive-only}
+    - {id: "plant.<plant> attribute domosenso_medium", stability: additive-only, note: "hydroculture for a plant with medium: hydroculture (SPEC-048): judged on light and temperature, no moisture or conductivity band, no last watered or water in; absent for soil"}
     # From the package (0.2.0). <plant> is the object id of the plant's entity input.
     - {id: "sensor.<plant>_illuminance_max_24h", unique_id: "<plant>_illuminance_max_24h", stability: stable, note: "lx, brightest reading of the last 24 hours"}
     - {id: automation.plants_need_water, unique_id: plants_water_reminder, stability: stable}
