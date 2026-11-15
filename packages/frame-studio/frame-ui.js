@@ -9,6 +9,9 @@ const plain=v=>v!==null&&typeof v==='object'&&[Object.prototype,null].includes(O
 const finite=v=>typeof v==='number'&&Number.isFinite(v);
 const str=(v,max=512)=>typeof v==='string'&&v.length<=max;
 const date=v=>str(v,60)&&Number.isFinite(Date.parse(v));
+const opaqueId=v=>str(v,128)&&/^[A-Za-z0-9_-]+$/.test(v);
+const uuid=v=>str(v,36)&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(v);
+const roomIdentity=room=>room?.id??room?.name;
 const check=(condition)=>{if(!condition)fail();};
 const shape=(v,keys)=>check(plain(v)&&Object.keys(v).every(k=>keys.includes(k)));
 const list=(v,max=64)=>check(Array.isArray(v)&&v.length<=max);
@@ -23,9 +26,13 @@ function points(v){list(v,2048);for(const p of v){check(Array.isArray(p)&&p.leng
 function series(v){list(v,64);for(const x of v){shape(x,['label','points','color','unit','dashed']);text(x.label);points(x.points);optional(x.color,text);optional(x.unit,text);optional(x.dashed,bool);}}
 function bounded(value){let nodes=0,bytes=0;const seen=new Set();function visit(v,depth=0,key=''){check(++nodes<=100000&&depth<=12);if(v===null||typeof v==='boolean')return;if(typeof v==='number'){check(finite(v));return;}if(typeof v==='string'){bytes+=v.length;check(bytes<=16*1024*1024);if(['artwork','image'].includes(key)){image(v);}else check(v.length<=512);return;}check(typeof v==='object'&&!seen.has(v));seen.add(v);if(Array.isArray(v)){list(v,2048);for(const x of v)visit(x,depth+1,key);}else{check(plain(v));const keys=Object.keys(v);check(keys.length<=64&&!keys.some(k=>['__proto__','constructor','prototype'].includes(k)));for(const k of keys)visit(v[k],depth+1,k);}seen.delete(v);}visit(value);}
 export function validateSnapshot(s){
- shape(s,['version','config','mode','screen','connected','fetchedAt','timezone','capabilities','off','wind','readOnly','data']);check(s.version===2);validateConfig(s.config);bool(s.connected);check(date(s.fetchedAt)&&str(s.timezone,80));try{new Intl.DateTimeFormat('en',{timeZone:s.timezone});}catch{fail();}
+ shape(s,['version','config','mode','screen','connected','fetchedAt','timezone','capabilities','off','wind','readOnly','data','hifisyncStudioVersion','roomVisitId']);check(s.version===2);
+ optional(s.hifisyncStudioVersion,v=>check(v===1));
+ validateConfig(s.config,{runtimeMusic:s.hifisyncStudioVersion===1});bool(s.connected);check(date(s.fetchedAt)&&str(s.timezone,80));try{new Intl.DateTimeFormat('en',{timeZone:s.timezone});}catch{fail();}
  const mode=s.config.modes.find(m=>m.id===s.mode);check(mode&&mode.screens.some(p=>p.id===s.screen));list(s.capabilities,16);check(s.capabilities.every(c=>['temperature','air','weather','status','rooms','plants','media','mains','history','calendar','photos','lights','covers','hifisync-system','hifisync-room'].includes(c))&&new Set(s.capabilities).size===s.capabilities.length);
  optional(s.off,bool);optional(s.wind,bool);optional(s.readOnly,bool);
+ optional(s.roomVisitId,id=>check(opaqueId(id)&&s.hifisyncStudioVersion===1&&s.mode==='media'&&
+  mode.screens.find(page=>page.id===s.screen)?.widgets.some(widget=>widget.type==='hifisync-room')));
  shape(s.data,['weather','rooms','air','assessment','status','plants','media','mains','history','calendar','photos','lights','covers','runtime','hifisync']);bounded(s.data);const d=s.data;
  optional(d.weather,w=>{shape(w,['label','condition','temperature','unit','available','stale','pressure','forecast','windSpeed','windUnit']);optional(w.label,text);optional(w.condition,text);optional(w.temperature,number);optional(w.unit,text);flags(w);optional(w.pressure,reading);optional(w.windSpeed,number);optional(w.windUnit,text);optional(w.forecast,fc=>{list(fc,4);for(const f of fc){shape(f,['datetime','condition','temperature','templow']);check(date(f.datetime));optional(f.condition,text);optional(f.temperature,number);optional(f.templow,number);}});});
  optional(d.rooms,rs=>{list(rs);for(const r of rs){shape(r,['label','temperature','humidity','color']);text(r.label);optional(r.temperature,reading);optional(r.humidity,reading);optional(r.color,text);}});
@@ -82,7 +89,8 @@ function validateHiFiProjection(projection) {
  list(system.rack,32);
  for(const shelf of system.rack){list(shelf,32);for(const id of shelf)check(ids.has(id));}
  if(room===null)return;
- shape(room,['name','widthM','lengthM','heightM','placements']);
+ shape(room,['id','name','widthM','lengthM','heightM','placements']);
+ if(room.id!==undefined)check(uuid(room.id));
  text(room.name);
  number(room.widthM,0.01,200);number(room.lengthM,0.01,200);
  if(room.heightM!==null)number(room.heightM,0.01,200);
@@ -110,21 +118,24 @@ const color=(value,fallback='#5ab5de')=>typeof value==='string'&&/^#[0-9a-f]{3}(
 const palette=['#5ab5de','#e6ab71','#b39dde','#5be37a','#f68e9b','#e3cd62'];
 const stamp=seconds=>{if(!finite(seconds))return '—';const n=Math.max(0,Math.floor(seconds));return `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`;};
 export class FrameUI extends (globalThis.HTMLElement||class{}){
- constructor(){super();this.attachShadow({mode:'open'});this._paused=false;this._portraitOverride=null;this._autoPortrait=false;this._shieldUntil=0;this._suppressClick=0;}
+ constructor(){super();this.attachShadow({mode:'open'});this._paused=false;this._portraitOverride=null;this._autoPortrait=false;this._shieldUntil=0;this._suppressClick=0;this._roomGestureSequence=0;}
  connectedCallback(){if(globalThis.ResizeObserver){this._observer=new ResizeObserver(entries=>{const r=entries[0]?.contentRect;if(r&&r.width&&r.height){const portrait=r.height>r.width;if(portrait!==this._autoPortrait){this._autoPortrait=portrait;this.render();}}});this._observer.observe(this);}this._timer=setInterval(()=>this._tick(),1000);this.render();}
- disconnectedCallback(){clearInterval(this._timer);this._observer?.disconnect();this._removeHiFiDrawing();}
+ disconnectedCallback(){clearInterval(this._timer);this._observer?.disconnect();this._clearRoomGesture();this._removeHiFiDrawing();}
  set snapshot(v){
   validateSnapshot(v);
   const previous=this._snapshot,gesture=this._pointer,incoming=v.data.hifisync;
+  const sameRoom=roomIdentity(incoming?.snapshot.room)===roomIdentity(previous?.data.hifisync?.snapshot.room)&&
+   v.roomVisitId===previous?.roomVisitId;
   // Replacing a touched element can lose touchend on the Android WebView.
   const heldMusicGesture=this._roomTouch||(gesture?.musicPages&&Date.now()-gesture.started<=1500);
   const sameMusicPage=heldMusicGesture&&v.connected&&!v.off&&!v.readOnly&&
    v.mode===previous.mode&&v.screen===previous.screen&&incoming&&
-   incoming.snapshot.revision===previous.data.hifisync?.snapshot.revision&&Date.now()<Date.parse(incoming.validUntil)&&
+   sameRoom&&incoming.snapshot.revision===previous.data.hifisync?.snapshot.revision&&Date.now()<Date.parse(incoming.validUntil)&&
    v.capabilities.join()===previous.capabilities.join();
   if(v.mode==='controls'&&(previous?.mode!=='controls'||previous?.screen!==v.screen))this._shieldUntil=Date.now()+700;
   this._snapshot=structuredClone(v);
   this._preview=null;
+  if(this._roomGesture&&(!sameRoom||!this._roomInteractionAllowed(this._roomGesture.visitId)))this._clearRoomGesture();
   if(!sameMusicPage){this._pointer=null;this._roomTouch=false;this.render();}
  }
  get snapshot(){return this._snapshot;}
@@ -200,19 +211,70 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
  _hasMusicPages(mode){
   return mode.id==='media'&&mode.screens.some(screen=>screen.requires.some(capability=>capability.startsWith('hifisync-'))&&this._musicScreenAvailable(screen));
  }
+ _roomInteractionAllowed(visitId){
+  return !!visitId&&this._snapshot?.roomVisitId===visitId&&
+   this._snapshot.capabilities.includes('hifisync-room')&&!!this._hiFiProjection()?.snapshot.room&&!this._blocked();
+ }
+ _clearRoomGesture(){
+  clearInterval(this._roomGesture?.timer);
+  this._roomGesture=null;
+  this._deferredRoomRender=false;
+ }
+ _bindRoomInteractions(host){
+  const canvas='svg[data-own-gesture]';
+  const emit=(action,gesture)=>{
+   const visitId=gesture?.visitId??this._snapshot?.roomVisitId;
+   if(this._drawing?.host!==host||!this._roomInteractionAllowed(visitId))return false;
+   return this._emit({kind:'room_interaction',action,visitId,...(gesture?{gestureId:gesture.id}:{})});
+  };
+  host.addEventListener('pointerdown',event=>{
+   if(event.button!==0||!event.target.closest(canvas))return;
+   if(this._roomGesture){
+    this._roomGesture.pointers.add(event.pointerId);
+    return;
+   }
+   const gesture={id:'room-'+(++this._roomGestureSequence),visitId:this._snapshot?.roomVisitId,pointers:new Set([event.pointerId])};
+   if(!emit('begin',gesture))return;
+   this._roomGesture=gesture;
+   gesture.timer=setInterval(()=>{if(!emit('progress',gesture))this._clearRoomGesture();},5000);
+  });
+  const finish=event=>{
+   const gesture=this._roomGesture;
+   if(!gesture?.pointers.delete(event.pointerId))return;
+   if(gesture.pointers.size&&event.type!=='pointercancel')return;
+   emit('end',gesture);
+   const shouldRender=this._deferredRoomRender;
+   this._clearRoomGesture();
+   if(shouldRender)queueMicrotask(()=>{if(this.isConnected)this.render();});
+  };
+  for(const name of ['pointerup','pointercancel','lostpointercapture'])host.addEventListener(name,finish);
+  host.addEventListener('click',event=>{
+   if(event.target.closest('.room-studio-zoom button,.room-studio-speakers button'))emit('touch');
+  });
+  host.addEventListener('keydown',event=>{
+   if(!event.repeat&&['Enter',' '].includes(event.key)&&event.target.closest('[data-studio-speaker]'))emit('touch');
+  });
+ }
  _removeHiFiDrawing(){
   this._drawing?.dispose();
   this._drawing=null;
  }
  _renderHiFiDrawing(card,type,system,model){
-  const locale=this._snapshot.config.locale;
-  const key=JSON.stringify([system.id,type,locale,model]);
+  const locale=this._snapshot.config.locale,translate=key=>this.t(key);
+  const entity=type==='room'?roomIdentity(model):null;
+  const visit=type==='room'?this._snapshot.roomVisitId:null;
+  const key=JSON.stringify([system.id,type,visit,entity]);
+  const revision=JSON.stringify([locale,model]);
   if(this._drawing?.key!==key){
    this._removeHiFiDrawing();
    const host=node('div','hifisync-drawing');
    host.dataset.hifisyncDrawing=type;
    host.addEventListener('click',event=>event.stopPropagation());
-   this._drawing={key,host,dispose:mountHiFiDrawing(host,type,model,locale,key=>this.t(key))};
+   this._drawing={...mountHiFiDrawing(host,type,model,locale,translate),key,host,revision};
+   if(type==='room')this._bindRoomInteractions(host);
+  }else if(this._drawing.revision!==revision){
+   this._drawing.update(model,locale,translate);
+   this._drawing.revision=revision;
   }
   this._drawing.used=true;
   card.classList.add('with-hifisync-drawing');
@@ -340,6 +402,12 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
   }
  }
 
- render(){const root=this.shadowRoot,focus=root.activeElement?.dataset.key,focusedMusic=root.activeElement?.classList.contains('music-pages'),scrolls=new Map(Array.from(root.querySelectorAll('[data-widget]'),el=>[el.dataset.widget,el.scrollTop]));if(this._drawing)this._drawing.used=false;root.replaceChildren(node('style',null,CSS));const s=this._snapshot;if(!s){root.append(node('div','shell',this.t('loading')));return;}this._lastBlocked=this._blocked();this._lastHiFiProjection=Boolean(this._hiFiProjection());if(s.off){this._removeHiFiDrawing();root.append(node('main','sleep'));return;}const current=this._preview||s,mode=s.config.modes.find(m=>m.id===current.mode),selected=mode.screens.find(x=>x.id===current.screen),screen=mode.id==='media'&&selected.requires.some(capability=>capability.startsWith('hifisync-'))&&!this._musicScreenAvailable(selected)?mode.screens.find(candidate=>!candidate.requires.length):selected,shell=node('main',`shell ${s.config.theme}`),grid=node('div','grid');shell.lang=s.config.locale;grid.dataset.rows=this.portrait?'24':'12';grid.setAttribute('aria-label',screen.title);const ps=positions(screen,this.portrait);screen.widgets.forEach((w,i)=>{const card=node('section',`widget ${w.type}`);card.dataset.widget=w.id;card.dataset.kind=w.type;const p=ps[i];card.style.gridColumn=`${p.x+1} / span ${p.w}`;card.style.gridRow=`${p.y+1} / span ${p.h}`;card.setAttribute('aria-label',this.t(w.type));card.append(node('h2',null,w.type==='history'?`${this.t(w.options?.metric||'temperature')} · ${this.t('history')}`:this.t(w.type)));const renderers={clock:()=>this._clock(card),weather:()=>this._weather(card,w.options||{}),rooms:()=>this._rooms(card),air:()=>this._air(card),history:()=>this._chart(card,s.data.history?.[w.options?.metric||'temperature'],w.options?.days),status:()=>this._status(card),plants:()=>this._plants(card),media:()=>this._media(card),mains:()=>this._mains(card),'media-controls':()=>this._mediaControls(card),lights:()=>this._lights(card),covers:()=>this._covers(card),navigation:()=>this._navigation(card,w.options||{}),calendar:()=>this._calendar(card),photos:()=>this._photos(card),'hifisync-system':()=>this._hiFiSystem(card,mode.id),'hifisync-room':()=>this._hiFiRoom(card,mode.id)};if(REGISTRY[w.type])renderers[w.type]();grid.append(card);});shell.append(grid);const musicPages=this._hasMusicPages(mode);if(musicPages){shell.classList.add('music-pages');if(!s.readOnly&&!this._preview&&!this._paused&&!this._offline()){shell.classList.add('with-swipe-hint');shell.append(node('p','music-swipe-hint',this.t('music-swipe-hint')));}}if(this._offline()){const n=node('div','notice',this.t('offline'));n.setAttribute('role','status');shell.append(n);}if(s.wind){const n=node('div','notice wind',this.t('wind'));n.setAttribute('role','status');shell.append(n);}if(s.readOnly||this._preview||this._paused)shell.append(node('div','read-only',this.t(this._paused?'paused':'preview')));this._interactions(shell,musicPages);root.append(shell);if(focusedMusic&&musicPages)shell.focus();if(this._drawing&&!this._drawing.used)this._removeHiFiDrawing();for(const el of root.querySelectorAll('[data-widget]'))el.scrollTop=scrolls.get(el.dataset.widget)||0;if(focus)for(const el of root.querySelectorAll('[data-key]'))if(el.dataset.key===focus)el.focus();this._tick();}
+ render(){
+  // A live Room gesture owns the canvas, so retain its pointer capture across polling.
+  if(this._roomGesture){
+   if(this._roomInteractionAllowed(this._roomGesture.visitId)){this._deferredRoomRender=true;return;}
+   this._clearRoomGesture();
+  }
+  const root=this.shadowRoot,focus=root.activeElement?.dataset.key,focusedMusic=root.activeElement?.classList.contains('music-pages'),scrolls=new Map(Array.from(root.querySelectorAll('[data-widget]'),el=>[el.dataset.widget,el.scrollTop]));if(this._drawing)this._drawing.used=false;root.replaceChildren(node('style',null,CSS));const s=this._snapshot;if(!s){root.append(node('div','shell',this.t('loading')));return;}this._lastBlocked=this._blocked();this._lastHiFiProjection=Boolean(this._hiFiProjection());if(s.off){this._removeHiFiDrawing();root.append(node('main','sleep'));return;}const current=this._preview||s,mode=s.config.modes.find(m=>m.id===current.mode),selected=mode.screens.find(x=>x.id===current.screen),screen=mode.id==='media'&&selected.requires.some(capability=>capability.startsWith('hifisync-'))&&!this._musicScreenAvailable(selected)?mode.screens.find(candidate=>!candidate.requires.length):selected,shell=node('main',`shell ${s.config.theme}`),grid=node('div','grid');shell.lang=s.config.locale;grid.dataset.rows=this.portrait?'24':'12';grid.setAttribute('aria-label',screen.title);const ps=positions(screen,this.portrait);screen.widgets.forEach((w,i)=>{const card=node('section',`widget ${w.type}`);card.dataset.widget=w.id;card.dataset.kind=w.type;const p=ps[i];card.style.gridColumn=`${p.x+1} / span ${p.w}`;card.style.gridRow=`${p.y+1} / span ${p.h}`;card.setAttribute('aria-label',this.t(w.type));card.append(node('h2',null,w.type==='history'?`${this.t(w.options?.metric||'temperature')} · ${this.t('history')}`:this.t(w.type)));const renderers={clock:()=>this._clock(card),weather:()=>this._weather(card,w.options||{}),rooms:()=>this._rooms(card),air:()=>this._air(card),history:()=>this._chart(card,s.data.history?.[w.options?.metric||'temperature'],w.options?.days),status:()=>this._status(card),plants:()=>this._plants(card),media:()=>this._media(card),mains:()=>this._mains(card),'media-controls':()=>this._mediaControls(card),lights:()=>this._lights(card),covers:()=>this._covers(card),navigation:()=>this._navigation(card,w.options||{}),calendar:()=>this._calendar(card),photos:()=>this._photos(card),'hifisync-system':()=>this._hiFiSystem(card,mode.id),'hifisync-room':()=>this._hiFiRoom(card,mode.id)};if(REGISTRY[w.type])renderers[w.type]();grid.append(card);});shell.append(grid);const musicPages=this._hasMusicPages(mode);if(musicPages){shell.classList.add('music-pages');if(!s.readOnly&&!this._preview&&!this._paused&&!this._offline()){shell.classList.add('with-swipe-hint');shell.append(node('p','music-swipe-hint',this.t('music-swipe-hint')));}}if(this._offline()){const n=node('div','notice',this.t('offline'));n.setAttribute('role','status');shell.append(n);}if(s.wind){const n=node('div','notice wind',this.t('wind'));n.setAttribute('role','status');shell.append(n);}if(s.readOnly||this._preview||this._paused)shell.append(node('div','read-only',this.t(this._paused?'paused':'preview')));this._interactions(shell,musicPages);root.append(shell);if(focusedMusic&&musicPages)shell.focus();if(this._drawing&&!this._drawing.used)this._removeHiFiDrawing();for(const el of root.querySelectorAll('[data-widget]'))el.scrollTop=scrolls.get(el.dataset.widget)||0;if(focus)for(const el of root.querySelectorAll('[data-key]'))if(el.dataset.key===focus)el.focus();this._tick();}
 }
 if(globalThis.customElements&&!customElements.get('domosenso-studio-frame'))customElements.define('domosenso-studio-frame',FrameUI);

@@ -4,4 +4,37 @@ const pl={allOff:'Wyłącz wszystkie',openAll:'Otwórz wszystkie',stopAll:'Zatrz
 Object.assign(en,{'music-swipe-hint':'Swipe left or right','hifisync-system':'System','hifisync-room':'Room','hifi-rack':'Rack','hifi-plan':'Listening room plan','hifi-position-left':'Left speaker','hifi-position-right':'Right speaker','hifi-position-subwoofer':'Subwoofer','hifi-position-listening':'Listening position','hifi-role-amplifier':'Amplifier','hifi-role-source':'Source','hifi-role-speaker':'Speaker','hifi-role-subwoofer':'Subwoofer','hifi-role-dac':'DAC','hifi-role-other':'Equipment'});
 Object.assign(de,{'music-swipe-hint':'Nach links oder rechts wischen','hifisync-system':'System','hifisync-room':'Raum','hifi-rack':'Rack','hifi-plan':'Grundriss des Hörraums','hifi-position-left':'Linker Lautsprecher','hifi-position-right':'Rechter Lautsprecher','hifi-position-subwoofer':'Subwoofer','hifi-position-listening':'Hörposition','hifi-role-amplifier':'Verstärker','hifi-role-source':'Quelle','hifi-role-speaker':'Lautsprecher','hifi-role-subwoofer':'Subwoofer','hifi-role-dac':'DAC','hifi-role-other':'Gerät'});
 Object.assign(pl,{'music-swipe-hint':'Przesuń w lewo lub w prawo','hifisync-system':'System','hifisync-room':'Pokój','hifi-rack':'Układ półek','hifi-plan':'Rzut pokoju odsłuchowego','hifi-position-left':'Lewa kolumna','hifi-position-right':'Prawa kolumna','hifi-position-subwoofer':'Subwoofer','hifi-position-listening':'Miejsce odsłuchu','hifi-role-amplifier':'Wzmacniacz','hifi-role-source':'Źródło','hifi-role-speaker':'Kolumna','hifi-role-subwoofer':'Subwoofer','hifi-role-dac':'DAC','hifi-role-other':'Sprzęt'});
+Object.assign(en,{
+ 'hifi-setup-sources':'Sources · Music','hifi-setup-player':'Media player',
+ 'hifi-setup-toggle':'Show System and Room','hifi-setup-no-room':'No room linked',
+ 'hifi-setup-no-player':'Select a media player to check its HiFiSync link.',
+ 'hifi-setup-unmatched':'This player has no HiFiSync link.',
+ 'hifi-setup-loading':'Checking the HiFiSync link…','hifi-setup-stale':'Showing the last verified HiFiSync link.',
+ 'hifi-setup-select_system':'Select a HiFiSync system.','hifi-setup-select_player':'Select a player in HiFiSync settings.',
+ 'hifi-setup-reauth':'The HiFiSync link needs a new token.','hifi-setup-unavailable':'The HiFiSync link is unavailable.',
+ 'hifi-setup-missing':'The HiFiSync integration is unavailable.','hifi-setup-repair-link':'Open Home Assistant integrations',
+ 'hifi-setup-reauth-link':'Reconnect HiFiSync in Home Assistant',
+});
+Object.assign(de,{
+ 'hifi-setup-sources':'Quellen · Musik','hifi-setup-player':'Wiedergabegerät',
+ 'hifi-setup-toggle':'System und Raum anzeigen','hifi-setup-no-room':'Kein Raum verknüpft',
+ 'hifi-setup-no-player':'Wähle ein Wiedergabegerät, um die HiFiSync-Verknüpfung zu prüfen.',
+ 'hifi-setup-unmatched':'Dieses Wiedergabegerät ist nicht mit HiFiSync verknüpft.',
+ 'hifi-setup-loading':'HiFiSync-Verknüpfung wird geprüft…','hifi-setup-stale':'Zuletzt bestätigte HiFiSync-Verknüpfung.',
+ 'hifi-setup-select_system':'Wähle ein HiFiSync-System.','hifi-setup-select_player':'Wähle ein Wiedergabegerät in den HiFiSync-Einstellungen.',
+ 'hifi-setup-reauth':'Die HiFiSync-Verknüpfung braucht einen neuen Token.','hifi-setup-unavailable':'Die HiFiSync-Verknüpfung ist nicht verfügbar.',
+ 'hifi-setup-missing':'Die HiFiSync-Integration ist nicht verfügbar.','hifi-setup-repair-link':'Home Assistant-Integrationen öffnen',
+ 'hifi-setup-reauth-link':'HiFiSync in Home Assistant erneut verbinden',
+});
+Object.assign(pl,{
+ 'hifi-setup-sources':'Źródła · Muzyka','hifi-setup-player':'Odtwarzacz',
+ 'hifi-setup-toggle':'Pokaż System i Pokój','hifi-setup-no-room':'Brak przypisanego pokoju',
+ 'hifi-setup-no-player':'Wybierz odtwarzacz, aby sprawdzić połączenie z HiFiSync.',
+ 'hifi-setup-unmatched':'Ten odtwarzacz nie jest powiązany z HiFiSync.',
+ 'hifi-setup-loading':'Sprawdzanie połączenia z HiFiSync…','hifi-setup-stale':'Ostatnie potwierdzone połączenie z HiFiSync.',
+ 'hifi-setup-select_system':'Wybierz zestaw HiFiSync.','hifi-setup-select_player':'Wybierz odtwarzacz w ustawieniach HiFiSync.',
+ 'hifi-setup-reauth':'Połączenie z HiFiSync wymaga nowego tokena.','hifi-setup-unavailable':'Połączenie z HiFiSync jest niedostępne.',
+ 'hifi-setup-missing':'Integracja HiFiSync jest niedostępna.','hifi-setup-repair-link':'Otwórz integracje Home Assistant',
+ 'hifi-setup-reauth-link':'Połącz ponownie HiFiSync w Home Assistant',
+});
 export const translate=(locale,key)=>({de,pl}[locale]?.[key]??en[key]??key);
