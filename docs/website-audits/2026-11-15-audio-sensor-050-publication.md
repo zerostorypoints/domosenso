@@ -20,8 +20,13 @@ the audio-sensor tag is valid. Do not describe the aggregate run as fully green.
 | Release ledger | Update: 0.5.0 available at its verified public tag. Old tag URLs remain unchanged. |
 
 All device/asset source references advance together to the documentation commit,
-as required by the exporter. Existing device text and assets remain unchanged;
+as required by the exporter. Existing device text and assets remain unchanged after link normalization;
 new PDM content is original and contains no private photos, addresses or logs.
+The CO2L page preserves its previously published body as editorial content backed
+by device metadata: the newer source guide adds climate-air 0.3.1 instructions,
+but that release is not available. Its existing source links remain pinned to
+the previously published revision. Independent review caught this unreleased guidance, but PR #311 merged before
+the correction was pushed. A focused follow-up restores the previous CO2L body.
 
 Physical evidence: 48 kHz PDM, 31 finite spectrum bands over at least 60 seconds in
 each profile, voice-responsive OLED and held maximum. At 400 kHz I2C, normal/fast
@@ -39,3 +44,20 @@ After merge, verify the actual merge revision, deployed build.json, component an
 new device page, release ledger, SVG, agent Markdown/llms index and sitemap. Read
 Search engines for IndexNow submission and Google/Bing sitemap results. Record
 those observed results in the PR handoff, not as pre-merge assertions here.
+
+## Observed publication of PR #311
+
+Human-approved PR #311 merged as `e9f7355bebf6565a25241272dbc08418bbf894cb`.
+Production build.json reports that exact revision. All 36 checked live HTML,
+agent Markdown/index, SVG and sitemap URLs return 200; the audio-sensor page
+shows 0.5.0 and the new device, and the sitemap/llms index include its guide.
+Main framework and website checks passed. Search engines run 43727665564 reports:
+
+- `submitted 34 urls (200)`
+- `skip google: no credentials`
+- `ok bing: https://domosenso.org/sitemap.xml`
+
+Google submission remains deferred: no connected Search Console tool is
+available in this session. A maintainer must submit the sitemap or configure
+the workflow credentials. This is not evidence of Google indexing.
+The focused CO2L correction still needs its own merge and live verification.
