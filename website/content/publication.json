@@ -58,9 +58,9 @@
     },
     {
       "id": "floorplan",
-      "version": "0.4.0",
-      "tag": "floorplan/0.4.0",
-      "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.5.0",
+      "tag": "floorplan/0.5.0",
+      "commit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
@@ -96,9 +96,9 @@
     },
     {
       "id": "plants",
-      "version": "0.5.0",
-      "tag": "plants/0.5.0",
-      "commit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
+      "version": "0.6.0",
+      "tag": "plants/0.6.0",
+      "commit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]

@@ -293,3 +293,102 @@ test('enhanced room uses the HiFiSync renderer with saved room placement', () =>
  el.snapshot={...s,fetchedAt:new Date().toISOString()};
  assert.equal(el.shadowRoot.querySelector('[data-hifisync-drawing="room"]'),view);
 });
+
+function studioRoom(visitId='visit-a') {
+ const s=hiFiSnapshot('hifisync-room');
+ s.hifisyncStudioVersion=1;
+ s.roomVisitId=visitId;
+ s.data.hifisync.snapshot.room.placements=[{role:'left',xM:1,yM:1,rotationDeg:7}];
+ return s;
+}
+
+function roomPointer(svg, type, id=1) {
+ svg.dispatchEvent(new PointerEvent(type,{bubbles:true,pointerType:'touch',pointerId:id,clientX:120,clientY:110}));
+}
+
+test('negotiated Studio Music allows eighteen effective pages only',()=>{
+ const s=studioRoom();
+ const music=s.config.modes.find(mode=>mode.id==='media');
+ for(let count=music.screens.length;count<18;count++){
+  music.screens.push({...structuredClone(music.screens[0]),id:'extra-'+count});
+ }
+ assert.equal(validateSnapshot(s),s);
+ assert.throws(()=>validateSnapshot({...s,hifisyncStudioVersion:undefined,roomVisitId:undefined}),/Invalid/);
+ music.screens.push({...structuredClone(music.screens[0]),id:'extra-18'});
+ assert.throws(()=>validateSnapshot(s),/Invalid/);
+});
+
+test('Room holds one visit during a pinch and leaves paging outside the drawing',()=>{
+ const s=studioRoom(),el=mount(s),actions=[];
+ el.addEventListener('frame-action',event=>actions.push(event.detail));
+ const svg=el.shadowRoot.querySelector('[data-own-gesture]');
+ roomPointer(svg,'pointerdown',1);
+ roomPointer(svg,'pointerdown',2);
+ el.snapshot={...s,fetchedAt:new Date().toISOString()};
+ assert.equal(el.shadowRoot.querySelector('[data-own-gesture]'),svg);
+ roomPointer(svg,'pointerup',1);
+ assert.deepEqual(actions.map(action=>action.action),['begin']);
+ roomPointer(svg,'pointerup',2);
+ assert.deepEqual(actions.map(action=>action.action),['begin','end']);
+ assert.equal(actions[0].gestureId,actions[1].gestureId);
+ assert.ok(actions.every(action=>action.kind==='room_interaction'&&action.visitId==='visit-a'));
+ swipe(el.shadowRoot.querySelector('h3'),-100,0);
+ assert.deepEqual(actions.at(-1),{kind:'navigation',action:'next'});
+});
+
+test('Room selection and zoom renew the hold, and details survive valid data refresh until departure',async()=>{
+ const s=studioRoom(),el=mount(s),actions=[];
+ el.addEventListener('frame-action',event=>actions.push(event.detail));
+ const speaker=()=>el.shadowRoot.querySelector('.room-studio-speakers button');
+ speaker().click();
+ const selected=async()=>{
+  for(let n=0;n<8&&speaker()?.getAttribute('aria-pressed')!=='true';n++)await new Promise(resolve=>setTimeout(resolve,5));
+  assert.equal(speaker()?.getAttribute('aria-pressed'),'true');
+ };
+ await selected();
+ el.shadowRoot.querySelector('.room-studio-zoom button:nth-child(2)').click();
+ const refreshed=structuredClone(s);
+ refreshed.data.hifisync.snapshot.revision='test-updated';
+ refreshed.data.hifisync.snapshot.room.placements[0].rotationDeg=11;
+ el.snapshot=refreshed;
+ await selected();
+ assert.match(el.shadowRoot.querySelector('.room-studio-detail').textContent,/\+11/);
+ assert.deepEqual(actions,[{kind:'room_interaction',action:'touch',visitId:'visit-a'},{kind:'room_interaction',action:'touch',visitId:'visit-a'}]);
+ const next={...refreshed,screen:'music'};
+ delete next.roomVisitId;
+ el.snapshot=next;
+ el.snapshot={...refreshed,roomVisitId:'visit-b'};
+ assert.equal(speaker().getAttribute('aria-pressed'),'false');
+});
+
+test('an authoritative Room departure cancels the old gesture even if data is still valid',()=>{
+ const s=studioRoom(),el=mount(s),actions=[];
+ el.addEventListener('frame-action',event=>actions.push(event.detail));
+ const svg=el.shadowRoot.querySelector('[data-own-gesture]');
+ roomPointer(svg,'pointerdown');
+ const next={...s,screen:'music'};
+ delete next.roomVisitId;
+ el.snapshot=next;
+ roomPointer(svg,'pointerup');
+ assert.match(text(el),/Demo song/);
+ assert.deepEqual(actions.map(action=>action.action),['begin']);
+});
+
+test('Room identity preserves selection on rename and clears it on same-name replacement',async()=>{
+ const s=studioRoom();
+ s.data.hifisync.snapshot.room.id='aabbccdd-1000-4000-8000-aabbccddeeff';
+ const el=mount(s),speaker=()=>el.shadowRoot.querySelector('.room-studio-speakers button');
+ speaker().click();
+ for(let n=0;n<8&&speaker()?.getAttribute('aria-pressed')!=='true';n++)await new Promise(resolve=>setTimeout(resolve,5));
+ assert.equal(speaker().getAttribute('aria-pressed'),'true');
+ const renamed=structuredClone(s);
+ renamed.data.hifisync.snapshot.room.name='Renamed Room';
+ el.snapshot=renamed;
+ assert.equal(speaker().getAttribute('aria-pressed'),'true');
+ const replacement=structuredClone(renamed);
+ replacement.data.hifisync.snapshot.room.id='aabbccdd-2000-4000-8000-aabbccddeeff';
+ el.snapshot=replacement;
+ assert.equal(speaker().getAttribute('aria-pressed'),'false');
+ replacement.data.hifisync.snapshot.room.id='unbounded-identity';
+ assert.throws(()=>validateSnapshot(replacement),/Invalid/);
+});
