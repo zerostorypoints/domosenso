@@ -149,3 +149,46 @@ def test_service_schema(service, valid):
                 "devices": {}, "host": {"installs": ["container"]}, "integrations": [],
                 "artifacts": {"services": [service]}, "tested": {"ha": ["2026.9.2"]}}
     assert (not _schema_errors("component", manifest, "x")) == valid
+
+
+def test_audio_board_update_keeps_owner_customized_thin_files(tmp_path, capsys):
+    """A fresh home adopts both boards, then updates without replacing its chosen hardware/pins."""
+    import shutil
+    import yaml
+    source = Path(__file__).resolve().parents[1] / 'components/audio-sensor'
+    repo = tmp_path / 'catalog'
+    repo.mkdir()
+    git(repo, 'init', '-q', '-b', 'main')
+    component = repo / 'components/audio-sensor'
+    shutil.copytree(source, component)
+    manifest = component / 'component.yaml'
+    # Two local test releases, never public tags. Firmware is not fetched or flashed.
+    data = yaml.safe_load(manifest.read_text())
+    version = data['version']
+    data['version'] = '0.0.1'
+    manifest.write_text(yaml.safe_dump(data))
+    git(repo, 'add', '-A'); git(repo, 'commit', '-q', '-m', 'first test release')
+    git(repo, 'tag', 'audio-sensor/0.0.1')
+    root = tmp_path / 'home'
+    code, out = run(root, 'init', '--catalog', str(repo), capsys=capsys)
+    assert code == 0, out
+    inputs = {'sensors': [{'room': 'office', 'area': 'Office', 'board': 'esp32-s3-im73d122', 'oled': True},
+                          {'room': 'hall', 'area': 'Hall'}]}
+    write_files(root, {'domosenso/audio-sensor.inputs.yaml': yaml.safe_dump(inputs)})
+    code, out = run(root, 'add', 'audio-sensor@0.0.1', capsys=capsys)
+    assert code == 0, out
+    thin = root / 'esphome/audio-sensor-office.yaml'
+    assert 'audio-sensor-pdm.yaml@' in thin.read_text()
+    assert 'audio-sensor-oled.yaml@' in thin.read_text()
+    assert Lock.load(root).components['audio-sensor'].files['esphome/audio-sensor-office.yaml'].layer == 'instance'
+    customized = thin.read_text() + '\n# Owner pin customization\ni2c:\n  - id: oled_i2c\n    sda: GPIO8\n'
+    thin.write_text(customized)
+    inputs['sensors'][0] = {'room': 'office', 'area': 'Office'}
+    write_files(root, {'domosenso/audio-sensor.inputs.yaml': yaml.safe_dump(inputs)})
+    data['version'] = version; manifest.write_text(yaml.safe_dump(data))
+    git(repo, 'add', '-A'); git(repo, 'commit', '-q', '-m', 'second test release')
+    git(repo, 'tag', f'audio-sensor/{version}')
+    code, out = run(root, 'update', 'audio-sensor', '--to', version, capsys=capsys)
+    assert code == 0, out
+    assert thin.read_text() == customized
+    assert 'audio-sensor.yaml@audio-sensor/0.0.1' in (root / 'esphome/audio-sensor-hall.yaml').read_text()

@@ -1,0 +1,40 @@
+# ESP32-S3 DevKitC-1 N16R8-compatible assembly; see devices/esp32-s3-im73d122.md.
+# PDM receiver right channel is qualified for the documented module orientation only.
+packages:
+  common: !include audio-sensor-common.yaml
+
+substitutions:
+  mic_gain_description: Fixed PDM (no programmable gain)
+
+esphome:
+  project:
+    name: domosenso.audio-sensor-pdm
+    version: 0.5.0
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  cpu_frequency: 240MHz
+  framework:
+    type: esp-idf
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+i2s_audio:
+  - id: i2s_bus
+    i2s_lrclk_pin: GPIO4  # PDM clock; no separate bit clock or master clock
+
+microphone:
+  - platform: i2s_audio
+    id: mic
+    i2s_audio_id: i2s_bus
+    adc_type: external
+    i2s_din_pin: GPIO5
+    pdm: true
+    sample_rate: 48000
+    bits_per_sample: 16bit
+    channel: right
+    correct_dc_offset: true

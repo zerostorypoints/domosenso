@@ -928,3 +928,47 @@ def test_ambient_curve_falls_back_to_the_defaults_while_fresh(tmp_path):
         states = {**fresh, "sensor.living_room_illuminance": str(lux)}
         env.globals["states"] = lambda e, states=states: states.get(e, "unavailable")
         assert abs(float(env.from_string(template).render().strip()) - pct) <= 1, lux
+
+
+@pytest.mark.parametrize('extra', [{}, {'board': 'm5stack-atom-echos3r'},
+                                   {'board': None, 'oled': None, 'mic_gain': None}])
+def test_atom_board_defaults_preserve_thin_file(extra):
+    base = {'room': 'office', 'area': 'Office'}
+    assert _device_files([{**base, **extra}]) == _device_files([base])
+
+
+@pytest.mark.parametrize('oled', [False, True, None])
+def test_pdm_board_selects_package_and_optional_oled(oled):
+    text = _device_files([{'room': 'office', 'area': 'Office',
+                          'board': 'esp32-s3-im73d122', 'oled': oled}])['audio-sensor-office.yaml']
+    assert '/audio-sensor-pdm.yaml@audio-sensor/' in text
+    assert ('/audio-sensor-oled.yaml@audio-sensor/' in text) is (oled is True)
+    assert 'mic_gain:' not in text
+    assert '/audio-sensor.yaml@' not in text
+
+
+@pytest.mark.parametrize('extra, message', [
+    ({'board': 'unknown'}, 'board must be'),
+    ({'board': ''}, 'board must be'),
+    ({'board': False}, 'board must be'),
+    ({'oled': 'false'}, 'oled must be a boolean'),
+    ({'oled': 1}, 'oled must be a boolean'),
+    ({'oled': True}, 'oled requires esp32-s3-im73d122'),
+    ({'board': 'esp32-s3-im73d122', 'mic_gain': '24DB'}, 'mic_gain is only supported on Atom'),
+    ({'board': 'esp32-s3-im73d122', 'mic_gain': ''}, 'mic_gain is only supported on Atom'),
+    ({'board': 'esp32-s3-im73d122', 'strip': {}}, 'strip is only supported on Atom'),
+    ({'board': 'esp32-s3-im73d122', 'strip': False}, 'strip is only supported on Atom'),
+])
+def test_board_input_validation_in_both_renderers(tmp_path, extra, message):
+    sensors = [{'room': 'office', 'area': 'Office', **extra}]
+    with pytest.raises(dr.RenderError, match=message):
+        _device_files(sensors)
+    with pytest.raises(dr.RenderError, match=message):
+        render_text(tmp_path, {'sensors': sensors})
+
+
+def test_pdm_null_gain_strip_are_absent_and_ha_output_unchanged(tmp_path):
+    base = {'room': 'office', 'area': 'Office'}
+    pdm = {**base, 'board': 'esp32-s3-im73d122', 'oled': True, 'mic_gain': None, 'strip': None}
+    assert render_text(tmp_path, {'sensors': [pdm]}) == render_text(tmp_path, {'sensors': [base]})
+    assert 'mic_gain:' not in _device_files([pdm])['audio-sensor-office.yaml']

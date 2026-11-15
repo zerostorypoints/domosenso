@@ -1,7 +1,16 @@
+[%- set hardware = item.board | default('m5stack-atom-echos3r') -%]
+[%- if hardware not in ['m5stack-atom-echos3r', 'esp32-s3-im73d122'] -%][[ fail('board must be m5stack-atom-echos3r or esp32-s3-im73d122') ]][%- endif -%]
+[%- if item.oled is defined and item.oled is not boolean -%][[ fail('oled must be a boolean') ]][%- endif -%]
+[%- if item.oled | default(false) and hardware != 'esp32-s3-im73d122' -%][[ fail('oled requires esp32-s3-im73d122') ]][%- endif -%]
+[%- if hardware == 'esp32-s3-im73d122' -%]
+  [%- if item.mic_gain is defined -%][[ fail('mic_gain is only supported on Atom; PDM gain is fixed') ]][%- endif -%]
+  [%- if item.strip is defined -%][[ fail('strip is only supported on Atom; PDM strip wiring is not qualified') ]][%- endif -%]
+[%- endif -%]
 [#- One device file per item of the `sensors` input, written once by `domosenso add` into the home's
    esphome_dir as audio-sensor-<room>.yaml (SPEC-018). The home owns it afterwards. `name`,
    `friendly_name` and `mic_gain` are set only when the item has them, so a home can keep the
    hostname and names of a board it already runs; otherwise the package's defaults apply. -#]
+[%- set package_file = "audio-sensor-pdm.yaml" if hardware == "esp32-s3-im73d122" else "audio-sensor.yaml" -%]
 # audio-sensor-[[ item.room ]]: a room sound sensor in [[ item.area ]]. Written once by `domosenso add`
 # from [[ component.id ]] [[ component.version ]], this home's file from now on; the package is the catalog's at that tag.
 substitutions:
@@ -27,7 +36,10 @@ esphome:
   area: ${area}
 
 packages:
-  sensor: github://zerostorypoints/domosenso/components/[[ component.id ]]/esphome/audio-sensor.yaml@[[ component.id ]]/[[ component.version ]]
+  sensor: github://zerostorypoints/domosenso/components/[[ component.id ]]/esphome/[[ package_file ]]@[[ component.id ]]/[[ component.version ]]
+[%- if item.oled | default(false) %]
+  oled: github://zerostorypoints/domosenso/components/[[ component.id ]]/esphome/audio-sensor-oled.yaml@[[ component.id ]]/[[ component.version ]]
+[%- endif %]
 [%- if item.get('strip') is not none %]
   strip: github://zerostorypoints/domosenso/components/[[ component.id ]]/esphome/music-strip.yaml@[[ component.id ]]/[[ component.version ]]
 [%- endif %]

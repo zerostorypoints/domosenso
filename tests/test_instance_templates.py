@@ -46,6 +46,9 @@ def test_device_template_renders_the_demo_homes_files(component):
     comp = REPO / "components" / component
     manifest = yaml.safe_load((comp / "component.yaml").read_text(encoding="utf-8"))
     inputs = yaml.safe_load((REPO / "examples/demo-home/inputs" / f"{component}.yaml").read_text(encoding="utf-8"))
+    # Alternative hardware fixtures exercise firmware without changing the HA demo's devices.
+    variants = yaml.safe_load((REPO / "examples/demo-home/inputs/audio-sensor-pdm.yaml").read_text())
+    inputs["sensors"].extend(variants["sensors"])
     rendered = dict(render_device_files(comp, inputs))
     committed_dir = REPO / Path(manifest["artifacts"]["esphome"]["instance"]).parent
     committed = {p.name: p.read_text(encoding="utf-8") for p in committed_dir.glob(f"{component}-*.yaml")}

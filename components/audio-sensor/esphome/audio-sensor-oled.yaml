@@ -1,0 +1,53 @@
+# Optional display for the documented PDM assembly, never included by the Atom entry point.
+# Peak hold is display-local RAM: the Home Assistant Sound peak stays a one-second window.
+i2c:
+  - id: oled_i2c
+    sda: GPIO7
+    scl: GPIO6
+    # Full-frame writes are synchronous; 400 kHz reduces stalls in FFT publication.
+    frequency: 400kHz
+
+globals:
+  - id: oled_peak_hold
+    type: float
+    restore_value: false
+    initial_value: 'NAN'
+
+sensor:
+  - id: !extend sound_meter
+    peak:
+      on_value:
+        - lambda: |-
+            if (std::isfinite(x) && (!std::isfinite(id(oled_peak_hold)) || x > id(oled_peak_hold))) {
+              id(oled_peak_hold) = x;
+            }
+
+font:
+  - file: 'gfonts://Roboto'
+    id: oled_font
+    size: 12
+    glyphs: ' !"%()+,-_.:0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+
+display:
+  - platform: ssd1306_i2c
+    i2c_id: oled_i2c
+    model: SSD1306 128x64
+    address: 0x3C
+    update_interval: 500ms
+    lambda: |-
+      const float level = id(sound_level_dbfs).state;
+      const float peak = id(oled_peak_hold);
+      if (std::isfinite(level)) {
+        it.printf(0, 0, id(oled_font), "Now %.1f dBFS", level);
+      } else {
+        it.print(0, 0, id(oled_font), "Now -- dBFS");
+      }
+      if (std::isfinite(peak)) {
+        it.printf(0, 20, id(oled_font), "Max %.1f dBFS", peak);
+      } else {
+        it.print(0, 20, id(oled_font), "Max -- dBFS");
+      }
+      // The display range is -100..0 dBFS, clamped before conversion to pixel coordinates.
+      const float fraction = std::isfinite(level) ? fmaxf(0.0f, fminf(1.0f, (level + 100.0f) / 100.0f)) : 0.0f;
+      it.rectangle(0, 44, 128, 16);
+      it.filled_rectangle(2, 46, static_cast<int>(fraction * 124.0f), 12);

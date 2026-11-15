@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -90,6 +91,21 @@ def _external_component_refs(path: Path) -> list[str]:
                 str(source.get("url", "")).removesuffix(".git").rstrip("/") == CATALOG_REPO_URL:
             refs.append(str(source.get("ref")))
     return refs
+
+
+def _esphome_source_files(component_dir: Path) -> list[str]:
+    """Discover source YAML without traversing ESPHome downloads/builds or tool caches.
+
+    No Git index is needed: catalog fixtures and copied release trees use the same check.
+    Explicit manifest paths are added separately and remain checked even if hidden.
+    """
+    sources = []
+    for directory, directories, files in os.walk(component_dir / "esphome"):
+        directories[:] = [name for name in directories if not name.startswith(".") and name != "__pycache__"]
+        for name in files:
+            if name.endswith(".yaml") and not name.startswith("."):
+                sources.append((Path(directory) / name).relative_to(component_dir).as_posix())
+    return sources
 
 
 def _catalog_root(component_yaml: Path) -> Path:
@@ -181,8 +197,12 @@ def check_component(path: Path) -> list[str]:
     tag = f"{data['id']}/{data['version']}"
     package_files = [pkg["file"] for pkg in esphome.get("packages") or []]
     factory_file = esphome.get("factory")
+    # Local !include packages and additional factory variants are part of the same release.
+    # Scan the firmware tree too, so extracting a shared package cannot hide a stale ref.
+    firmware_files = sorted(set(package_files + ([factory_file] if factory_file else []) +
+                                _esphome_source_files(comp_dir)))
     uses_catalog_components = False
-    for rel in package_files + ([factory_file] if factory_file else []):
+    for rel in firmware_files:
         if (comp_dir / rel).is_file():
             for ref in _external_component_refs(comp_dir / rel):
                 uses_catalog_components = True
@@ -192,7 +212,7 @@ def check_component(path: Path) -> list[str]:
     # the board runs, so every package that has one follows the manifest (a remote package cannot
     # take a substitution). Widened from firmware with external components only: bermuda-presence's
     # proxy still said 0.1.0 at 0.2.1, so its boards could not be told apart (2026-10-30).
-    for rel in package_files:
+    for rel in firmware_files:
         if (comp_dir / rel).is_file():
             found = _esphome_project_version(comp_dir / rel)
             if found is not None and found != data["version"]:
@@ -201,10 +221,11 @@ def check_component(path: Path) -> list[str]:
     # factory image's import URL names the same tag. Narrow on purpose: other components' factory
     # images are not checked.
     if uses_catalog_components:
-        if factory_file and (comp_dir / factory_file).is_file():
-            found = _import_url_tag(comp_dir / factory_file)
-            if found is not None and found != tag:
-                errors.append(f"{path}: {factory_file}: dashboard_import package_import_url tag '{found}' must be '{tag}' (the manifest's version)")
+        for rel in firmware_files:
+            if (comp_dir / rel).is_file():
+                found = _import_url_tag(comp_dir / rel)
+                if found is not None and found != tag:
+                    errors.append(f"{path}: {rel}: dashboard_import package_import_url tag '{found}' must be '{tag}' (the manifest's version)")
     install = data["artifacts"].get("install_path")
     if install and install.split("/")[2] != data["id"]:
         errors.append(f"{path}: artifacts.install_path: '{install}' must be www/domosenso/{data['id']}/<version>/")

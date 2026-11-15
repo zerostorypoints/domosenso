@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="900" viewBox="0 0 1100 900" role="img" aria-labelledby="title desc">
+<title id="title">ESP32-S3 N16R8 with IM73D122 PDM and optional SSD1306 OLED</title>
+<desc id="desc">ESP bottom pin-side view, antenna up and USB down. Microphone metal lid facing viewer, two brown components above. Right top 3V3, middle ground, bottom NC. Left top LR unconnected, middle clock GPIO4, bottom data GPIO5. OLED SCL GPIO6, SDA GPIO7, 3V3 and common ground.</desc>
+<style>text{font-family:Arial,sans-serif;fill:#172b40;font-size:16px}.title{font-size:26px;font-weight:bold}.small{font-size:14px}.head{font-size:19px;font-weight:bold}.wire{fill:none;stroke-width:4;stroke-linejoin:round}.pin{fill:#f4d77d;stroke:#725f25;stroke-width:2}.power{stroke:#c54444}.ground{stroke:#414a54}.clock{stroke:#247ab4}.data{stroke:#37904d}.scl{stroke:#865bb5}.sda{stroke:#c08020}</style>
+<rect width="1100" height="900" fill="#f7f9fc"/>
+<text x="40" y="45" class="title">Audio sensor • PDM assembly</text>
+<text x="40" y="76">3.3 V microphone and OLED • USB powers ESP • unplug USB before wiring</text>
+<text x="65" y="122" class="head">ESP32-S3 N16R8</text>
+<text x="65" y="147">BOTTOM / PIN SIDE</text>
+<rect x="65" y="170" width="285" height="405" rx="16" fill="#dce7ed" stroke="#27465b" stroke-width="3"/>
+<rect x="125" y="180" width="120" height="37" fill="#c5d0d6"/>
+<text x="137" y="205" class="small">ANTENNA ↑</text>
+<rect x="145" y="535" width="85" height="32" rx="5" fill="#abb9c3" stroke="#27465b"/>
+<text x="169" y="557">USB</text>
+<text x="85" y="268" class="small">Count right header</text><text x="85" y="290" class="small">from antenna end.</text>
+<text x="85" y="460" class="small">Other pins omitted.</text>
+<text x="85" y="483" class="small">Verify printed labels</text><text x="85" y="505" class="small">on each board clone.</text>
+<g class="pin"><circle cx="340" cy="230" r="7"/><circle cx="340" cy="260" r="7"/><circle cx="340" cy="290" r="7"/><circle cx="340" cy="320" r="7"/><circle cx="340" cy="350" r="7"/><circle cx="340" cy="380" r="7"/><circle cx="340" cy="410" r="7"/></g>
+<g text-anchor="end"><text x="322" y="235">1 · 3V3</text><text x="322" y="265">2 · 3V3</text><text x="322" y="295">3</text><text x="322" y="325">4 · GPIO4</text><text x="322" y="355">5 · GPIO5</text><text x="322" y="385">6 · GPIO6</text><text x="322" y="415">7 · GPIO7</text></g>
+<text x="635" y="122" class="head">IM73D122 module • LID FACES YOU</text>
+<text x="635" y="147">TWO BROWN COMPONENTS ABOVE THE LID</text>
+<circle cx="805" cy="310" r="125" fill="#eee8dc" stroke="#746956" stroke-width="2"/>
+<rect x="765" y="198" width="26" height="17" fill="#976b44"/><rect x="820" y="198" width="26" height="17" fill="#976b44"/>
+<rect x="762" y="269" width="86" height="74" rx="9" fill="#cbd0d5" stroke="#69747d" stroke-width="2"/>
+<text x="778" y="302">Metal</text><text x="783" y="324">lid</text>
+<g class="pin"><circle cx="695" cy="250" r="7"/><circle cx="695" cy="295" r="7"/><circle cx="695" cy="340" r="7"/><circle cx="915" cy="250" r="7"/><circle cx="915" cy="295" r="7"/><circle cx="915" cy="340" r="7"/></g>
+<text x="710" y="255">L/R</text><text x="710" y="300">CLK</text><text x="710" y="345">DATA</text>
+<g text-anchor="end"><text x="900" y="255">3V3</text><text x="900" y="300">GND</text><text x="900" y="345">NC</text></g>
+<path class="wire power" d="M340 230 H575 V175 H980 V250 H915 M980 250 V595 H840 V650"/>
+<path class="wire clock" d="M340 320 H500 V295 H695"/>
+<path class="wire data" d="M340 350 H550 V340 H695"/>
+<path class="wire ground" d="M915 295 H1030 V610 H910 V650 M1030 610 H375 V545 H350"/>
+<text x="470" y="535" class="small">Common GND</text><text x="470" y="556" class="small">Use a printed GND pin;</text><text x="470" y="577" class="small">position not depicted.</text>
+<path class="wire scl" d="M340 380 H450 V630 H700 V650"/>
+<path class="wire sda" d="M340 410 H410 V665 H630 V640 H770 V650"/>
+<text x="635" y="469">L/R and NC: no wire in this module setup.</text>
+<text x="635" y="492">L/R bias is unproven; do not infer a strap.</text>
+<rect x="650" y="650" width="295" height="135" rx="8" fill="#dce7ed" stroke="#27465b" stroke-width="2"/>
+<g class="pin"><circle cx="700" cy="650" r="7"/><circle cx="770" cy="650" r="7"/><circle cx="840" cy="650" r="7"/><circle cx="910" cy="650" r="7"/></g>
+<text x="682" y="678">SCL</text><text x="752" y="678">SDA</text><text x="822" y="678">VCC</text><text x="892" y="678">GND</text>
+<rect x="675" y="695" width="245" height="65" rx="4" fill="#172b40"/>
+<text x="697" y="720" style="fill:#d9edf4">SSD1306 128×64</text><text x="697" y="747" style="fill:#d9edf4">Optional • I2C 0x3C</text>
+<circle cx="980" cy="250" r="5" fill="#c54444"/><circle cx="910" cy="610" r="5" fill="#414a54"/>
+<text x="650" y="812" class="small">Follow OLED labels, not connector order.</text>
+<text x="40" y="737" class="head">Receiver configuration</text><text x="40" y="766">48 kHz • 16-bit • right channel • DC correction</text>
+<text x="40" y="839" class="small">Original schematic illustration, not to scale. Full setup and L/R limitations: devices/esp32-s3-im73d122.md</text>
+<text x="40" y="866" class="small">Apache-2.0 • Copyright 2026 ZeroStoryPoints GmbH</text>
+</svg>

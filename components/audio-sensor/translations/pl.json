@@ -9,6 +9,10 @@
       "m5stack-led-strip-sk6812": {
         "description": "Adresowalna taśma LED RGB 5 V, 60 diod na metr, podłączana do złącza Grove płytki.",
         "does": "Świeci w rytm muzyki, którą słyszy czujnik dźwięku: rysuje ją sama płytka, bez opóźnienia przez serwer. Sześć stylów, paletę i intensywność ustawia się w ustawieniach płytki w Home Assistant."
+      },
+      "esp32-s3-im73d122": {
+        "description": "Płytka rozwojowa ESP32-S3 z 16 MB pamięci flash, 8 MB pamięci Octal PSRAM i modułem mikrofonu PDM IM73D122, zasilana przez USB.",
+        "does": "Korzysta ze wspólnego przetwarzania poziomu dźwięku i widma w 31 pasmach przy 48 kHz. Wzmocnienie mikrofonu jest stałe. Opcjonalny OLED SSD1306 pokazuje bieżący poziom dBFS i najwyższy prawidłowy szczyt od uruchomienia. Weryfikacja wspólnego oprogramowania FFT na tym sprzęcie jest jeszcze wymagana; brak testów w domach."
       }
     },
     "assistant": {

@@ -3,6 +3,15 @@
 Newest first. One entry per change to a surface in [COMPATIBILITY.md](COMPATIBILITY.md) that a home
 has to act on; the steps are in the component's own `UPGRADE.md`.
 
+## Unreleased: audio-sensor 0.5.0 adds a PDM assembly
+
+Optional `sensors[].board` selects Atom (default) or `esp32-s3-im73d122`; `oled` adds the PDM-only
+display. PDM rejects explicit gain and strip settings. Existing Atom package path, identity,
+measurements and controls stay compatible. The PDM project identity is additive. Thin device
+files remain owner-managed and require explicit edits for hardware changes. See
+[audio-sensor upgrade steps](../components/audio-sensor/UPGRADE.md) and the
+[assembly guide](../devices/esp32-s3-im73d122.md). Shared FFT hardware acceptance remains pending.
+
 ## Unreleased: a room's `lights` may list several, with names
 
 A room's `lights` in `home.inputs.yaml` takes one entity (a group, its members read at run time), as

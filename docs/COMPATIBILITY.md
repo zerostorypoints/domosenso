@@ -30,7 +30,7 @@ component is `0.x`, a minor version counts as the "next version" of the protocol
 | Served enclosure previews `/enclosures/<id>/<name>.png` on domosenso.org, from `devices/enclosures/<id>/preview/<name>.png` ([SPEC-036](../.ai/specs/SPEC-036-2026-11-05-printable-enclosures.md)) | STABLE |
 | Device dimensions: the field `dimensions` in `devices/<id>.yaml` (`drawing`, `items` with `key`, `label`, `value`, `unit`, `tolerance`, `approximate`, `source`, `ref`, `checked`, `note`) and the drawings `devices/dimensions/<id>.svg`; a published key letter keeps its meaning, the values are data ([SPEC-040](../.ai/specs/SPEC-040-2026-11-07-device-dimensions.md)) | ADDITIVE-ONLY |
 | Served dimension drawings `/dimensions/<id>.svg` on domosenso.org, from `devices/dimensions/<id>.svg` ([SPEC-040](../.ai/specs/SPEC-040-2026-11-07-device-dimensions.md)) | STABLE |
-| ESPHome `project:` name `domosenso.<component>` (`domosenso.bermuda-presence`, `domosenso.audio-sensor`) | STABLE |
+| ESPHome `project:` name `domosenso.<component>` (`domosenso.bermuda-presence`, `domosenso.audio-sensor`, additive `domosenso.audio-sensor-pdm` in audio-sensor 0.5.0) | STABLE |
 | Card install path `www/domosenso/<id>/<version>/`, served as `/local/domosenso/<id>/<version>/` | FROZEN |
 
 ### Manifest (`component.yaml`, `schemas/component.schema.json`)
@@ -259,3 +259,13 @@ component installation, read exposure and future read scopes authorize no writes
 The canonical assistant-actions-bindings.yaml.j2 template is reserved metadata even when its
 optional declaration is absent; it is never an HA package or a recommendation install signal.
 Website impact: deferred until the component and compatible bridge/client releases are public.
+
+### Audio-sensor board adapters (SPEC-051, 0.5.0 unreleased)
+
+`esphome/audio-sensor.yaml` permanently retains the Atom entry point. The additive PDM entry
+`esphome/audio-sensor-pdm.yaml` reports `domosenso.audio-sensor-pdm`; optional
+`esphome/audio-sensor-oled.yaml` adds only a local display. Shared measurement/FFT/HA contracts
+are unchanged. `sensors[].board` defaults to `m5stack-atom-echos3r`; `esp32-s3-im73d122` and boolean
+`oled` are additive inputs. Null remains absent. Unsupported board/feature combinations fail
+rendering. The default factory remains Atom and PDM has a separate explicit factory file.
+Owner-managed thin files are never overwritten to implement a board selection change.

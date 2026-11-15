@@ -1,0 +1,189 @@
+# Shared measurements and controls. Board adapters supply mic at 48 kHz mono 16-bit.
+substitutions:
+  room: sensor
+  area: ${room}
+  name: audio-sensor-${room}
+  friendly_name: Audio sensor ${area}
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.9.0
+# Power saving off: the radio waking up and sleeping pulses the supply rail the microphone and the
+# codec share, which shows up as noise in the quiet range. No fallback AP or captive portal.
+# ssid/password come from the device file.
+wifi:
+  power_save_mode: none
+
+# encryption: the key comes from the device file (api: encryption: key: !secret ...).
+api:
+  # The API keeps one state per entity in each batch: at the default 100 ms, a spectrum every
+  # 85 ms (`fast`) reached Home Assistant only every other frame, and every update waited up to
+  # 100 ms. 10 ms still groups the once-a-minute octave burst into one message.
+  batch_delay: 10ms
+
+# No encryption here, because a factory board has no API key yet and ESPHome refuses an OTA
+# encryption block with nothing to inherit. The device file adds `encryption:` (bare: it takes the
+# API key); ESPHome merges same-port OTA blocks. Without it, uploads are unauthenticated.
+ota:
+  - platform: esphome
+
+logger:
+  level: WARN
+
+# The spectrum worker, from this repository at the component's tag.
+external_components:
+  - source:
+      type: git
+      url: https://github.com/zerostorypoints/domosenso
+      ref: audio-sensor/0.5.0
+      path: components/audio-sensor/esphome/components
+
+# Unweighted (no A or C weighting): a broadband level, comparable with REW's Z-weighted SPL.
+# RMS is the energy mean over each second; peak is the loudest sample in it, so 0 dBFS = clipping.
+# Both stay in dBFS: Home Assistant adds the SPL offset (a helper per board, measured against a
+# reference microphone), so calibrating needs no flash.
+sensor:
+  - platform: sound_level
+    id: sound_meter
+    microphone: mic
+    passive: false  # this meter keeps the microphone running for both
+    measurement_duration: 1000ms
+    rms:
+      id: sound_level_dbfs
+      name: Sound level
+      accuracy_decimals: 1
+    peak:
+      id: sound_peak_dbfs
+      name: Sound peak
+      accuracy_decimals: 1
+  # Live tracking: the same microphone measured over 100 ms, ten readings a second, for the
+  # dashboard's meter during listening and test sessions. Passive, so it never starts or stops the
+  # microphone the 1-second meter runs (stopping a source stops the shared microphone). It
+  # computes all the time, which costs little, and publishes only while "Live tracking" is on:
+  # nothing reaches Home Assistant otherwise. The 1-second readings, and everything recorded from
+  # them, are the same with it on or off. (sound_level's window cannot change at runtime: a
+  # shorter window set mid-measurement would never complete.)
+  - platform: sound_level
+    microphone: mic
+    passive: true
+    measurement_duration: 100ms
+    rms:
+      id: fast_level
+      name: Fast sound level
+      accuracy_decimals: 1
+      filters:
+        - lambda: &live_gate |-
+            // NAN passes so that turning live tracking off clears the reading.
+            if (!id(live_tracking).state && !std::isnan(x)) return {};
+            return x;
+    peak:
+      id: fast_peak
+      name: Fast sound peak
+      accuracy_decimals: 1
+      filters:
+        - lambda: *live_gate
+  - platform: wifi_signal
+    name: Wi-Fi signal
+    update_interval: 60s
+  - platform: uptime
+    name: Uptime
+    update_interval: 60s
+
+# Third-octave spectrum for the ambient wave card.
+# Passive, like the 100 ms meter: it only listens while the 1-second meter keeps the microphone
+# running, and never stops it for the others. 4096-point FFT (50 % overlap, a frame every 43 ms):
+# bins 11.7 Hz wide, so the lowest thirds share bins; 8192 points kept them apart but took twice as
+# long to show a hit (README, Latency).
+# The levels stay dBFS like the other meters: Home Assistant adds the same SPL offset. Always on:
+# the spectrum goes out as the Spectrum rate select says (eco every 500 ms, normal every 200 ms as
+# the mean of the frames since the last; fast every 85 ms, the newest frame alone), only when a frame has
+# landed; the octaves (1-minute Leq) and the worker's load every minute.
+audio_spectrum:
+  id: spectrum
+  microphone: mic
+  spectrum:
+    name: Spectrum
+  octaves:
+    name_prefix: Octave
+  load:
+    name: Spectrum load
+
+switch:
+  # Turns the fast readings on. Off after a boot, and off by itself after an hour, so a forgotten
+  # session does not stream ten readings a second for days.
+  - platform: template
+    id: live_tracking
+    name: Live tracking
+    icon: mdi:speedometer
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    turn_on_action:
+      - script.execute: live_tracking_timeout
+    turn_off_action:
+      - script.stop: live_tracking_timeout
+      - lambda: |-
+          id(fast_level).publish_state(NAN);
+          id(fast_peak).publish_state(NAN);
+
+# How often the spectrum goes out. Home Assistant sets it (fast only while someone watches the
+# music view); normal after a boot.
+select:
+  - platform: template
+    id: spectrum_rate
+    name: Spectrum rate
+    icon: mdi:timer-cog-outline
+    options: [eco, normal, fast]
+    initial_option: normal
+    optimistic: true
+    restore_value: false
+    set_action:
+      - lambda: |-
+          if (x == "eco") {
+            id(spectrum).set_profile(::audio_spectrum::ECO);
+          } else if (x == "fast") {
+            id(spectrum).set_profile(::audio_spectrum::FAST);
+          } else {
+            id(spectrum).set_profile(::audio_spectrum::NORMAL);
+          }
+      - if:
+          condition:
+            lambda: return x == "fast";
+          then:
+            - script.execute: spectrum_rate_timeout
+          else:
+            - script.stop: spectrum_rate_timeout
+
+script:
+  - id: live_tracking_timeout
+    mode: restart
+    then:
+      - delay: 60min
+      - switch.turn_off: live_tracking
+  # Back to normal an hour after fast, so a board Home Assistant forgot about (it restarted, the
+  # music source moved) does not send a spectrum every frame for days.
+  - id: spectrum_rate_timeout
+    mode: restart
+    then:
+      - delay: 60min
+      - select.set:
+          id: spectrum_rate
+          option: normal
+
+text_sensor:
+  - platform: wifi_info
+    bssid:
+      name: Connected AP (BSSID)
+  # The gain the SPL offset belongs to, shown beside it in the Ramka's settings.
+  - platform: template
+    name: Mic gain
+    entity_category: diagnostic
+    icon: mdi:microphone-settings
+    update_interval: 1h
+    lambda: return {"${mic_gain_description}"};
+
+button:
+  - platform: restart
+    name: Restart
+  - platform: safe_mode
+    name: Safe mode boot
