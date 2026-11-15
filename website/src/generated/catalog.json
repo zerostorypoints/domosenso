@@ -62,7 +62,8 @@
       },
       "localOnly": true,
       "limitations": [
-        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
+        "The ESP32-S3 IM73D122 assembly has offline bench evidence for sound response, 31 spectrum bands and its OLED. No deployed-home or calibrated SPL/20 Hz accuracy claim is made.",
+        "Actual Home Assistant metadata and direct octave-entity updates on the new PDM assembly still need runtime acceptance."
       ],
       "inputs": [
         {

@@ -78,7 +78,7 @@
     }
    ],
    "name": "ESP32-S3 with IM73D122",
-   "page": false
+   "page": true
   },
   {
    "id": "hegel-h400",
