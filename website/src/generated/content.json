@@ -568,7 +568,7 @@
       }
     },
     {
-      "outcome": "See every sensor, plant and device where it is in your rooms, and how warm, bright and humid each room is, as a map.",
+      "outcome": "See every sensor, plant and device where it is in your rooms, and how warm, bright and humid each room is, as a map; mark your access points to see where the Wi-Fi reaches.",
       "categories": [
         "climate",
         "utilities"
@@ -585,7 +585,7 @@
             "floorplan"
           ],
           "availability": "default",
-          "condition": "domosenso floorplan push creates the floorplan dashboard; every user can read it, an administrator edits rooms and positions on it.",
+          "condition": "domosenso floorplan push creates the floorplan dashboard; every user can read it, an administrator edits rooms, walls, doors and positions on it. With floorplan 0.5.0 the radio layer has Wi-Fi coverage maps per band once an access point is marked in edit mode, and traffic maps with a supported router integration (tplink_deco); with Wi-Fi on, walls are drawn by weight (wifi: false keeps the room outlines).",
           "preview": "/previews/floorplan.svg",
           "previewType": "illustration",
           "layout": "Native Home Assistant dashboard; zoom and pan by wheel, pinch or buttons; editing on a desktop or tablet.",
@@ -611,7 +611,7 @@
       "setup": [
         "Add the component and trace your rooms from an architect's plan or a photo of one with the floorplan-from-image skill; the drawing stays in your home repository.",
         "Push the plan with domosenso floorplan push, then drag sensors, plants and devices to where they stand in edit mode, or against your real home with floorplan preview.",
-        "Optionally show it on the Ramka with floorplan: true, and mark rooms open to each other without doors as one open space so their maps share readings."
+        "Optionally show it on the Ramka with floorplan: true, and mark rooms open to each other without doors as one open space so their maps share readings. For Wi-Fi coverage, mark the access points and set the walls' materials in edit mode, and optionally walk the home with domosenso floorplan survey."
       ],
       "id": "floorplan",
       "version": "0.5.0",
@@ -1045,7 +1045,7 @@
             "plants"
           ],
           "availability": "conditional",
-          "condition": "With plants 0.3.0 or later, set plants: discover in Ramka (or list the plants). Up to six plants share a page by default; more turn in pages, the ones that need something first, and with more than four plants a list page of every plant follows. Swipe left or right to turn the pages yourself.",
+          "condition": "With plants 0.3.0 or later, set plants: discover in Ramka (or list the plants). Up to six plants share a page by default; more turn in pages, the ones that need something first, and with more than four plants a list page of every plant follows. Swipe left or right to turn the pages yourself. With plants 0.6.0 and Ramka 0.20.0, a plant in hydroculture is judged on light and temperature only, with no water band.",
           "preview": "/previews/plants.svg",
           "previewType": "illustration",
           "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
@@ -1056,7 +1056,7 @@
       "setup": [
         "Place the Mi Flora probe in the soil following the device instructions.",
         "Provide Bluetooth coverage and verify fresh readings in Home Assistant.",
-        "Map each plant and its thresholds, optionally with a photo; Ramka 0.7.0 or later finds the plants itself with plants: discover."
+        "Map each plant and its thresholds, optionally with a photo; Ramka 0.7.0 or later finds the plants itself with plants: discover. A plant in hydroculture takes medium: hydroculture (plants 0.6.0) and is judged on light and temperature only."
       ],
       "id": "plants",
       "version": "0.6.0",
