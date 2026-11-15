@@ -2,6 +2,28 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## 0.5.0 (2026-11-15): network traffic on the plan (SPEC-047)
+
+Written after the tag: the `floorplan/0.5.0` tag holds this work, but its `UPGRADE.md` had no entry
+for it.
+
+- With a supported router integration (`tplink_deco`; the rules are data in
+  `cards/lib/wifi-rules.json`), the **radio** layer offers two more maps beside the Wi-Fi ones:
+  **Traffic heat** (down plus up around each client on the plan, or over its access point's rooms)
+  and **Traffic links** (a line from each access point to its clients, by link and rate, with an
+  **Idle** switch and a tap panel per client).
+- A client is matched to a plan point by the point's **Network client** link (new optional
+  `points[].mac` in the plan document, set in edit mode) or by a device in the registry with the
+  client's MAC. A same-device suggestion is offered in edit mode, never applied by itself.
+- `push --plan` prints `point change <floor> <key>` when a point's `mac` changed; `push`, `preview`
+  and `survey` refuse `point <key>: mac malformed` and `mac linked twice: <mac>`.
+- The router reports no signal strength per client: the maps show how much, not how good. Rates
+  refresh about every 30 seconds; a map older than three times that says it is not live.
+- **What a home does:** nothing. A home without a supported router sees no new maps, and a plan
+  without `mac` behaves as before. `traffic: false` on the card turns both maps and the Network
+  client field off. Phones with a private address per network match no registry device: link
+  them by hand.
+
 ## 0.5.0 (2026-11-15): Wi-Fi coverage (SPEC-044)
 
 - The **radio** layer shown alone carries the Wi-Fi map bar (a map per band some access point
