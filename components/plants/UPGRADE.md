@@ -2,7 +2,7 @@
 
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
-## Unreleased: plants in hydroculture (SPEC-048)
+## 0.6.0 (2026-11-15): plants in hydroculture (SPEC-048)
 
 New optional key per plant, `medium: soil | hydroculture` (default `soil`). A hydroculture plant is
 judged on light and temperature only; it carries `domosenso_medium: hydroculture`, and has no
@@ -20,7 +20,7 @@ and Pocket with it to show these plants as watered by the gauge; older cards sho
 readings without a moisture band.
 
 
-## 0.5.0 (unreleased): choose a source and retain plant history
+## 0.5.0 (2026-11-07): choose a source and retain plant history
 
 The existing `sensors` binding still works. To opt in, add named `sources`
 with all four entity IDs and set `active_source`. Keep the same `plant.*` ID
@@ -51,7 +51,7 @@ stable series in Recorder for later use.
 
 See the [standalone tablet example](../../examples/standalone-tablet/).
 
-## 0.4.0 (unreleased): component-backed assistant answers
+## 0.4.0 (2026-11-02): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
 Existing entities, helper values, dashboard preferences and automation actions are preserved.

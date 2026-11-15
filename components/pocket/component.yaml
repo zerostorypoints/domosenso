@@ -4,7 +4,7 @@
 # Assistant at run time, levels (good / fair / poor) are computed in the card (cards/lib/level.js).
 # How a home uses it: README.md; upgrade notes: UPGRADE.md.
 id: pocket
-version: 0.1.0
+version: 0.2.0
 summary: A phone dashboard for the home's rooms, lights, climate and air
 description_key: meta.description
 photo: null

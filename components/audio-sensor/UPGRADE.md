@@ -3,7 +3,7 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
-## 0.5.0 (unreleased): ESP32-S3 with IM73D122 (SPEC-051)
+## 0.5.0 (2026-11-15): ESP32-S3 with IM73D122 (SPEC-051)
 
 Adds the PDM assembly and optional SSD1306 OLED. Existing Atom inputs select the same hardware;
 `esphome/audio-sensor.yaml` remains a permanent compatible entry point. Both adapters use the same
@@ -45,7 +45,7 @@ automation, `light.music_strip`, `binary_sensor.music_source_strip` and
   GPIO2) to the board's device file (README, "What the board gets"), point both package lines at
   the release, and flash once over the air. Then turn on the follow and ambient booleans you want.
 
-## 0.4.0 (unreleased): component-backed assistant answers
+## 0.4.0 (2026-11-02): component-backed assistant answers
 
 `ambient-wave-card` gains an optional `loudness: {entity, show}`: a level entity's value in dB in
 the drawing area's top right corner, in the palette's colour. Without it the card draws as before.
