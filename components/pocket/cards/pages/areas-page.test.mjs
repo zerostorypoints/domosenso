@@ -132,7 +132,9 @@ test("the trend arrow of the temperature, from the last hour, one redraw for all
       (series[id] ?? []).map((v, i) => ({ s: String(v), lu: (start + i * 1800e3) / 1000 }))])));
   };
   const el = mount(ctxOf({ hass }));
-  await new Promise((r) => setTimeout(r, 30));
+  // Drain the fixture's resolved history promises, then wait for the frame that paints them.
+  await new Promise(setImmediate);
+  await new Promise((resolve) => window.requestAnimationFrame(resolve));
   const [living, bedroom] = el.querySelectorAll(".grid .sq .arrow");
   assert.equal(living.textContent, "↑");
   assert.equal(bedroom.textContent, "↓");

@@ -3,6 +3,32 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
+## 0.5.0 (unreleased): ESP32-S3 with IM73D122 (SPEC-050)
+
+Adds the PDM assembly and optional SSD1306 OLED. Existing Atom inputs select the same hardware;
+`esphome/audio-sensor.yaml` remains a permanent compatible entry point. Both adapters use the same
+FFT and publication controls. New project identity `domosenso.audio-sensor-pdm` distinguishes the
+assembly; existing `domosenso.audio-sensor` identity and HA entity semantics remain unchanged.
+
+### What a home does
+
+- Existing Atom: no migration. Keep its gain, calibration, package path and optional music strip.
+- New PDM board: select `board: esp32-s3-im73d122`, and `oled: true` only when wired. Do not set
+  `mic_gain` (no programmable gain) or `strip` (not qualified on PDM). OLED on Atom is rejected.
+- `domosenso add` writes thin files once. On an already-installed component, explicitly create the
+  new board's file from the example or edit an owner-managed thin file; input edits and updates
+  do not overwrite it. Switch its sensor URL to `audio-sensor-pdm.yaml@audio-sensor/0.5.0`, add
+  `audio-sensor-oled.yaml@audio-sensor/0.5.0` only if requested, and remove Atom gain/strip lines.
+  Preserve names, API credentials and local customizations. Validate and compile before any flash.
+- The scalar/default factory still targets Atom. Use `audio-sensor-pdm.factory.yaml` explicitly for
+  PDM provisioning; it imports the PDM package and assumes no display. Follow the
+  [assembly guide](../../devices/esp32-s3-im73d122.md) for wiring and authorized flash commands.
+- A display's maximum resets at boot and does not change HA Sound peak. Calibrate each microphone
+  separately; bench raw-level evidence is not shared-FFT or calibrated-SPL acceptance.
+
+Do not resolve these 0.5.0 package URLs before the release tag exists. Maintainers use
+`tools/esphome-check.sh` with local remotes for unreleased config/compile validation.
+
 ## Unreleased: the music strip (SPEC-043)
 
 An addressable LED strip on the board's Grove port follows the music the board hears: a second

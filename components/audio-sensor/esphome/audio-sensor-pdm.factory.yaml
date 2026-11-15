@@ -1,0 +1,16 @@
+# Explicit PDM factory variant; the manifest's default factory remains Atom.
+# No display is assumed. Add the optional OLED package to the adopted thin file if wired.
+packages:
+  sensor: !include audio-sensor-pdm.yaml
+
+esphome:
+  name_add_mac_suffix: true
+
+wifi:
+  ap:
+
+captive_portal:
+improv_serial:
+
+dashboard_import:
+  package_import_url: github://zerostorypoints/domosenso/components/audio-sensor/esphome/audio-sensor-pdm.yaml@audio-sensor/0.5.0

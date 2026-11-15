@@ -9,6 +9,10 @@
       "m5stack-led-strip-sk6812": {
         "description": "An addressable 5 V RGB LED strip, 60 LEDs per metre, that plugs into the board's Grove port.",
         "does": "Lights up with the music the sound sensor hears: the board itself draws it, so there is no delay through a server. Six styles, a palette and an intensity are set from the board's own settings in Home Assistant."
+      },
+      "esp32-s3-im73d122": {
+        "description": "An ESP32-S3 development board with 16 MB flash, 8 MB octal PSRAM and an IM73D122 PDM microphone module, powered over USB.",
+        "does": "Uses the shared sound level and 31-band spectrum pipeline at 48 kHz. Microphone gain is fixed. An optional SSD1306 OLED shows the current dBFS level and maximum finite peak since boot. Shared FFT hardware acceptance is pending; no homes tested."
       }
     },
     "assistant": {

@@ -1,10 +1,27 @@
 # audio-sensor: field notes
 
-A room sound sensor on an M5Stack Atom EchoS3R: the sound level and a third-octave spectrum from
+A room sound sensor on an M5Stack Atom EchoS3R or ESP32-S3 with IM73D122: the sound level and a third-octave spectrum from
 the board, a calibrated level in dB SPL and the music aliases from the Home Assistant package, and
 two dashboard cards, `ambient-wave-card` and `room-meter-card` (SPEC-018). There is no dashboard of
 its own: the Ramka (0.4.0) shows the music visual and its settings. Room acoustics figures are not
 part of it (dropped 2026-10-29: the Ramka's live settings cover the tuning).
+
+## Second board: ESP32-S3 with IM73D122 (0.5.0, unreleased)
+
+Select `board: esp32-s3-im73d122` for the N16R8 PDM assembly, optionally `oled: true` for the
+SSD1306. The [assembly guide](../../devices/esp32-s3-im73d122.md) includes the original wiring
+SVG, orientation landmarks, first start, factory choice and acceptance procedure. Atom remains
+the default; its package path, ES8311 gain, amplifier-off behavior and Grove strip remain compatible.
+
+Both adapters use `esphome/audio-sensor-common.yaml` and the unchanged 4096 Hann/50% overlap
+spectrum worker at 48 kHz. PDM has fixed gain and rejects `mic_gain` and `strip` inputs. The optional
+OLED shows current dBFS and the maximum finite peak since boot; HA Sound peak still means the
+current one-second window. There is no OLED on Atom. Thin files remain owned by the installation:
+changing inputs does not switch the hardware of an already-written file.
+
+PDM raw-level, N16R8 and OLED bench evidence predates this firmware. Shared FFT runtime and actual
+HA project metadata acceptance remain pending; the new assembly has **0 tested homes**. The
+existing Atom observations below do not establish performance of the PDM assembly.
 
 ## The board
 
@@ -35,7 +52,7 @@ part of it (dropped 2026-10-29: the Ramka's live settings cover the tuning).
 Levels stay in dBFS on the board (0 dBFS is clipping). Home Assistant adds a per-board SPL offset to
 get dB SPL, so calibrating against a reference microphone needs no flash.
 
-Measured on one board at `normal`: 31 bands about five times a second (4.71), the spectrum worker at about 19 % of one
+Measured on one Atom board at `normal`: 31 bands about five times a second (4.71), the spectrum worker at about 19 % of one
 core (measured with the earlier 8192-point FFT; 4096 points: about 22 %). The FFT is 4096 points
 (Hann window, 50 % overlap) at 48 kHz, bins 11.7 Hz wide: the bands below about 80 Hz share bins
 (25 and 31.5 Hz move together), approximate, adequate for a visual, not for measurement. 4096

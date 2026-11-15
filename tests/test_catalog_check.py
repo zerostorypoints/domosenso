@@ -394,3 +394,19 @@ def test_esphome_factory_import_tag_matches_version(catalog):
     assert len(errors) == 1 and "node.factory.yaml" in errors[0] and "demo-sensor/0.0.9" in errors[0]
     (fixture / "node.yaml").write_text(firmware("0.1.0", external=False))  # a component without catalog external components
     assert cc.check_component(manifest) == []
+
+
+def test_shared_esphome_package_refs_cannot_escape_version_check(catalog):
+    folder = catalog / 'components/demo-sensor/esphome'
+    (folder / 'common.yaml').write_text(firmware('0.0.9', ref='demo-sensor/0.0.9'))
+    errors = cc.check_component(component_yaml(catalog))
+    assert any('common.yaml' in e and 'external_components ref' in e for e in errors)
+    assert any('common.yaml' in e and 'project.version' in e for e in errors)
+
+
+def test_secondary_factory_import_checked_with_shared_external_components(catalog):
+    folder = catalog / 'components/demo-sensor/esphome'
+    (folder / 'common.yaml').write_text(external_components('demo-sensor/0.1.0'))
+    (folder / 'second.factory.yaml').write_text(factory('demo-sensor/0.0.9'))
+    errors = cc.check_component(component_yaml(catalog))
+    assert any('second.factory.yaml' in e and 'dashboard_import' in e for e in errors)

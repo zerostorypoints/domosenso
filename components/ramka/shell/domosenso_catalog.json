@@ -68,6 +68,19 @@
    "page": true
   },
   {
+   "id": "esp32-s3-im73d122",
+   "match": [
+    {
+     "integration": "esphome",
+     "manufacturer": "domosenso",
+     "model": "audio-sensor-pdm",
+     "note": "inference"
+    }
+   ],
+   "name": "ESP32-S3 with IM73D122",
+   "page": false
+  },
+  {
    "id": "hegel-h400",
    "match": [
     {

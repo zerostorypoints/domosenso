@@ -1,0 +1,15 @@
+id: esp32-s3-im73d122
+names: {en: ESP32-S3 with IM73D122, de: ESP32-S3 mit IM73D122, pl: ESP32-S3 z IM73D122}
+description_key: meta.devices.esp32-s3-im73d122.description
+does_key: meta.devices.esp32-s3-im73d122.does
+photo: null
+component: audio-sensor
+tested:
+  homes: 0
+  note: "Bench: two modules gave finite sound-responsive PDM levels at 48 kHz after orientation correction; N16R8 memory and OLED worked. Shared FFT firmware runtime and HA device metadata acceptance pending."
+# Representative ESPHome project-derived metadata; confirm against HA after authorized adoption.
+match:
+  - integration: esphome
+    manufacturer: domosenso
+    model: audio-sensor-pdm
+    note: inference

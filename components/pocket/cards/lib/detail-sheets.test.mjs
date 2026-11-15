@@ -5,7 +5,12 @@ import { checks, air, lights, checksSpec, airSpec, lightsSpec, DETAIL_STYLE } fr
 import { clearHistoryCache } from "./trend.js";
 import { config, st, baseStates, hassOf, ctxOf, text, texts } from "../testing/demo-home.mjs";
 
-const frame = () => new Promise((resolve) => setTimeout(resolve, 30));   // past the next animation frame
+// The fixture answers history in resolved promises. Drain those microtasks, then wait for
+// the real scheduled frame; a fixed sleep can fire before that frame on a busy test host.
+const frame = async () => {
+  await new Promise(setImmediate);
+  await new Promise((resolve) => window.requestAnimationFrame(resolve));
+};
 
 // The outside switched out of the checks by the home (SPEC-038 §3.2): these tests are about the rooms.
 const withOutside = { ...config,

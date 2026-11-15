@@ -9,6 +9,10 @@
       "m5stack-led-strip-sk6812": {
         "description": "Ein adressierbarer 5-V-RGB-LED-Streifen mit 60 LEDs pro Meter, der in den Grove-Anschluss des Boards gesteckt wird.",
         "does": "Leuchtet mit der Musik, die der Schallsensor hört: Das Board zeichnet ihn selbst, ohne Verzögerung über einen Server. Sechs Stile, eine Palette und die Intensität werden in den Einstellungen des Boards in Home Assistant gewählt."
+      },
+      "esp32-s3-im73d122": {
+        "description": "Ein ESP32-S3-Entwicklungsboard mit 16 MB Flash, 8 MB Octal-PSRAM und einem IM73D122-PDM-Mikrofonmodul, über USB versorgt.",
+        "does": "Nutzt die gemeinsame Auswertung für Schallpegel und das Spektrum mit 31 Bändern bei 48 kHz. Die Mikrofonverstärkung ist fest. Ein optionales SSD1306-OLED zeigt den aktuellen dBFS-Pegel und die höchste gültige Spitze seit dem Start. Die gemeinsame FFT-Firmware muss noch auf der Hardware geprüft werden; noch in keinem Zuhause getestet."
       }
     },
     "assistant": {
