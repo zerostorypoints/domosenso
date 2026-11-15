@@ -180,6 +180,12 @@ views:
             timers: [[ timers | yaml ]]
           [%- endif %]
           - type: custom:corner-taps-card
+            [%- if mp and not preview and (inputs.hifisync_music | default(false)) %]
+            hifisync_music:
+              player: [[ mp ]]
+              mode: input_select.[[ p ]]_mode
+              view: binary_sensor.[[ p ]]_music_view
+            [%- endif %]
             # One 8 px margin everywhere instead of HA's 32/24 px; the card heights below assume it.
             padding: 8
             # A tap anywhere shows the controls (and keeps them up while they are shown).

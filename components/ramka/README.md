@@ -27,6 +27,22 @@ A fictional minimum is `tests/fixtures/ramka-minimal.yaml`. Validate it with
 `INPUTS=tests/fixtures/ramka-minimal.yaml tools/ha-check.sh ramka`. The fixture binds no real
 hardware and does not prove sensor reception or physical controls.
 
+## HiFiSync on the music pages
+
+Set `hifisync_music: true` in the Ramka inputs to add System and Room to the live
+Lovelace music view. Use a paired DomoSenso Frame app and Frame HA 0.5.0
+with the `domosenso_frame/lovelace_music` command. Select the same
+registered player in Ramka and Frame Studio, and enable System and Room for
+that panel. The HiFiSync connector in that Home Assistant instance supplies
+the read-only system and room data.
+
+The first page is the existing Now Playing section. Use its music tabs or
+swipe from an area outside an active control. Room interaction holds rotation
+for 30 seconds after the last interaction. When playback stops, the original
+ambient or control pages take over. If the app is unpaired, the connector is
+unavailable, or the panel has no matching player, the original Now Playing
+section is still available.
+
 ## Setting up the tablet
 
 Step by step, with every Android and Companion app setting and what to switch off, on the tested

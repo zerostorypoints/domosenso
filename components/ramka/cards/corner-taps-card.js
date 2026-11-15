@@ -111,6 +111,22 @@ class CornerTapsCard extends HTMLElement {
     this._syncPause();
     this._maybeLiftShield();
     this._maybeReload();
+    this._syncMusic();
+  }
+
+  _syncMusic() {
+    const page = cornerTapsPage();
+    const active = window.location.pathname.split('/').slice(0, 2).join('/') === page.base;
+    const config = active ? this._config.hifisync_music : null;
+    if (page.music) {
+      page.music.sync(config, this._hass);
+      return;
+    }
+    if (!config || page.musicLoading) return;
+    page.musicLoading = import('./lib/hifisync-music.js').then(({RamkaHiFiMusic}) => {
+      page.music = new RamkaHiFiMusic();
+      page.card?._syncMusic();
+    }).catch(() => {}).finally(() => { page.musicLoading = null; });
   }
 
   // Once per page: the tap, swipe and corner handlers, each passing the event to the live
@@ -166,7 +182,10 @@ class CornerTapsCard extends HTMLElement {
     // Off this dashboard (navigation inside the app) the corners must not cover anything.
     const sync = () => {
       for (const el of page.els) el.style.display = onBoard() ? "block" : "none";
-      if (page.card) page.card._syncPause();
+      if (page.card) {
+        page.card._syncPause();
+        page.card._syncMusic();
+      }
     };
     window.addEventListener("location-changed", sync);
     window.addEventListener("popstate", sync);
@@ -237,19 +256,28 @@ class CornerTapsCard extends HTMLElement {
   // becomes a scroll gesture and ends in pointercancel, never pointerup (2026-10-15), while
   // touchend still arrives. Pointer events stay for a mouse; a touch that already counted
   // makes the pointer pair that follows it ignored.
-  _swipeBegin(x, y) {
-    this._swipeStart = { x, y, t: Date.now() };
+  _swipeBegin(x, y, event) {
+    const path = event.composedPath?.() || [];
+    this._swipeStart = { x, y, t: Date.now(),
+      overlay: path.some(node => node.hasAttribute?.('data-ramka-hifisync')),
+      interactive: path.some(node => node.matches?.('button,input,select,textarea,label,a[href],[role="button"],[data-own-gesture],[data-own-tap]')),
+    };
   }
 
   _swipeEnd(x, y) {
     const s = this._swipeStart;
     this._swipeStart = null;
-    if (!s || Date.now() - s.t > 1500 || Date.now() - (this._swiped || 0) < 1000) return;
+    if (!s || s.overlay || Date.now() - s.t > 1500 || Date.now() - (this._swiped || 0) < 1000) return;
     const dx = x - s.x, dy = y - s.y;
     let dir;
     if (Math.abs(dy) >= 80 && Math.abs(dy) >= 1.5 * Math.abs(dx)) dir = dy < 0 ? "up" : "down";
     else if (Math.abs(dx) >= 80 && Math.abs(dx) >= 1.5 * Math.abs(dy)) dir = dx < 0 ? "left" : "right";
     else return;
+    if ((dir === 'left' || dir === 'right') && !s.interactive
+      && cornerTapsPage().music?.step(dir === 'left' ? 1 : -1)) {
+      this._swiped = Date.now();
+      return;
+    }
     const rules = Array.isArray(this._config.swipe) ? this._config.swipe : [this._config.swipe];
     const rule = rules.find((r) => this._holds(r));
     if (rule && this._runWhen(rule, rule[dir])) this._swiped = Date.now();
@@ -257,7 +285,7 @@ class CornerTapsCard extends HTMLElement {
 
   _onTouchStart(ev) {
     const t = ev.changedTouches && ev.changedTouches[0];
-    if (t) this._swipeBegin(t.clientX, t.clientY);
+    if (t) this._swipeBegin(t.clientX, t.clientY, ev);
   }
 
   _onTouchEnd(ev) {
@@ -266,7 +294,7 @@ class CornerTapsCard extends HTMLElement {
   }
 
   _onPointerDown(ev) {
-    if (ev.pointerType !== "touch") this._swipeBegin(ev.clientX, ev.clientY);
+    if (ev.pointerType !== "touch") this._swipeBegin(ev.clientX, ev.clientY, ev);
   }
 
   _onPointerUp(ev) {

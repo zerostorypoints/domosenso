@@ -8,7 +8,7 @@
 # writes package.yaml (once), dashboard.<lang>.yaml and ramka-settings.<lang>.yaml (en, de, pl)
 # from templates/, and ramka-preview.<lang>.yaml (unless preview_dashboard is false). Upgrade notes for an existing home: UPGRADE.md.
 id: ramka
-version: 0.20.0
+version: 0.21.0
 summary: Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar
 description_key: meta.description
 photo: null
@@ -165,6 +165,9 @@ inputs:
     example: com.domosenso.frame
   alert_title: {type: string, default: "<name>"}
   kiosk_user: {type: string, default: null}               # HA user that gets kiosk-mode
+  hifisync_music:
+    type: bool
+    default: false   # optional music pages from a paired and opted-in Frame HA endpoint
   dashboard_path: {type: string, default: dashboard-ramka}  # the Exit button's long press: this, kiosk-mode off
   dashboard_paths:              # the Ramka dashboard of each language, for the settings page's "Open the
     type: "map[lang, string]"   # Ramka view" (0.4.0); a language not in it takes dashboard_path. Plain
