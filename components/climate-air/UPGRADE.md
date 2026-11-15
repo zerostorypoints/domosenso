@@ -3,7 +3,7 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
-## 0.3.1: the M5Stack Unit CO2L as an air sensor
+## 0.3.1 (2026-11-14): the M5Stack Unit CO2L as an air sensor
 
 The manifest recommends the M5Stack Unit CO2L next to the Ruuvi Air, and lists the `esphome`
 integration it reports through. Templates, inputs and entities are unchanged: a room's `air` with
