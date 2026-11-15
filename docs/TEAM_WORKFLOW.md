@@ -42,6 +42,12 @@ Select one release owner whenever several PRs change the same component, so vers
 upgrade notes do not conflict. The release decision is a reviewed version-bump PR: the component's
 `version:` and its `## <version>` entry in `UPGRADE.md`, in a release PR or in a feature PR when no
 other open PR changes the component. Its merge is the go-ahead for the tag (SPEC-027). A personal HA installation is not a shared development server.
+Work merged after a tag goes under a new version: a PR that changes a tagged component's contract
+(`inputs`, `provides`, `artifacts`) raises its `version:` (or the component is listed in
+`.github/release-hold`), and the heading is `## <version> (<date>): …`, with a space after the
+version, never `(unreleased)` under a tagged version. Framework checks run
+`tools/release_preflight.py --changed-since origin/main` on the components a PR changes, so what the
+Release workflow would refuse after the merge fails the PR instead.
 
 The human can authorise implementation, local checks, the task branch's pushes and its draft PR at
 issue start, optionally including queueing auto-merge after agent review. Agents remember the scope within that session; repeated pushes inside it need no new
