@@ -21,6 +21,49 @@ The administrator can use the same steps with HA Container or a standalone table
 4. Open the updated Frame, pair it to the intended HA endpoint, and select **Ramka**. In the DomoSenso Frame administration panel enable HiFiSync for that endpoint. In **Template Studio**, confirm that its Media source maps the same player. Save or apply the `Ramka Classic · HiFiSync` template while the compatible paired Frame is online. Save a separate copy when customizing it.
 5. Start playback. The first view is **Now Playing**. Studio gives each eligible music page 15 seconds. Swipe left for the next page or right for the previous one. Swipe anywhere on the page outside its controls. A footer indicates the gesture. Room reserves its drawing and controls for rotation, zoom, panning and speaker selection. A swipe starting on the heading or footer still changes pages. HiFiSync settings and credentials remain on the server and in HA config entry data.
 
+## Use HiFiSync Preview
+
+The pilot can use an official HiFiSync Preview deployment as its data source. The tablet still
+connects to its Home Assistant instance. In HA, use HiFiSync connector 0.1.1 or newer and enter
+the Preview HTTPS origin in **HiFiSync site URL** when adding the integration. Paste the origin
+without the account page or API path. Issue the scoped token in that same Preview, select a
+system that exists there, and choose the intended registered player. Leave the URL field blank
+for a production installation.
+
+Check the selected deployment's public API before asking the owner to sign in again. A JSON
+`401` from the systems route without a token confirms the route is deployed. A `404` indicates
+that the route or deployment must be checked. A paired Frame can show its usual HA screens
+while the connector is unavailable. A token from Preview belongs to that environment.
+
+## Pair a pilot tablet
+
+1. Read the installation's device and HA notes. Identify which HA normally serves the target
+   Ramka and confirm the pilot's Android package and build. A tablet can run its local HA and use
+   a separate HA on the network. An independently installed pilot needs its own app sign-in and
+   pairing, even when the default Ramka is already paired.
+2. For wireless Android debugging, an empty `adb devices` or `adb mdns services` list does not
+   establish that debugging is off. On macOS use `dns-sd -B _adb-tls-connect._tcp local.` and
+   resolve each matching service instance with `dns-sd -L`. Check numbered duplicate names as
+   well as the original name because Bonjour can retain an obsolete connect port. Probe only
+   the recorded tablet's advertised endpoints. If TCP connects but the shared ADB daemon reports
+   a route error, retry with a task-owned daemon on a free port and the existing paired key.
+   Verify the tablet model and identity before issuing device commands. Ask for the current
+   connect address shown on the device only if discovery and reconnection fail. Use the separate
+   pairing port only when the existing key is rejected.
+3. Open the pilot and enter the verified HA address. If a local installation already has an
+   approved regular Frame account stored securely, use it through the app's normal HA sign-in
+   form. Check for it before asking the owner to log in. Keep authentication values out of
+   screenshots, tool output and shared documentation.
+4. Select **Ramka** or the installation's matching panel. Read the pairing code in the pilot and
+   match it to the same pending device and account on **Home Assistant → DomoSenso Frame →
+   Devices and pairing**. Approve that request with a separate administrator session. Confirm
+   the device shows as approved and the pilot displays **Connected · access approved**, then
+   open the panel. Close the task's temporary ADB daemon and forwards after verification.
+5. Treat successful pairing and access to the listening system as two checks. Confirm that the
+   HiFiSync connector is loaded on this HA, that its configured origin answers over HTTPS, and
+   that the grant from that environment returns the selected system. Confirm the enabled Frame
+   endpoint maps the same media player. Check **System** and **Room** during playback.
+
 ## Use Room
 
 Choose **Isometric** or **Top view**. Drag the isometric drawing with one finger to rotate it. In Top view, drag a zoomed drawing to pan. Pinch with two fingers in either view, or use **+**, **−** and **Fit**. If the room has no saved height, Studio opens the interactive top view directly.
@@ -74,8 +117,15 @@ that the chosen preset remains visible during ongoing playback updates.
 
 ## Skrócona instrukcja po polsku
 
+Przed parowaniem sprawdź adres HA używany przez tę Ramkę i lokalną instrukcję tabletu. Pusta lista
+ADB może oznaczać stary port albo problem z demonem. Sprawdź też drugi wpis Bonjour, a gdy port
+odpowiada, spróbuj osobnej sesji ADB. Jeśli zapisano zwykłe konto Ramki, użyj go w formularzu HA.
+Po wybraniu panelu porównaj kod z odpowiednim zgłoszeniem w **DomoSenso Frame → Urządzenia
+i parowanie**, zatwierdź je i sprawdź, czy pilot pokazuje „Połączono · dostęp zatwierdzony”.
+
+
 1. W Home Assistant zainstaluj pasujące wersje integracji HiFiSync oraz DomoSenso Frame. W HiFiSync wejdź w **Ustawienia konta → Home Assistant**, wydaj token i zaznacz systemy, do których instalacja ma mieć dostęp.
-2. Dodaj integrację **HiFiSync** w HA. Wklej token w formularzu integracji, wybierz zestaw i właściwy odtwarzacz. Token przechowuje Home Assistant.
+2. Dodaj integrację **HiFiSync** w HA. Jeśli używasz Preview, wpisz jego adres HTTPS w polu **Adres HiFiSync** i wklej token wydany w tym samym Preview. Wybierz zestaw i właściwy odtwarzacz. Token przechowuje Home Assistant.
 3. Zaktualizuj testową aplikację Frame do kompilacji z rendererem 0.2.6. Sparuj ją z instancją HA, włącz HiFiSync dla tego urządzenia w panelu DomoSenso Frame i zastosuj w Template Studio szablon **Ramka Classic · HiFiSync**. Ustaw język szablonu na **Polski** lub **English** i zastosuj zapisany szablon. Nazwy zestawu i pokoju pochodzą z HiFiSync.
 4. Podczas odtwarzania przesuń palcem po nagłówku albo stopce, żeby przejść między **Teraz gra**, **System** i **Pokój**. Na ekranie **Pokój** rozsuń dwa palce na rysunku lub użyj **+ / − / Dopasuj**. Jednym palcem obrócisz izometrię albo przesuniesz powiększony **Rzut z góry**.
 5. Dotknij kolumny na rysunku albo wybierz jej przycisk. Pod rysunkiem zostaną zapisany kąt i odległość do miejsca odsłuchu, jeśli istnieje. Sprawdź, czy dane zostają przy zoomie i zmianie rzutu oraz czy swipe poza rysunkiem nadal zmienia ekran. W razie potrzeby wstrzymaj automatyczną rotację ekranów.

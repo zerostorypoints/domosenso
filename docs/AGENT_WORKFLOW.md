@@ -39,6 +39,14 @@ must actually start or attach with their own client working directory; putting a
 prompt or changing only a tool workdir is not session isolation. If the client cannot relocate a
 child session, use a separate supported CLI/client session for that review.
 
+## Pair a live Frame tablet
+
+Read the installation's private device guide before opening a session with a tablet. For the
+pairing sequence and how to distinguish an ADB connection failure from an HA login or HiFiSync
+data problem, follow [Pair a pilot tablet](integrations/hifisync-studio-pilot.md#pair-a-pilot-tablet).
+When the owner supplies an installation detail, record it in the private guide. Record reusable
+procedures in the framework so the next session can use them.
+
 ## Automatic repository context at startup
 
 The trusted `SessionStart` hook records the actual Git identity on start/resume/compaction and
