@@ -139,7 +139,22 @@ test('passive rack graphics can page, while controls and equipment hit targets o
   assert.deepEqual(actions,[{kind:'navigation',action:'next'}]);
 });
 
-test('the Room drawing owns the gesture in isometric mode and pages in top view', () => {
+test('HiFiSync identifies its two music pages in English and Polish', () => {
+  for (const [locale, roomName] of [['en','Room'], ['pl','Pokój']]) {
+    const s = hiFiSnapshot('hifisync-room');
+    s.config.locale = locale;
+    const el = mount(s);
+    assert.equal(el.shadowRoot.querySelector('.hifi-brand').textContent, 'HiFiSync');
+    assert.equal(el.shadowRoot.querySelector('h2').textContent, roomName);
+    el.snapshot = {...s, screen:'hifisync-system'};
+    assert.equal(el.shadowRoot.querySelector('.hifi-brand').textContent, 'HiFiSync');
+    el.snapshot = {...s, screen:'music'};
+    assert.equal(el.shadowRoot.querySelector('.hifi-brand'), null);
+    el.remove();
+  }
+});
+
+test('the Room drawing owns gestures in both views and the heading remains swipable', () => {
   const s=hiFiSnapshot('hifisync-room');
   Object.assign(s.data.hifisync.snapshot.room, {heightM:2.7,placements:[{role:'left',xM:1,yM:1,rotationDeg:0}]});
   const el=mount(s),actions=[];
@@ -155,6 +170,8 @@ test('the Room drawing owns the gesture in isometric mode and pages in top view'
     for(let attempt=0;drawing.querySelector(':scope > span')&&attempt<10;attempt++)await setTimeout(5);
     assert.equal(Boolean(drawing.querySelector(':scope > span')),false);
     swipe(drawing.querySelector('svg'),100,0);
+    assert.deepEqual(actions,[]);
+    swipe(header,100,0);
     assert.deepEqual(actions,[{kind:'navigation',action:'previous'}]);
   });
 });
@@ -183,8 +200,10 @@ test('an in-progress Music gesture cannot delay a missing private projection', (
 test('Room renders the dimensions without inventing speaker positions', () => {
   const el = mount(hiFiSnapshot('hifisync-room'));
   assert.match(text(el), /4.*6.*m/);
-  assert.ok(el.shadowRoot.querySelector('svg[data-room-plan]'));
-  assert.equal(el.shadowRoot.querySelectorAll('[data-placement]').length, 0);
+  assert.ok(el.shadowRoot.querySelector('svg[data-own-gesture]'));
+  assert.equal(el.shadowRoot.querySelectorAll('[data-studio-speaker]').length, 0);
+  assert.match(text(el),/Top view/);
+  assert.doesNotMatch(text(el),/Isometric/);
 });
 
 test('an open Room hides itself on local expiry while disconnected', context => {
@@ -209,13 +228,16 @@ test('the Room screen cannot show a projection without a room', () => {
   assert.match(text(el), /Demo song/);
 });
 
-test('stored zero-degree orientation points away from the front wall', () => {
+test('Room in top view without height retains a saved zero angle after selection', async () => {
   const s = hiFiSnapshot('hifisync-room');
   s.data.hifisync.snapshot.room.placements = [{role: 'left', xM: 1, yM: 1, rotationDeg: 0}];
   const el = mount(s);
-  const direction = el.shadowRoot.querySelector('svg[data-room-plan] line');
-  assert.equal(direction.getAttribute('x2'), '1');
-  assert.ok(Number(direction.getAttribute('y2')) > 1);
+  const target = el.shadowRoot.querySelector('[data-studio-speaker]');
+  target.dispatchEvent(new win.KeyboardEvent('keydown', {key:'Enter', bubbles:true}));
+  await new Promise(resolve=>setTimeout(resolve,0));
+  const detail = el.shadowRoot.querySelector('.room-studio-detail');
+  assert.match(detail.textContent, /Left speaker.*0°/);
+  assert.doesNotMatch(detail.textContent, /not saved/);
 });
 
 test('System groups components by role even when the snapshot order interleaves them', () => {
@@ -230,18 +252,17 @@ test('System groups components by role even when the snapshot order interleaves 
   assert.match(groups[0].textContent, /Reference amplifier.*Power amplifier/);
 });
 
-test('Room marks label left and right speaker positions by visible keys', () => {
+test('Room exposes the saved speaker identities in the active Studio locale', () => {
   const s = hiFiSnapshot('hifisync-room');
+  s.config.locale = 'pl';
   s.data.hifisync.snapshot.room.placements = [
     {role: 'left', xM: 1, yM: 1, rotationDeg: null},
     {role: 'right', xM: 2, yM: 0.8, rotationDeg: null},
   ];
   const el = mount(s);
-  assert.deepEqual(
-    [...el.shadowRoot.querySelectorAll('[data-placement-label]')].map(label => label.textContent),
-    ['L', 'R'],
-  );
-  assert.match(text(el), /L · Left speaker.*R · Right speaker/);
+  const speakers = [...el.shadowRoot.querySelectorAll('[data-studio-speaker]')];
+  assert.match(speakers[0].getAttribute('aria-label'), /Lewa kolumna/);
+  assert.match(speakers[1].getAttribute('aria-label'), /Prawa kolumna/);
 });
 
 test('an unconditionally placed room widget still requires its negotiated capability', () => {

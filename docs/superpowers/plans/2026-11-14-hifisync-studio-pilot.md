@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js, Supabase/Postgres, Home Assistant/Python, JavaScript Studio, React Native Frame.
 
-**Spec:** [SPEC-049](../../../.ai/specs/SPEC-049-2026-11-14-hifisync-studio-pilot.md)
+**Spec:** [SPEC-050](../../../.ai/specs/SPEC-050-2026-11-14-hifisync-studio-pilot.md)
 
 ## Global Constraints
 

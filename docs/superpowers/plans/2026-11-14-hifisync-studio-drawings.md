@@ -4,7 +4,7 @@
 
 **Goal:** Put the approved HiFiSync rack and interactive room drawings into the Studio pilot and build a locally signed test APK under its separate pilot package ID.
 
-**Spec:** SPEC-049 with the user-approved rack elevation and room isometric/top-down mockup amendment.
+**Spec:** SPEC-050 with the user-approved rack elevation and room isometric/top-down mockup amendment.
 
 1. Publish an additive optional system drawing projection from the existing scoped snapshot. Per component, optional physical fields: `widthCm`, `heightCm`, `depthCm`, `floorstanding`, `drivers` (role, size, count, optional type and face), `bassAlignment`, `active` and `rackKind` (amp/phono/tt/src/spk/sub/dac). Keep revision hashing, scoping and cache expiry. Exact supported fields and compatibility are tested with real catalog fixtures. Transport strips unknown nested fields and retains bounds.
 2. Reuse the exact HiFiSync RackView, RoomIsometric and their drawing dependencies via a pinned build artifact. Compile them offline into Studio with Polish/English/German copy and style adapters matching the approved mockup. Keep the current text and dimensions-only fallbacks. Keep selected equipment and room preset across snapshot refreshes, and clear the view when projection is no longer valid.

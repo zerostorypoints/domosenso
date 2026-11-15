@@ -1,4 +1,4 @@
-# SPEC-049: HiFiSync system and room in Frame Studio
+# SPEC-050: HiFiSync system and room in Frame Studio
 
 - Status: approved 2026-11-14 by the maintainer.
 - Source: the requested tablet pilot and the follow-up on token-based access, system selection and deletion.
@@ -91,3 +91,10 @@ If Room becomes unavailable, the cycle skips it. If HiFiSync becomes
 unavailable, Now Playing remains visible with the current track. The optional
 Studio mapping to the existing Ramka pause helper freezes automatic paging
 and permits manual paging without resuming it.
+
+
+## Room controls and HiFiSync branding
+
+On System and Room, use the HiFiSync warm palette and wordmark with steel blue for the drawings. In Room, the drawing owns pinch zoom in either projection, single-finger rotation in isometric view, and panning in a zoomed top view. Provide zoom in, zoom out and fit controls. Page swipes start outside the canvas and other active controls.
+
+A tap or keyboard selection pins the speaker detail below the drawing. Use the stored signed angle, with zero pointing straight into the room, and the distance to a saved listening point when available. A missing angle stays unknown. Keep the selection through zoom, pan, rotation, projection changes and playback refresh. The template locale supplies all UI copy, with Polish and English supported. The same behavior is available in German.

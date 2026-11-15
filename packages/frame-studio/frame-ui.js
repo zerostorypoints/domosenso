@@ -2,7 +2,7 @@
 import {REGISTRY, positions, validateConfig, UI_VERSION} from './contract.js';
 import {translate} from './renderer-i18n.js';
 import {CSS} from './renderer-style.js';
-import {mountHiFiDrawing} from './hifisync-drawings.js';
+import {mountHiFiDrawing,hiFiBrandFont} from './hifisync-drawings.js';
 export {UI_VERSION};
 const fail=()=>{throw Error('Invalid Frame display contract');};
 const plain=v=>v!==null&&typeof v==='object'&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
@@ -96,6 +96,16 @@ function validateHiFiProjection(projection) {
 }
 const node=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=value;return n;};
 const svgNode=(tag,attrs)=>{const n=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,String(v));return n;};
+const hiFiFontDocuments=new WeakSet();
+function loadHiFiFont(document){
+ const fontSet=document.fonts;
+ const FontFace=document.defaultView?.FontFace;
+ if(!fontSet||!FontFace||hiFiFontDocuments.has(document))return;
+ hiFiFontDocuments.add(document);
+ const face=new FontFace('HiFiSync Fraunces',`url(${hiFiBrandFont}) format("truetype")`,{display:'swap'});
+ fontSet.add(face);
+ face.load().catch(()=>{});
+}
 const color=(value,fallback='#5ab5de')=>typeof value==='string'&&/^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(value)?value:fallback;
 const palette=['#5ab5de','#e6ab71','#b39dde','#5be37a','#f68e9b','#e3cd62'];
 const stamp=seconds=>{if(!finite(seconds))return '—';const n=Math.max(0,Math.floor(seconds));return `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`;};
@@ -107,14 +117,15 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
   validateSnapshot(v);
   const previous=this._snapshot,gesture=this._pointer,incoming=v.data.hifisync;
   // Replacing a touched element can lose touchend on the Android WebView.
-  const sameMusicPage=gesture?.musicPages&&Date.now()-gesture.started<=1500&&v.connected&&!v.off&&!v.readOnly&&
+  const heldMusicGesture=this._roomTouch||(gesture?.musicPages&&Date.now()-gesture.started<=1500);
+  const sameMusicPage=heldMusicGesture&&v.connected&&!v.off&&!v.readOnly&&
    v.mode===previous.mode&&v.screen===previous.screen&&incoming&&
    incoming.snapshot.revision===previous.data.hifisync?.snapshot.revision&&Date.now()<Date.parse(incoming.validUntil)&&
    v.capabilities.join()===previous.capabilities.join();
   if(v.mode==='controls'&&(previous?.mode!=='controls'||previous?.screen!==v.screen))this._shieldUntil=Date.now()+700;
   this._snapshot=structuredClone(v);
   this._preview=null;
-  if(!sameMusicPage){this._pointer=null;this.render();}
+  if(!sameMusicPage){this._pointer=null;this._roomTouch=false;this.render();}
  }
  get snapshot(){return this._snapshot;}
  set paused(v){this._paused=!!v;this.render();}
@@ -207,19 +218,32 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
   card.classList.add('with-hifisync-drawing');
   card.append(this._drawing.host);
  }
- _hiFiTrack(card,projection){
-  if(projection.stale)card.append(node('span','hifi-stale',this.t('old')));
-  const media=this._snapshot.data.media;
-  if(media?.available&&!media.stale&&(media.title||media.source)){
-   card.append(node('p','hifi-track',[media.title||media.source,media.artist].filter(Boolean).join(' · ')));
-  }
+ _hiFiHeading(card,name,projection){
+  loadHiFiFont(this.ownerDocument);
+  card.classList.add('hifi-branded');
+  const header=node('header','hifi-heading');
+  const copy=node('div','hifi-heading-copy');
+  copy.append(card.querySelector('h2'),node('h3',null,name));
+  if(projection.stale)copy.append(node('span','hifi-stale',this.t('old')));
+  const brand=node('span','hifi-brand');
+  const mark=svgNode('svg',{viewBox:'0 0 100 100','aria-hidden':'true'});
+  mark.append(svgNode('circle',{cx:50,cy:50,r:14,fill:'currentColor'}));
+  const wordmark=node('span',null,'HiFi');
+  wordmark.append(node('span','hifi-brand-sync','Sync'));
+  brand.append(mark,wordmark);
+  header.append(copy,brand);
+  card.append(header);
+  return copy;
  }
  _hiFiSystem(card,mode){
   const projection=this._hiFiProjection();
   if(mode!=='media'||!this._snapshot.capabilities.includes('hifisync-system')||!projection){this._missing(card);return;}
   const {system}=projection.snapshot;
-  card.append(node('h3',null,system.name));
-  this._hiFiTrack(card,projection);
+  const heading=this._hiFiHeading(card,system.name,projection);
+  const media=this._snapshot.data.media;
+  if(media?.available&&!media.stale&&(media.title||media.source)){
+   heading.append(node('p','hifi-track',[media.title||media.source,media.artist].filter(Boolean).join(' · ')));
+  }
   if(system.components.some(component=>component.drawing?.widthCm&&component.drawing?.heightCm)){
    this._renderHiFiDrawing(card,'system',system,system);return;
   }
@@ -253,43 +277,14 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
   const projection=this._hiFiProjection();
   const room=projection?.snapshot.room;
   if(mode!=='media'||!this._snapshot.capabilities.includes('hifisync-room')||!room){this._missing(card);return;}
-  card.append(node('h3',null,room.name));
-  this._hiFiTrack(card,projection);
+  const heading=this._hiFiHeading(card,room.name,projection);
   const dimensions=[room.widthM,room.lengthM,room.heightM].filter(value=>value!==null);
-  card.append(node('p','hifi-dimensions',`${dimensions.map(value=>this.format(value)).join(' × ')} m`));
-  const {system}=projection.snapshot;
-  if(room.heightM&&room.placements.length){
-   this._renderHiFiDrawing(card,'room',system,room);return;
-  }
-  const padding=Math.min(room.widthM,room.lengthM)*0.08;
-  const placementKeys={left:'L',right:'R',subwoofer:'S',listening:'●'};
-  const plan=svgNode('svg',{'data-room-plan':'',role:'img','aria-label':this.t('hifi-plan'),viewBox:`${-padding} ${-padding} ${room.widthM+padding*2} ${room.lengthM+padding*2}`});
-  plan.append(svgNode('rect',{width:room.widthM,height:room.lengthM,class:'hifi-outline'}));
-  for(const point of room.placements){
-   const label=this.t(`hifi-position-${point.role}`);
-   const mark=svgNode('circle',{cx:point.xM,cy:point.yM,r:Math.max(padding*0.42,0.008),'data-placement':point.role,class:`hifi-point hifi-${point.role}`});
-   const title=svgNode('title',{});title.textContent=label;mark.append(title);
-   plan.append(mark);
-   const key=svgNode('text',{x:point.xM,y:point.yM,'font-size':padding*.52,
-    'dominant-baseline':'central','text-anchor':'middle','data-placement-label':'',class:'hifi-point-label'});
-   key.textContent=placementKeys[point.role];
-   plan.append(key);
-   if(point.rotationDeg!==null){
-    const length=padding*0.75;
-    const angle=point.rotationDeg*Math.PI/180;
-    plan.append(svgNode('line',{x1:point.xM,y1:point.yM,x2:point.xM-Math.sin(angle)*length,y2:point.yM+Math.cos(angle)*length,stroke:'currentColor','vector-effect':'non-scaling-stroke'}));
-   }
-  }
-  card.append(plan);
-  if(room.placements.length){
-   const key=[...new Set(room.placements.map(point=>point.role))].map(role=>`${placementKeys[role]} · ${this.t(`hifi-position-${role}`)}`);
-   card.append(node('p','hifi-dimensions',key.join('   /   ')));
-  }
+  heading.append(node('p','hifi-dimensions',`${dimensions.map(value=>this.format(value)).join(' × ')} m`));
+  this._renderHiFiDrawing(card,'room',projection.snapshot.system,room);
  }
  _tick(){if(!this._snapshot)return;const blocked=this._blocked();if(blocked!==this._lastBlocked||this._lastHiFiProjection!==Boolean(this._hiFiProjection())){this.render();return;}for(const n of this.shadowRoot.querySelectorAll('[data-clock]'))n.textContent=this._date(Date.now(),{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});for(const n of this.shadowRoot.querySelectorAll('[data-date]'))n.textContent=this._date(Date.now(),{weekday:'long',day:'numeric',month:'long'});const m=this._snapshot.data.media;if(m?.state==='playing'&&finite(m.position)&&finite(m.duration)){const position=Math.min(m.duration,m.position+Math.max(0,Date.now()-Date.parse(this._snapshot.fetchedAt))/1000);for(const n of this.shadowRoot.querySelectorAll('[data-progress]'))n.value=position;for(const n of this.shadowRoot.querySelectorAll('[data-position]'))n.textContent=stamp(position);}}
  _interactions(shell,musicPages){
-  // In the pinned room drawing, the orbit hint precedes the SVG only in isometric mode.
-  const interactive='button,input,select,textarea,label,a[href],[role="button"],.sc-rack-hit,[data-testid="room-isometric"] > span + svg';
+  const interactive='button,input,select,textarea,label,a[href],[role="button"],.sc-rack-hit,[data-own-gesture],[data-testid="room-isometric"] > svg';
   const navigate=action=>this._emit({kind:'navigation',action});
   shell.onclick=event=>{
    if(Date.now()<this._suppressClick||event.target.closest(interactive))return;
@@ -324,11 +319,18 @@ export class FrameUI extends (globalThis.HTMLElement||class{}){
   // WebViews can cancel pointers during a vertical pan while still delivering touchend.
   shell.addEventListener('touchstart',event=>{
    const point=event.changedTouches[0];
+   if(event.target.closest('[data-hifisync-drawing="room"] svg,[data-own-gesture]'))this._roomTouch=true;
    if(event.touches.length===1&&point)begin(event.target,point,point.identifier);
    else this._pointer=null;
   });
-  shell.addEventListener('touchend',event=>{for(const point of event.changedTouches)end(point,point.identifier);});
-  shell.addEventListener('touchcancel',()=>{this._pointer=null;});
+  shell.addEventListener('touchend',event=>{
+   if(!event.touches.length)this._roomTouch=false;
+   for(const point of event.changedTouches)end(point,point.identifier);
+  });
+  shell.addEventListener('touchcancel',event=>{
+   this._pointer=null;
+   if(!event.touches.length)this._roomTouch=false;
+  });
   if(musicPages){
    shell.tabIndex=0;
    shell.onkeydown=event=>{

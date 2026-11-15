@@ -1,12 +1,14 @@
 # HiFiSync in Frame Studio
 
-The pilot adds System and Room to the Frame tablet's Music mode for one Home Assistant player and one HiFiSync system. [SPEC-049](../../.ai/specs/SPEC-049-2026-11-14-hifisync-studio-pilot.md) defines the data, permissions and lifecycle.
+The pilot adds System and Room to the Frame tablet's Music mode for one Home Assistant player and one HiFiSync system. [SPEC-050](../../.ai/specs/SPEC-050-2026-11-14-hifisync-studio-pilot.md) defines the data, permissions and lifecycle.
+
+[Skrócona instrukcja po polsku](#skrócona-instrukcja-po-polsku).
 
 ## Prerequisites
 
 - A HiFiSync environment running the pilot grant migration and web API.
 - Home Assistant 2026.9.2 or newer. Install the pilot builds of both the HiFiSync and DomoSenso Frame custom integrations in that instance.
-- Frame with the pilot Studio renderer (0.2.4) and a registered Home Assistant `media_player`.
+- Frame with the pilot Studio renderer (0.2.6) and a registered Home Assistant `media_player`.
 - A HiFiSync account with at least one active personal system. The deletion acceptance scenario requires two allowed systems.
 
 The administrator can use the same steps with HA Container or a standalone tablet backend. Install the components in the HA instance that the chosen Frame endpoint actually uses. Use a separate HA instance and synthetic systems for destructive tests.
@@ -17,7 +19,15 @@ The administrator can use the same steps with HA Container or a standalone table
 2. Install `custom_components/hifisync` and `custom_components/domosenso_frame` from the matching pilot revisions, then restart HA. Follow each integration's README for its installation mechanism. Back up the existing HA configuration before upgrading an installation.
 3. In HiFiSync **Account settings → Home Assistant**, create an installation grant and explicitly select the systems that installation may read. Copy the displayed token into HA **Settings → Devices & services → Add integration → HiFiSync**. Select one system and the registered player. For a duplicated amplifier, select the intended streaming entity.
 4. Open the updated Frame, pair it to the intended HA endpoint, and select **Ramka**. In the DomoSenso Frame administration panel enable HiFiSync for that endpoint. In **Template Studio**, confirm that its Media source maps the same player. Save or apply the `Ramka Classic · HiFiSync` template while the compatible paired Frame is online. Save a separate copy when customizing it.
-5. Start playback. The first view is **Now Playing**. Studio gives each eligible music page 15 seconds. Swipe left for the next page or right for the previous one. Swipe anywhere on the page outside its controls. A footer indicates the gesture. The draggable isometric drawing owns its own gesture, while the top view is a passive page surface. Saved geometry is drawn at its declared dimensions. HiFiSync settings and credentials remain on the server and in HA config entry data.
+5. Start playback. The first view is **Now Playing**. Studio gives each eligible music page 15 seconds. Swipe left for the next page or right for the previous one. Swipe anywhere on the page outside its controls. A footer indicates the gesture. Room reserves its drawing and controls for rotation, zoom, panning and speaker selection. A swipe starting on the heading or footer still changes pages. HiFiSync settings and credentials remain on the server and in HA config entry data.
+
+## Use Room
+
+Choose **Isometric** or **Top view**. Drag the isometric drawing with one finger to rotate it. In Top view, drag a zoomed drawing to pan. Pinch with two fingers in either view, or use **+**, **−** and **Fit**. If the room has no saved height, Studio opens the interactive top view directly.
+
+Tap a speaker or its button below the drawing. The details stay visible while you rotate, zoom or switch projection on Room. The angle comes from the stored speaker setting. Zero points straight into the room. When the system has a listening position, the details also show the distance to it. An unknown angle has its own label. Pause the music-page rotation if you want to keep Room on screen.
+
+Set **Language** in the applied Template Studio template to choose the UI language. The controls, placement labels and number formatting follow that choice. System and room names come from HiFiSync.
 
 To share Ramka’s existing rotation pause, map the endpoint’s `studio.runtime.paused` to its existing `input_boolean.<prefix>_paused`. While paused, a swipe still changes the page. Reapply a saved pilot template explicitly to adopt the new durations, or set the three durations in your own copy.
 
@@ -43,7 +53,7 @@ Allow up to six minutes for the real revalidation interval. For a faster fixture
 
 Browser captures at 1100 × 720 and 720 × 1100 exercise the pinned renderer and touch navigation. A local APK using a separate package ID is suitable for a physical test alongside the installed app. Physical display, installation-specific HA mapping and a real HiFiSync account require their own acceptance. Use the version pins in the delivered branch and artifact manifest to identify the exact revisions exercised.
 
-## HiFiSync drawings on Studio 0.2.2
+## Renderer and Android compatibility
 
 Use matching HiFiSync web, connector, Frame bridge and Frame Android revisions.
 HiFiSync provides optional component dimensions and driver metadata through its
@@ -51,8 +61,8 @@ existing scoped API. There is no new database migration for the drawings.
 The bridge sends the extra fields only to clients that advertise support.
 System uses the catalog rack elevation and the saved shelf order where
 available. Equipment on the same saved shelf is represented in sequence.
-Room uses the HiFiSync isometric view with its top-view preset. Unknown
-dimensions and incomplete room geometry retain the existing simple views.
+Room uses the HiFiSync drawing with a top-view preset and saved placements.
+A room without placements draws its outline without inventing equipment positions.
 
 For a physical trial alongside the existing Frame, build with
 `FRAME_ANDROID_PACKAGE=com.domosenso.frame.hifisyncpilot` and a strictly
@@ -60,3 +70,14 @@ increasing `FRAME_ANDROID_VERSION_CODE` for that package. The local test APK
 uses a separate Android application identity and pairing. Select Ramka /
 Studio in the pilot app after pairing. Test both room presets and verify
 that the chosen preset remains visible during ongoing playback updates.
+
+
+## Skrócona instrukcja po polsku
+
+1. W Home Assistant zainstaluj pasujące wersje integracji HiFiSync oraz DomoSenso Frame. W HiFiSync wejdź w **Ustawienia konta → Home Assistant**, wydaj token i zaznacz systemy, do których instalacja ma mieć dostęp.
+2. Dodaj integrację **HiFiSync** w HA. Wklej token w formularzu integracji, wybierz zestaw i właściwy odtwarzacz. Token przechowuje Home Assistant.
+3. Zaktualizuj testową aplikację Frame do kompilacji z rendererem 0.2.6. Sparuj ją z instancją HA, włącz HiFiSync dla tego urządzenia w panelu DomoSenso Frame i zastosuj w Template Studio szablon **Ramka Classic · HiFiSync**. Ustaw język szablonu na **Polski** lub **English** i zastosuj zapisany szablon. Nazwy zestawu i pokoju pochodzą z HiFiSync.
+4. Podczas odtwarzania przesuń palcem po nagłówku albo stopce, żeby przejść między **Teraz gra**, **System** i **Pokój**. Na ekranie **Pokój** rozsuń dwa palce na rysunku lub użyj **+ / − / Dopasuj**. Jednym palcem obrócisz izometrię albo przesuniesz powiększony **Rzut z góry**.
+5. Dotknij kolumny na rysunku albo wybierz jej przycisk. Pod rysunkiem zostaną zapisany kąt i odległość do miejsca odsłuchu, jeśli istnieje. Sprawdź, czy dane zostają przy zoomie i zmianie rzutu oraz czy swipe poza rysunkiem nadal zmienia ekran. W razie potrzeby wstrzymaj automatyczną rotację ekranów.
+
+Gdy wybrany system zniknie z HiFiSync lub zakresu tokena, wybierz inny przez **Konfiguruj ponownie** w HA. Po unieważnieniu tokena użyj ponownego uwierzytelnienia. **Teraz gra** nadal korzysta z tego samego odtwarzacza HA. Aby wrócić do poprzedniego układu, wyłącz HiFiSync dla urządzenia, przywróć zapisany szablon i cofnij token, jeśli instalacja już go nie potrzebuje.

@@ -17,7 +17,7 @@ type Drawing = {
 type Component = { id: string; label: string; role: string; quantity: number; drawing?: Drawing };
 type System = { components: Component[]; rack: string[][] };
 type Placement = { role: string; xM: number; yM: number; rotationDeg: number | null };
-type Room = { widthM: number; lengthM: number; heightM: number; placements: Placement[] };
+type Room = { widthM: number; lengthM: number; heightM: number | null; placements: Placement[] };
 type Locale = 'en' | 'de' | 'pl';
 type Translate = (key: string) => string;
 
@@ -48,12 +48,21 @@ function Equipment({ system, translate }: { system: System; translate: Translate
   </>;
 }
 
-function ListeningRoom({ room }: { room: Room }) {
-  const points = (roles: string[]) => room.placements.filter(p => roles.includes(p.role))
-    .map(p => ({ x: p.xM, y: p.yM, rotation: p.rotationDeg ?? 0 }));
-  return <RoomIsometric heightM={room.heightM} real geometry={{
-    width: room.widthM, length: room.lengthM, speakers: points(['left', 'right']),
-    subs: points(['subwoofer']), listener: points(['listening'])[0] ?? null,
+function ListeningRoom({ room, translate }: { room: Room; translate: Translate }) {
+  const toDrawingPoint = (point: Placement) => ({
+    x: point.xM, y: point.yM, rotation: point.rotationDeg ?? 0,
+  });
+  const speakers = room.placements.filter(point => point.role === 'left' || point.role === 'right');
+  const listener = room.placements.find(point => point.role === 'listening');
+  return <RoomIsometric heightM={room.heightM ?? 2.5} real studio={{
+    planOnly: room.heightM === null,
+    speakers: speakers.map(point => ({
+      name: translate('hifi-position-' + point.role), rotationDeg: point.rotationDeg,
+    })),
+  }} geometry={{
+    width: room.widthM, length: room.lengthM, speakers: speakers.map(toDrawingPoint),
+    subs: room.placements.filter(point => point.role === 'subwoofer').map(toDrawingPoint),
+    listener: listener ? toDrawingPoint(listener) : null,
   }}/>;
 }
 
@@ -61,6 +70,6 @@ export function mountHiFiDrawing(host: HTMLElement, type: string, model: System 
   const root = createRoot(host);
   flushSync(() => root.render(<DrawingLocale.Provider value={locale}>{type === 'system'
     ? <Equipment system={model as System} translate={translate}/>
-    : <ListeningRoom room={model as Room}/>}</DrawingLocale.Provider>));
+    : <ListeningRoom room={model as Room} translate={translate}/>}</DrawingLocale.Provider>));
   return () => root.unmount();
 }

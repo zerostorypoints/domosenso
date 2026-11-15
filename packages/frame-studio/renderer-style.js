@@ -27,14 +27,22 @@ export const CSS=`
 .hifi-components,.hifi-rack{margin:.6em 0;padding-inline-start:1.4em}
 .hifi-components li{padding:.18em 0}.hifi-component-group h4{margin:.75em 0 .25em}.hifi-component-group .hifi-components{margin:.25em 0}
 .hifi-stale{color:var(--raised);font-size:.8em}.hifi-dimensions,.hifi-track{color:var(--muted);margin:.4em 0}
-.hifisync-room svg{display:block;width:100%;height:min(68cqh,520px);margin:auto}
-.hifi-outline{fill:#242a30;stroke:#aeb9c1;stroke-width:2px;vector-effect:non-scaling-stroke}
-.hifi-point{fill:var(--accent)}.hifi-point-label{fill:#101214;font-weight:700;pointer-events:none}.hifi-listening{fill:#e6ab71}.hifi-subwoofer{fill:#b39dde}
-
-.with-hifisync-drawing{display:flex;flex-direction:column;gap:.18em}
-.with-hifisync-drawing>h3{margin:0;font-size:clamp(17px,4cqh,28px)}
-.with-hifisync-drawing>h2{margin-bottom:.25em}
-.with-hifisync-drawing .hifi-track,.with-hifisync-drawing .hifi-dimensions{font-size:.78em;margin:.2em 0}
+.shell .hifi-branded{
+ --hifi-ink:#f4ead2;--muted:#c5b89a;--hifi-amber:#e8a04a;--hifi-rule:#393126;
+ background:#15110c;color:var(--hifi-ink);border:1px solid var(--hifi-rule);
+ padding:clamp(12px,2.6cqw,28px);gap:clamp(6px,1.3cqw,14px)
+}
+.hifi-heading{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px;
+ padding-bottom:clamp(8px,1.4cqw,15px);border-bottom:1px solid var(--hifi-rule)}
+.hifi-heading h2{margin:0 0 5px;color:var(--muted);font:500 clamp(12px,1.5cqw,15px)/1.3 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}
+.hifi-heading h3{margin:0;color:var(--hifi-ink);font:400 clamp(25px,min(5.4cqw,7cqh),46px)/1.05 HiFiSync Fraunces,Georgia,serif;letter-spacing:-.025em}
+.hifi-heading .hifi-track,.hifi-heading .hifi-dimensions{margin:7px 0 0;color:var(--muted);font-size:clamp(15px,1.75cqw,19px);line-height:1.22}
+.hifi-brand{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;color:var(--hifi-ink);
+ font:400 clamp(17px,2.4cqw,25px)/1.2 HiFiSync Fraunces,Georgia,serif}
+.hifi-brand svg{width:19px;height:19px;flex:none;color:var(--hifi-amber);filter:drop-shadow(0 0 4px #e8a04a55)}
+.hifi-brand-sync{color:var(--hifi-amber)}
+.with-hifisync-drawing{display:flex;flex-direction:column}
+.hifi-branded button:focus-visible,.hifi-branded [role=button]:focus-visible{outline:3px solid var(--hifi-amber);outline-offset:2px}
 .hifisync-drawing{flex:1;min-height:0;min-width:0;display:grid;gap:8px;
  --schematic-line:#80a8bf;--schematic-line-soft:#55727f;--schematic-fill:#211b14;--schematic-accent:#e8a04a;
  --measure-line:#80a8bf;--measure-soft:#7293a4;--measure-dim:#394c55;--measure-fill:#141f26;
@@ -46,16 +54,23 @@ export const CSS=`
 .hifisync-drawing .sc-rack-hit{cursor:pointer}
 .hifisync-drawing .sc-rack:not(:hover) .sc-rack-hit:not(.sc-rack-hit-on){opacity:.75}
 .hifisync-equipment{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,132px),1fr));gap:8px;max-height:35cqh;overflow:auto}
-.hifisync-equipment button{font-size:clamp(13px,2.5cqh,19px);text-align:left;padding:8px 11px;line-height:1.2;overflow-wrap:anywhere}
-.hifisync-equipment button[aria-pressed=true]{border-color:var(--schematic-accent);color:#f5d4a8}
+.hifisync-equipment button{font-size:clamp(13px,2.5cqh,19px);text-align:left;padding:8px 11px;line-height:1.2;overflow-wrap:anywhere;background:#211b14;border-color:var(--hifi-rule)}
+.hifisync-equipment button[aria-pressed=true]{border-color:var(--schematic-accent);color:var(--hifi-ink);background:#332619}
 .hifisync-equipment small,.hifisync-equipment strong{display:block}
 .hifisync-equipment small{color:var(--muted);margin-bottom:3px}
 .hifisync-drawing [data-testid=room-isometric]{height:100%;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto;
- position:relative;padding:0;overflow:hidden;border-radius:5px}
-.hifisync-drawing [data-testid=room-isometric]>span{position:absolute;top:8px;right:10px;font-size:12px;color:var(--muted);pointer-events:none}
-.hifisync-drawing [data-testid=room-isometric] svg{display:block;width:100%;height:100%;min-height:0;touch-action:pan-y}
+ position:relative;padding:0;overflow:hidden;border-radius:5px;background:var(--measure-fill);border:1px solid var(--schematic-line-soft)}
+.hifisync-drawing [data-testid=room-isometric]>span{position:absolute;top:12px;right:12px;font-size:12px;color:var(--muted);pointer-events:none}
+.hifisync-drawing [data-testid=room-isometric] svg{display:block;width:100%;height:100%;min-height:0;touch-action:none}
 .hifisync-drawing [data-testid=room-isometric]>div:last-child{display:flex;flex-wrap:wrap;gap:8px;padding:4px 8px 8px;justify-content:center}
-.hifisync-drawing [data-testid=room-isometric] button{font-size:clamp(12px,2.5cqh,17px);padding:7px 10px}
-.hifisync-drawing [data-testid=room-isometric] button[aria-pressed=true]{background:#283e4a;border-color:#80a8bf}
+.hifisync-drawing [data-testid=room-isometric] button{font-size:clamp(13px,2.5cqh,17px);padding:7px 10px;color:#edf0f2;background:#23323b;border-color:#55727f}
+.hifisync-drawing [data-testid=room-isometric] button[aria-pressed=true]{background:var(--hifi-amber);border-color:var(--hifi-amber);color:#181008}
+.room-studio{display:grid;grid-template-rows:minmax(120px,1fr) auto auto;gap:8px;min-height:0;min-width:0}
+.hifisync-drawing [data-testid=room-isometric]>.room-studio-zoom{position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:4px}
+.room-studio-zoom button{min-width:44px}
+.room-studio-speakers{display:flex;flex-wrap:wrap;gap:6px}.room-studio-speakers button{font-size:clamp(13px,2.1cqh,16px);padding:5px 9px;background:#211b14;border-color:var(--hifi-rule)}
+.room-studio-speakers button[aria-pressed=true]{color:var(--hifi-ink);background:#332619;border-color:var(--hifi-amber)}
+.room-studio-detail{min-width:0;margin:0;padding:6px 9px;font-size:clamp(13px,2.3cqh,17px);color:var(--hifi-ink);line-height:1.25}
 .hifisync-drawing .pointer-events-none{pointer-events:none}
+.room-studio [data-testid=room-isometric-label]{display:none}
 `;
