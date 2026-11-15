@@ -15,6 +15,7 @@ PARTS = (
     "base_key", "head_key", "fit_coupon",
 )
 VIEWS = ("assembly_stand", "assembly_clamp", "explode_stand", "explode_clamp", "view_wires")
+BLOCKER_PARTS = ("tower", "head", "atom_cradle", "stand", "clamp", "fit_coupon")
 
 
 def main() -> None:
@@ -26,6 +27,8 @@ def main() -> None:
     parser.add_argument("--part", choices=PARTS, action="append",
                         help="export only these printable parts; skips assembly previews")
     parser.add_argument("--no-preview", action="store_true", help="export meshes only")
+    parser.add_argument("--support-blockers", action="store_true",
+                        help="also export non-printing support blockers into blockers/")
     args = parser.parse_args()
     exe = os.environ.get("OPENSCAD") or shutil.which("openscad")
     if not exe:
@@ -37,12 +40,12 @@ def main() -> None:
         parser.error("use --part to select a printable part; -D part is reserved")
     defines = [item for value in args.defines for item in ("-D", value)]
 
-    def export(part: str, target: Path, extra: list[str]) -> None:
+    def export(part: str, target: Path, extra: list[str], source: str = "enclosure.scad") -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
         # Keep an existing deliverable intact if compilation fails.
         temporary = target.with_name(target.stem + ".building" + target.suffix)
         command = [exe, "-o", str(temporary), *defines, "-D", f'part="{part}"',
-                   *extra, str(HERE / "enclosure.scad")]
+                   *extra, str(HERE / source)]
         try:
             result = subprocess.run(command, capture_output=True, text=True)
             log = result.stdout + result.stderr
@@ -57,6 +60,10 @@ def main() -> None:
 
     for part in args.part or PARTS:
         export(part, args.out / "stl" / f"{part}.stl", ["--export-format", "binstl"])
+        if args.support_blockers and part in BLOCKER_PARTS:
+            export("support_blockers", args.out / "blockers" / f"{part}.stl",
+                   ["--export-format", "binstl", "-D", f'blocker_part="{part}"'],
+                   "support-blockers.scad")
     if not args.part and not args.no_preview:
         for part in VIEWS:
             export(part, args.out / "preview" / f"{part}.png", [
