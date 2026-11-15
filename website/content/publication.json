@@ -49,9 +49,9 @@
     },
     {
       "id": "climate-air",
-      "version": "0.3.0",
-      "tag": "climate-air/0.3.0",
-      "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.3.1",
+      "tag": "climate-air/0.3.1",
+      "commit": "ba7e298f44abc806b31aa450f2a2433f3a44a3cb",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]

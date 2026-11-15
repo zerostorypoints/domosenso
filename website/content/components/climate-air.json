@@ -8,6 +8,7 @@
   "deviceIds": [
     "tapo-t315",
     "ruuvi-air",
+    "m5stack-unit-co2l",
     "m5stack-atom-lite"
   ],
   "views": [
@@ -44,12 +45,12 @@
   ],
   "setup": [
     "Pair Tapo sensors to their hub and set up the Home Assistant integration.",
-    "For air measurements, add the optional Ruuvi Air and a supported Bluetooth path.",
+    "For air measurements, add the optional Ruuvi Air and a supported Bluetooth path, or an M5Stack Unit CO2L on an Atom Lite for CO₂ alone.",
     "Map the sensor entities; configure Ramka climate or air inputs if you want these pages."
   ],
   "id": "climate-air",
-  "version": "0.3.0",
-  "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+  "version": "0.3.1",
+  "sourceCommit": "ba7e298f44abc806b31aa450f2a2433f3a44a3cb",
   "evidencePaths": [
     "components/climate-air/component.yaml"
   ],
