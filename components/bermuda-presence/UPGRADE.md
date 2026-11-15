@@ -3,7 +3,7 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
-## 0.3.0 (unreleased): component-backed assistant answers
+## 0.3.0 (2026-11-02): component-backed assistant answers
 
 Adds the optional version 1 assistant definition and private source bindings (SPEC-029).
 Existing entities, helper values, dashboard preferences and automation actions are preserved.
