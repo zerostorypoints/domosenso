@@ -441,10 +441,10 @@
     },
     {
       "id": "climate-air",
-      "version": "0.3.0",
-      "sourceTag": "climate-air/0.3.0",
-      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
-      "summary": "Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air",
+      "version": "0.3.1",
+      "sourceTag": "climate-air/0.3.1",
+      "sourceCommit": "ba7e298f44abc806b31aa450f2a2433f3a44a3cb",
+      "summary": "Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air, or CO2 alone from an M5Stack Unit CO2L",
       "requirements": [
         {
           "kind": "temperature-humidity-sensor",
@@ -467,6 +467,11 @@
           "setup": "discovered through a Bluetooth proxy; enable the air-quality score entity by hand, it is off by default"
         },
         {
+          "name": "esphome",
+          "source": "core",
+          "setup": "only for a Unit CO2L: the Atom Lite it hangs from, flashed and adopted as the device guide m5stack-unit-co2l describes"
+        },
+        {
           "name": "group",
           "source": "core"
         },
@@ -479,7 +484,8 @@
         {
           "kind": "air-quality-sensor",
           "recommend": [
-            "ruuvi-air"
+            "ruuvi-air",
+            "m5stack-unit-co2l"
           ],
           "feature": "air"
         },
@@ -531,13 +537,23 @@
           "required": false
         },
         {
+          "name": "comfort_defaults",
+          "type": "{temp_low, temp_high, humidity_low, humidity_high}",
+          "required": false
+        },
+        {
+          "name": "outside_comfort_defaults",
+          "type": "{temp_low, temp_high, humidity_low, humidity_high}",
+          "required": false
+        },
+        {
           "name": "bathroom_humidity",
           "type": "int",
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/climate-air",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/climate-air/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/ba7e298f44abc806b31aa450f2a2433f3a44a3cb/components/climate-air",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/ba7e298f44abc806b31aa450f2a2433f3a44a3cb/components/climate-air/UPGRADE.md"
     },
     {
       "id": "floorplan",
