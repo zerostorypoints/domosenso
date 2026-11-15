@@ -30,8 +30,8 @@ hardware and does not prove sensor reception or physical controls.
 ## HiFiSync on the music pages
 
 Set `hifisync_music: true` in the Ramka inputs to add System and Room to the live
-Lovelace music view. Use a paired DomoSenso Frame app and a Frame HA integration
-which supports the `domosenso_frame/lovelace_music` command. Select the same
+Lovelace music view. Use a paired DomoSenso Frame app and Frame HA 0.5.0
+with the `domosenso_frame/lovelace_music` command. Select the same
 registered player in Ramka and Frame Studio, and enable System and Room for
 that panel. The HiFiSync connector in that Home Assistant instance supplies
 the read-only system and room data.

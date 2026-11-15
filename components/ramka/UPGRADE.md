@@ -3,6 +3,25 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.21.0
+
+### Optional HiFiSync System and Room in the regular music view
+
+Existing dashboards need no migration unless you want to enable HiFiSync. The
+Ramka keeps the current Now Playing, ambient pages and controls. An older or
+unpaired bridge, a missing link or unavailable data leaves Now Playing usable.
+
+Install DomoSenso Frame for Home Assistant 0.5.0 with the Lovelace music command
+and the packaged Studio 0.2.7 drawing renderer, and HiFiSync for Home Assistant
+0.2.0 or later. Preserve the existing paired panel and its saved layout. In
+Frame Studio's Music Sources, select the same HA player as the Ramka and enable
+**Show System and Room** for that panel. Configure the HiFiSync site and token
+in the HiFiSync integration. Set `hifisync_music: true` in the Ramka inputs,
+then run `domosenso update ramka --to 0.21.0` and deploy through the usual
+path. For YAML-managed Lovelace resources use the URLs from the new lock.
+Reload the dashboard after the release assets and bridge are available. See
+[HiFiSync on the music pages](README.md#hifisync-on-the-music-pages).
+
 ## 0.20.0
 
 ### Plant recommendations and list layout
