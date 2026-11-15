@@ -97,3 +97,14 @@ Final local verification: `tools/check-all.sh` ended **all checks passed** (2203
 The final scheduling-only test refinement was followed by another full JavaScript run: 1861/1861.
 Both factories and four thin files validate; Atom, Atom strip, PDM, PDM OLED and PDM factory compile.
 No physical device was flashed; shared FFT runtime, HA metadata and calibration acceptance remain pending.
+
+## Independent review correction
+
+The review of `5b9234d` reproduced a P2: recursive firmware discovery entered generated ESPHome
+caches and compared dependency refs/project versions/imports against the enclosing component.
+The fix prunes hidden tool/cache directories and `__pycache__` during source discovery, preserves
+recursive authored source and factory validation, and keeps explicit manifest paths checked.
+It uses the filesystem, so copied catalogs need no Git index. Regression RED: 5 failed / 38 passed;
+GREEN: all 43 catalog-check tests passed. No firmware or Pocket changes in this correction.
+Correction verification: `tools/check-all.sh` ended **all checks passed**, including 2208 Python
+tests, 1861 JavaScript tests and the ordinary isolated HA/ESPHome checks.

@@ -410,3 +410,46 @@ def test_secondary_factory_import_checked_with_shared_external_components(catalo
     (folder / 'second.factory.yaml').write_text(factory('demo-sensor/0.0.9'))
     errors = cc.check_component(component_yaml(catalog))
     assert any('second.factory.yaml' in e and 'dashboard_import' in e for e in errors)
+
+
+@pytest.mark.parametrize('cache_path', [
+    '.esphome/external_components/cached-repo/components/audio-sensor/esphome',
+    'boards/.esphome/packages/cached-repo/components/audio-sensor/esphome',
+    '.git/cached-tree',
+    '__pycache__/cached-tree',
+])
+def test_esphome_discovery_ignores_cache_but_checks_nested_sources(catalog, cache_path):
+    """Copied catalogs need no Git index; build caches must not become enclosing-component source."""
+    folder = catalog / 'components/demo-sensor/esphome'
+    cached = folder / cache_path
+    cached.mkdir(parents=True)
+    (cached / 'dependency.yaml').write_text(
+        firmware('0.5.0', ref='audio-sensor/0.5.0') + factory('audio-sensor/0.5.0'))
+    source = folder / 'boards/shared'
+    source.mkdir(parents=True)
+    (folder / 'node.yaml').write_text('packages:\n  common: !include boards/shared/common.yaml\n')
+    common = source / 'common.yaml'
+    variant = source / 'pdm.factory.yaml'
+    common.write_text(firmware('0.1.0'))
+    variant.write_text(factory('demo-sensor/0.1.0'))
+    assert cc.check_component(component_yaml(catalog)) == []
+
+    # A cache must neither introduce false errors nor suppress validation of real nested source.
+    common.write_text(firmware('0.0.9', ref='demo-sensor/0.0.9'))
+    variant.write_text(factory('demo-sensor/0.0.9'))
+    errors = cc.check_component(component_yaml(catalog))
+    assert len(errors) == 3
+    assert any('boards/shared/common.yaml: external_components ref' in e for e in errors)
+    assert any('boards/shared/common.yaml: esphome.project.version' in e for e in errors)
+    assert any('boards/shared/pdm.factory.yaml: dashboard_import' in e for e in errors)
+    assert not any('dependency.yaml' in e for e in errors)
+
+
+def test_cached_external_components_do_not_enable_source_factory_import_check(catalog):
+    """Only source dependencies determine whether the component's factory imports are release-locked."""
+    folder = catalog / 'components/demo-sensor/esphome'
+    cached = folder / '.esphome/external_components/cached-repo'
+    cached.mkdir(parents=True)
+    (cached / 'dependency.yaml').write_text(external_components('demo-sensor/0.1.0'))
+    (folder / 'second.factory.yaml').write_text(factory('demo-sensor/0.0.9'))
+    assert cc.check_component(component_yaml(catalog)) == []

@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -90,6 +91,21 @@ def _external_component_refs(path: Path) -> list[str]:
                 str(source.get("url", "")).removesuffix(".git").rstrip("/") == CATALOG_REPO_URL:
             refs.append(str(source.get("ref")))
     return refs
+
+
+def _esphome_source_files(component_dir: Path) -> list[str]:
+    """Discover source YAML without traversing ESPHome downloads/builds or tool caches.
+
+    No Git index is needed: catalog fixtures and copied release trees use the same check.
+    Explicit manifest paths are added separately and remain checked even if hidden.
+    """
+    sources = []
+    for directory, directories, files in os.walk(component_dir / "esphome"):
+        directories[:] = [name for name in directories if not name.startswith(".") and name != "__pycache__"]
+        for name in files:
+            if name.endswith(".yaml") and not name.startswith("."):
+                sources.append((Path(directory) / name).relative_to(component_dir).as_posix())
+    return sources
 
 
 def _catalog_root(component_yaml: Path) -> Path:
@@ -183,9 +199,8 @@ def check_component(path: Path) -> list[str]:
     factory_file = esphome.get("factory")
     # Local !include packages and additional factory variants are part of the same release.
     # Scan the firmware tree too, so extracting a shared package cannot hide a stale ref.
-    firmware_files = sorted(set(package_files + ([factory_file] if factory_file else []) + [
-        f.relative_to(comp_dir).as_posix() for f in (comp_dir / "esphome").rglob("*.yaml")
-    ]))
+    firmware_files = sorted(set(package_files + ([factory_file] if factory_file else []) +
+                                _esphome_source_files(comp_dir)))
     uses_catalog_components = False
     for rel in firmware_files:
         if (comp_dir / rel).is_file():
