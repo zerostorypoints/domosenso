@@ -17,7 +17,7 @@
       "tag": "awnings/0.4.0",
       "commit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -26,7 +26,7 @@
       "tag": "backup/0.2.0",
       "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -35,7 +35,7 @@
       "tag": "bermuda-presence/0.3.0",
       "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -44,7 +44,7 @@
       "tag": "calendar/0.2.0",
       "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -53,16 +53,16 @@
       "tag": "climate-air/0.3.0",
       "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
       "id": "floorplan",
-      "version": "0.4.0",
-      "tag": "floorplan/0.4.0",
-      "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.5.0",
+      "tag": "floorplan/0.5.0",
+      "commit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -71,9 +71,9 @@
       "tag": "gate-remote/0.1.1",
       "commit": "7d087839c6189ca41dfdaf2995fe15d9c2604c67",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home.",
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home.",
         "Fixed-code handsets only: two presses of a rolling-code handset give different frames, and the node cannot send them.",
-        "Tested in one home with an 868.3 MHz handset, using that home\u2019s own firmware, the precursor of these packages; the released ESPHome packages are config- and compile-checked only. 433 MHz with the CC1101 (E07-M1101D) module is untested."
+        "Tested in one home with an 868.3 MHz handset, using that home’s own firmware, the precursor of these packages; the released ESPHome packages are config- and compile-checked only. 433 MHz with the CC1101 (E07-M1101D) module is untested."
       ]
     },
     {
@@ -82,7 +82,7 @@
       "tag": "lights/0.4.0",
       "commit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -91,16 +91,16 @@
       "tag": "media/0.2.0",
       "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
       "id": "plants",
-      "version": "0.5.0",
-      "tag": "plants/0.5.0",
-      "commit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
+      "version": "0.6.0",
+      "tag": "plants/0.6.0",
+      "commit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -109,7 +109,7 @@
       "tag": "ramka/0.20.0",
       "commit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     },
     {
@@ -118,9 +118,9 @@
       "tag": "timers/0.1.0",
       "commit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
       "limitations": [
-        "Not field-tested: no home has run it yet, and the component\u2019s own notes call this a development source that promises no physical alarm reliability.",
+        "Not field-tested: no home has run it yet, and the component’s own notes call this a development source that promises no physical alarm reliability.",
         "Home Assistant restores active and paused timers after a restart, but it does not replay the timer.finished event for one that ended while it was down; a timer that is idle does not by itself show that it finished.",
-        "The shared alarm sound, timer commands from a native app and the assistant\u2019s timer actions need the separate Frame app with timer support. This version names no minimum app version, so only the helpers and the Ramka\u2019s tile and badge are described here."
+        "The shared alarm sound, timer commands from a native app and the assistant’s timer actions need the separate Frame app with timer support. This version names no minimum app version, so only the helpers and the Ramka’s tile and badge are described here."
       ]
     },
     {
@@ -129,7 +129,7 @@
       "tag": "weather/0.2.0",
       "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
       "limitations": [
-        "Field experience is limited to the maintainer\u2019s installation. Review device compatibility for your home."
+        "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
     }
   ],

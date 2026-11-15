@@ -32,8 +32,8 @@
     "Map each plant and its thresholds, optionally with a photo; Ramka 0.7.0 or later finds the plants itself with plants: discover."
   ],
   "id": "plants",
-  "version": "0.5.0",
-  "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
+  "version": "0.6.0",
+  "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
   "evidencePaths": [
     "components/plants/component.yaml"
   ],

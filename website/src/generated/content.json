@@ -589,7 +589,7 @@
           "preview": "/previews/floorplan.svg",
           "previewType": "illustration",
           "layout": "Native Home Assistant dashboard; zoom and pan by wheel, pinch or buttons; editing on a desktop or tablet.",
-          "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+          "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
           "evidencePath": "components/floorplan/cards/floorplan-card.js"
         },
         {
@@ -614,8 +614,8 @@
         "Optionally show it on the Ramka with floorplan: true, and mark rooms open to each other without doors as one open space so their maps share readings."
       ],
       "id": "floorplan",
-      "version": "0.4.0",
-      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.5.0",
+      "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
       "evidencePaths": [
         "components/floorplan/component.yaml"
       ],
@@ -1059,8 +1059,8 @@
         "Map each plant and its thresholds, optionally with a photo; Ramka 0.7.0 or later finds the plants itself with plants: discover."
       ],
       "id": "plants",
-      "version": "0.5.0",
-      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
+      "version": "0.6.0",
+      "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
       "evidencePaths": [
         "components/plants/component.yaml"
       ],
@@ -1727,7 +1727,7 @@
         },
         {
           "id": "plants",
-          "version": "0.5.0"
+          "version": "0.6.0"
         },
         {
           "id": "ramka",
@@ -1859,7 +1859,7 @@
       "compatibility": [
         {
           "id": "plants",
-          "version": "0.5.0"
+          "version": "0.6.0"
         }
       ],
       "body": "## Place and discover\n\nInstall the sensor as instructed by its manufacturer and provide Bluetooth coverage with a proxy. Set up the Xiaomi BLE integration (xiaomi_ble) in Home Assistant.\n\n## Check each plant\n\nConfirm soil moisture, conductivity, light and temperature update before assigning the plant. Choose suitable thresholds for the plant and substrate. Ramka can display a plant page when configured; this sensor does not provide automatic watering.\n\n## Setup references\n\n- [Xiaomi BLE setup — Home Assistant](https://www.home-assistant.io/integrations/xiaomi_ble/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
