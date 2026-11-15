@@ -4,6 +4,15 @@ A Hi-Link HLK-LD2410C 24 GHz presence radar on an M5Stack Atom Lite that already
 `bermuda-presence` BLE proxy. It is that component's optional feature `radar`; the Ramka uses a
 radar like this to wake its screen. Device file: [hlk-ld2410c.yaml](hlk-ld2410c.yaml).
 
+## Printable mount
+
+The [modular Atom Lite and radar mount](enclosures/hlk-ld2410c-atom-lite/README.md) keeps the
+radar vertical on a turning head, with a standing foot or shelf-edge clamp and printed fasteners.
+The Atom's button stays accessible above its downward-facing GPIO harness. This is a prototype;
+check the fit sample and actual cable slack before printing the complete assembly.
+
+![Standing mount for Atom Lite and LD2410C](enclosures/hlk-ld2410c-atom-lite/preview/assembly_stand.png)
+
 ## Wiring
 
 ![HLK-LD2410C on an M5Stack Atom Lite: 5V to VCC, G to GND, G22 to TX, G19 to RX, OUT not connected](wiring/hlk-ld2410c-atom-lite.svg)
