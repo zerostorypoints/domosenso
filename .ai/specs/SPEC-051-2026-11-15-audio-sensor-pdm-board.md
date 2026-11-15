@@ -1,4 +1,4 @@
-# SPEC-050: A second audio-sensor board: ESP32-S3 with IM73D122
+# SPEC-051: A second audio-sensor board: ESP32-S3 with IM73D122
 
 - Status: approved 2026-11-15 by the maintainer in the coordinating chat; implementation delegated
   to a separate implementation chat, with independent technical review before handoff.

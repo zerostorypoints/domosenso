@@ -1,4 +1,4 @@
-"""SPEC-050 board adapters: hardware isolation, shared measurements and device identity."""
+"""SPEC-051 board adapters: hardware isolation, shared measurements and device identity."""
 from pathlib import Path
 import subprocess
 import yaml

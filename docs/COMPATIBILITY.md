@@ -260,7 +260,7 @@ The canonical assistant-actions-bindings.yaml.j2 template is reserved metadata e
 optional declaration is absent; it is never an HA package or a recommendation install signal.
 Website impact: deferred until the component and compatible bridge/client releases are public.
 
-### Audio-sensor board adapters (SPEC-050, 0.5.0 unreleased)
+### Audio-sensor board adapters (SPEC-051, 0.5.0 unreleased)
 
 `esphome/audio-sensor.yaml` permanently retains the Atom entry point. The additive PDM entry
 `esphome/audio-sensor-pdm.yaml` reports `domosenso.audio-sensor-pdm`; optional

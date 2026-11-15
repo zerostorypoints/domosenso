@@ -10,7 +10,7 @@ keeping thin files owner-managed. The DSP stays unchanged.
 
 **Tech Stack:** ESPHome 2026.9.1, ESP-IDF, Jinja, Python/pytest, C++ host tests.
 
-**Spec:** `.ai/specs/SPEC-050-2026-11-15-audio-sensor-pdm-board.md`
+**Spec:** `.ai/specs/SPEC-051-2026-11-15-audio-sensor-pdm-board.md`
 
 ## Global Constraints
 

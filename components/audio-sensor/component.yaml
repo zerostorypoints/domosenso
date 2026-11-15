@@ -1,4 +1,4 @@
-# Domosenso component manifest (SPEC-018, SPEC-050): Atom and PDM room sound sensors. A remote
+# Domosenso component manifest (SPEC-018, SPEC-051): Atom and PDM room sound sensors. A remote
 # ESPHome package with its spectrum component, the device file template and a factory image; a Home
 # Assistant package (SPL offsets, calibration helpers, the music aliases and their source select);
 # two cards, `ambient-wave-card` and `room-meter-card`. No dashboard of its own: Ramka 0.4.0 shows the
@@ -126,7 +126,7 @@ artifacts:
 provides:                                 # contract surface; placeholders in <> come from inputs
   project: {name: domosenso.audio-sensor, stability: stable}   # reported to Home Assistant as manufacturer domosenso
   projects:
-    - {name: domosenso.audio-sensor-pdm, stability: stable, note: "ESP32-S3 IM73D122 assembly, SPEC-050"}
+    - {name: domosenso.audio-sensor-pdm, stability: stable, note: "ESP32-S3 IM73D122 assembly, SPEC-051"}
   entities:
     # The Home Assistant package (templates/package.yaml.j2).
     - {id: "input_number.<id_prefix>_spl_offset", stability: stable, note: "0-140 dB, step 0.1, no initial: a fresh helper starts at 0 and the README's calibration sets it"}
