@@ -53,7 +53,7 @@ Then `domosenso render ramka` and deploy. Two helpers appear: `input_number.<pre
 For every home: a lone reading on the air-card now takes both rows, as large as the score, and a lone
 24-hour chart below it the full width (SPEC-042).
 
-## 0.18.0 (unreleased): reading age for managed plant sources
+## 0.18.0 (2026-11-07): reading age for managed plant sources
 
 Plants with the new opt-in measurement bindings show the age of the last
 valid report and mark stale readings on tiles and lists. The visible age
