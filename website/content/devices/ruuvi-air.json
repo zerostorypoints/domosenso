@@ -3,7 +3,7 @@
   "title": "Ruuvi Air",
   "summary": "Optional air-quality readings over Bluetooth.",
   "sourcePath": "devices/ruuvi-air.yaml",
-  "sourceCommit": "10b863238b9d89208a60a6e3d9bd959d47a0f083",
+  "sourceCommit": "16c535166d3dcca58c80fe22203f072010565491",
   "components": [
     "climate-air"
   ],
