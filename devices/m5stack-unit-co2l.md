@@ -102,5 +102,4 @@ The cave can be on the dragon's left or right.
   [build script](enclosures/m5stack-co2l-atom-lite/build.py).
 
 The first build printed the halves, the wings and the keys. Its dowels came off the bed: they now lie
-on a wider flat with a brim. Its wings were loose in 4 mm sockets: the pegs now go 8 mm deep. Neither
-fix has been printed yet.
+on a wider flat with a brim. Its wings were loose in 4 mm sockets: the pegs now go 8 mm deep. The maker reported the latest v2.6 build printed and checked on 16 November 2026. Sensor response, temperature bias and long-term retention have not been measured.

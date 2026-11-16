@@ -131,6 +131,8 @@ The clamp's slots follow `pins_used` (`[1, 7, 8, 9, 11, 20, 22, 28]`), the eight
 
 ## Assembly
 
+![Exploded assembly: base, module, jumper clamp, Atom and snap-on lid](preview/exploded.png)
+
 1. Put the module in the base, pin face up, with the SMA jack down in the slot of the back wall,
    on the four pads and against the left wall.
 2. Plug the female ends onto the module's pins and the male ends into the Atom's sockets, as
@@ -306,7 +308,13 @@ checks report the overlaps the first print met: 0.9 mm at the clamp, 2.0 mm at t
 - After printing the lid, press each spring flap from the underside: it must move. A flap fused
   at its first layer pushes nothing.
 
-## Not verified
+## Physical verification and remaining limits
+
+On 16 November 2026 the maker reported the latest enclosure printed and checked. This supersedes
+the pending-print status in the dated development notes below. It does not establish that every
+optional base/clamp variant was printed, or quantify retention, fatigue or radio performance.
+
+### Earlier development notes (superseded fit status)
 
 - The clamp has been printed twice in eSun PETG-CF on a Bambu Lab P2S (20 minutes each,
   clean). The first, on 5 November 2026, did not seat on the module: its bosses caught on the

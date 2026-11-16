@@ -125,3 +125,36 @@ and verify the same pinned commit; do not silently fall back to upstream `main`.
    a long print when fit matters, and `playbook-first-print.md` for feedback. Record which checks
    ran, which did not, and what still requires a physical print. Preparing files does not
    authorize sending a job to a printer or publishing a model to an external catalog.
+
+## MakerWorld and domosenso.org share the model sources
+
+The device guides in `devices/*.md` supply the enclosure overview on domosenso.org. Enclosure
+READMEs supply parts, printing and assembly. Do not maintain a second hand-written copy for
+MakerWorld. `devices/enclosures/makerworld.json` selects the three models, README sections and
+exact files; `makerworldUrl` stays null until a publication URL has actually been verified.
+
+After committing the model and instructions, export a delivery directory outside the checkout:
+
+```sh
+uv run tools/export_makerworld.py --revision "$(git rev-parse HEAD)" --out /tmp/domosenso-makerworld
+```
+
+Each folder contains `description.md`, the existing CAD illustrations, a complete ZIP and a
+manifest recording the source SHA and SHA-256 of every source file. All inputs come from that
+commit, so uncommitted local edits cannot silently change an upload. Convert a description for
+a rich-text editor with Pandoc if needed: `pandoc description.md -f gfm -t html -o description.html`.
+The website publishes its selected `documentationCommit` through its normal source/main gate;
+use the same revision for MakerWorld after the website pin has advanced. A draft may name a
+newer source revision, but do not claim it is already live on .org.
+
+Keep both bases of the radar mount in one listing, both dragon orientations in one listing,
+and both radio base/clamp options in one listing. Preserve LICENSE and NOTICE; choose a matching
+license on the platform, and do not select Exclusive while these files are publicly available.
+Do not upload calibration/test plates as independent models. Choose the material in each 3MF
+before slicing; a physical fit report does not certify every profile or optional variant.
+
+Publication also needs real, matching photographs. The MakerWorld model-upload guidelines
+inspected on 16 November 2026 require at least three views of each completed print. Add CAD
+assembly diagrams as supplemental illustrations; do not present renders as print photos. Review
+current requirements at https://wiki.bambulab.com/en/makerworld/tutorials/model-upload-guidelines
+before publishing. Account sessions and unpublished draft identifiers stay outside the repository.

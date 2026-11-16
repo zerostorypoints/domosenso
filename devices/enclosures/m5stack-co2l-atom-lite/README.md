@@ -13,7 +13,7 @@ The dragon is two halves joined without screws:
 
 The Atom is held against its plugs by stop lips above and below the plug window. Its small side key is a reset key; it sits flush with the case, so the bay's clearance keeps it free. The wings plug into the shoulders and their last finger stands on the table.
 
-Status: test cuts printed (TEST1 sections, TEST2 coupon, TEST3 changes), then one full build in v2.5: the halves, wings and keys came out; its dowels came off the bed and its wings were loose. v2.6 fixes both and is not printed yet. Gate (3d-print-designer `verify-model.py`): 34 parts per version, all clash checks empty, no overhang past 45° on the halves, every plate one body per part; `check_atom_stop` proves the Atom cannot slide into the plug bay, `clash_sockets` that the two wing sockets keep a 1.6 mm wall. The halves' binary STLs show 2 to 10 non-manifold edges where the body's rounded edge has vertices closer together than single precision holds; the model itself is closed, the gate reports this as a failure on some runs, and Bambu Studio repairs it on import (the v2.5 halves printed whole). Reviews: a Sonnet design review, then a final review on Fable (claude-fable-5-1); all of the final review's geometry findings are fixed.
+Status: test cuts printed (TEST1 sections, TEST2 coupon, TEST3 changes), then one full build in v2.5: the halves, wings and keys came out; its dowels came off the bed and its wings were loose. v2.6 fixes both. On 16 November 2026 the maker reported the latest version printed and checked; this supersedes the earlier pending-print status. This is a fit report, not a quantified retention or sensor-performance test. Gate (3d-print-designer `verify-model.py`): 34 parts per version, all clash checks empty, no overhang past 45° on the halves, every plate one body per part; `check_atom_stop` proves the Atom cannot slide into the plug bay, `clash_sockets` that the two wing sockets keep a 1.6 mm wall. The halves' binary STLs show 2 to 10 non-manifold edges where the body's rounded edge has vertices closer together than single precision holds; the model itself is closed, the gate reports this as a failure on some runs, and Bambu Studio repairs it on import (the v2.5 halves printed whole). Reviews: a Sonnet design review, then a final review on Fable (claude-fable-5-1); all of the final review's geometry findings are fixed.
 
 ## Print first: test cuts (about 1.5 h) and the fit coupon
 
@@ -86,14 +86,14 @@ Taken with a caliper on 2026-11-07:
 
 Estimated, not measured: the USB-C plug (12.5 × 7 × 22 mm) and the cable (4.5 mm).
 
-## Not verified (a print will show)
+## Verification limits
 
-- v2.6: the wings' 8 mm pegs holding without glue, and the dowels on their wider flat and brim staying on the bed and still pressing in.
+- The latest v2.6 build is reported printed and checked. Wing retention force, repeated disassembly and long-term fit have not been measured.
 - Small first-layer islands on the halves' cut faces: the Atom's stop lips and the edges round the key recesses. Use a brim or glue stick and watch the first layers.
-- The dowel and key fits in the halves themselves (the coupon set them; the halves' seam faces may print differently).
+- On each new print, check dowel and key fits in the halves: their seam faces may print differently from the coupon.
 - The head ceiling bridges 11 mm in PETG-CF and may sag slightly.
-- The plunger's travel and feel.
-- The stance on the wing feet.
+- Check the plunger's travel and feel on each new print.
+- Check that the assembled dragon stands steadily on its wing feet.
 - Sensor temperature: run the Sensirion acceptance test (15 minutes running, difference ≤ 0.5 °C from a reference, CO₂ step under 60 s). The sensor sits above the Atom, against Sensirion's advice; this was accepted for this design.
 
 ## Files
