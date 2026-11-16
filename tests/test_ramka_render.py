@@ -4742,3 +4742,19 @@ def test_air_rooms_are_checked(tmp_path, rooms, message):
     inputs = {**demo_inputs(), "air": rooms}
     with pytest.raises(Exception, match=message):
         render(tmp_path, inputs)
+
+
+def test_hifisync_opt_in_only_enriches_the_live_player_gesture_card(tmp_path):
+    base = demo_inputs()
+    original = render(tmp_path / "old", base)
+    enabled = render(tmp_path / "enabled", {**base, "hifisync_music": True})
+    for lang in LANGS:
+        key = f"dashboard.{lang}.yaml"
+        card = next(n for n in walk(enabled[key]) if n.get("type") == "custom:corner-taps-card")
+        assert card.pop("hifisync_music") == {
+            "player": base["media_player"],
+            "mode": "input_select.ramka_mode",
+            "view": "binary_sensor.ramka_music_view",
+        }
+        assert enabled[key] == original[key]
+    assert enabled == original

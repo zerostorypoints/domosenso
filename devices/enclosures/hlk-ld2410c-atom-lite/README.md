@@ -5,9 +5,24 @@ standing and shelf-edge bases. The Atom's button faces up; its GPIO harness pass
 case. The radar remains vertical while its head turns left and right. All mechanical fasteners
 are printed. Wiring and firmware remain as described in the [device guide](../../hlk-ld2410c.md).
 
-**Prototype: complete-mount fit exposed cradle and cable-clearance failures.** Do not treat the
-revised full-mount meshes or assembly previews as a physically accepted design. A successful mesh check
-does not establish clamping force, stability, friction or radar performance.
+**V5 trial: the user reports that all parts now fit.** Finger access to the Atom button
+is still cramped below the yaw bearing. This is one successful physical fitting, not
+a measurement of retention force, fatigue life, stability or radar performance.
+
+The current downloadable design is **V5**, frozen after that fitting report. The proposed
+button-access bevel below is not included in the source or printable files.
+
+![V5 assembly guide: desktop and shelf bases, cradle guides and cable routing](preview/assembly-guide.png)
+
+For a new build, follow [Parts and assembly](#parts-and-assembly) and [Printing](#printing).
+The [STL files](stl/) work with other slicers; [build.py](build.py) regenerates meshes and
+support-exclusion volumes from [enclosure.scad](enclosure.scad). Render this guide with
+`uv run devices/enclosures/hlk-ld2410c-atom-lite/assembly-guide.py` from the repository root;
+install OpenSCAD and Cairo first. On macOS with Homebrew Cairo, prefix the command with
+`DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix cairo)/lib"`. These are CAD illustrations,
+not installation photographs.
+
+## Prototype history
 
 First-print feedback: the test sample had obstructing plastic at the spindle bore entrance,
 key channels and other interfaces. The other sample parts fit. The long key entered the sample
@@ -33,16 +48,16 @@ revision was subsequently printed, with the additional findings below.
   cable-routing room. Raising the radar alone would consume jumper slack: the revised design
   must evaluate the cradle height, both connector ends and the complete cable path together.
 - Correction: the revised solid guides and rear USB clearance replace those hooks and
-  obstructions. A new fit test with USB and all radar wires connected is still required. Standing-base
+  obstructions. At that stage, a new fit test with USB and all radar wires connected was still required. Standing-base
   stability, long-term clamp retention and unobstructed yaw with the real harness remain
   unverified. Private photos and printer-specific records are kept outside this repository.
 
 ### Revised-guide physical feedback (2026-11-16)
 
-All three replacement parts were reported printed and installed. The cradle still has
+At the V4 trial, all three replacement parts were reported printed and installed. The cradle had
 excessive play in its tower receivers and pitches forward/down, rather than staying square.
-The Atom keeper falls out without useful resistance; the release direction and condition
-of its latch/rail lips have not yet been established. The radar keeper does not fully seat;
+The Atom keeper fell out without useful resistance; the release direction and condition
+of its latch/rail lips have not yet been established. The radar keeper did not fully seat;
 obstructing plastic had to be removed. The saved full-mount toolpath contains 22 support
 segments inside its right rail pocket (sampled at 0.15 mm). The previous audit did not
 cover these pockets. No support centreline was found in the PCB slots or upper rail
@@ -66,8 +81,22 @@ The nominal gap above the PCB to the cap crossbar remains approximately 2.8 mm: 
 push the crossbar onto the PCB**. The rail engagement is 3.8 mm when fully seated.
 
 The three small replacement parts serve as the next fit sample on the existing mount;
-there is no need to print another tower or base for this trial. No revised geometry is
-physically accepted until the checks below pass.
+there is no need to print another tower or base for this trial. The later fitting report
+below supersedes the initial fit uncertainty; quantified strength remains unverified.
+
+
+### V5 fitting result and button access
+
+The subsequent physical trial reported that all parts fit; the remaining reported issue
+is limited room for a finger to press the Atom button. The stationary yaw-bearing ring
+above it was identified as the candidate for a gentle underside/front bevel. Keep the
+working V5 interfaces and both module heights as the baseline. A possible 3 mm-high,
+5 mm-radial-width bevel over the front 120 degrees is an analytical proposal only; no
+production source, STL or Bambu project has been changed for it. At the outer radius of
+the stop channel it would leave at least 2.4 mm of floor vertically, and preserve the top
+3 mm of the full-radius ring. This improves entry at the edge, not the entire space above
+the button; the shaft and key remain in the centre. Ergonomics and the modified part would
+need CAD, slicer and physical verification before release.
 
 | Standing base | Shelf clamp |
 |---|---|

@@ -4,14 +4,33 @@ A Hi-Link HLK-LD2410C 24 GHz presence radar on an M5Stack Atom Lite that already
 `bermuda-presence` BLE proxy. It is that component's optional feature `radar`; the Ramka uses a
 radar like this to wake its screen. Device file: [hlk-ld2410c.yaml](hlk-ld2410c.yaml).
 
-## Printable mount
+## Desktop mount
 
-The [modular Atom Lite and radar mount](enclosures/hlk-ld2410c-atom-lite/README.md) keeps the
-radar vertical on a turning head, with a standing foot or shelf-edge clamp and printed fasteners.
-The Atom's button stays accessible above its downward-facing GPIO harness. This is a prototype;
-check the fit sample and actual cable slack before printing the complete assembly.
+![V5 Atom Lite and LD2410C mount: desktop and shelf bases, cradle guides and USB routing](enclosures/hlk-ld2410c-atom-lite/preview/assembly-guide.png)
 
-![Standing mount for Atom Lite and LD2410C](enclosures/hlk-ld2410c-atom-lite/preview/assembly_stand.png)
+A printable **V5 desktop-mount proposal** holds the Atom Lite below the radar, with the radar
+vertical on a head that turns up to 60 degrees left or right. Choose a 70 × 60 mm standing
+base or an interchangeable shelf-edge clamp (12 mm shelf in the reference model). The radar
+centre is 82 mm above the supporting surface. Fasteners are printed; no screws are required.
+The Atom slides into a cradle with lower pads against the mast and a removable keeper.
+
+The assembled V5 was printed in PETG and reported to fit after several trials. **Finger access
+to the upward-facing Atom button remains cramped** beneath the stationary ring. A small front
+underside bevel is documented as a future proposal; it is not included in the V5 downloads.
+Long-term retention, fatigue and standing-base stability have not been measured.
+
+- [Print settings, parts and assembly](enclosures/hlk-ld2410c-atom-lite/README.md), including
+  support exclusions that keep the fitted joints clear.
+- [Assembly diagram](enclosures/hlk-ld2410c-atom-lite/preview/assembly-guide.png) for both bases.
+- [STL files](enclosures/hlk-ld2410c-atom-lite/stl/) for a complete new set or V5 replacements.
+- [Parametric OpenSCAD source](enclosures/hlk-ld2410c-atom-lite/enclosure.scad) and
+  [build script](enclosures/hlk-ld2410c-atom-lite/build.py), including optional support blockers.
+
+The USB clearance was sized around a 10 × 5 × 30 mm plug, with a 16 mm-wide, 40 mm-long
+clearance envelope. Check your cable before printing. The tested 120 mm jumpers, measured
+end to end including the connector housings, only just reached: trial fit the complete
+harness and check both turning limits without pulling the connectors. For an existing V4
+mount, only the cradle and the two keepers change; print the complete set for a new build.
 
 ## Wiring
 

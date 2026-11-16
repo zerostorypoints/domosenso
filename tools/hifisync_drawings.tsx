@@ -68,8 +68,11 @@ function ListeningRoom({ room, translate }: { room: Room; translate: Translate }
 
 export function mountHiFiDrawing(host: HTMLElement, type: string, model: System | Room, locale: Locale, translate: Translate) {
   const root = createRoot(host);
-  flushSync(() => root.render(<DrawingLocale.Provider value={locale}>{type === 'system'
-    ? <Equipment system={model as System} translate={translate}/>
-    : <ListeningRoom room={model as Room} translate={translate}/>}</DrawingLocale.Provider>));
-  return () => root.unmount();
+  const update = (value: System | Room, language: Locale, text: Translate) => {
+    flushSync(() => root.render(<DrawingLocale.Provider value={language}>{type === 'system'
+      ? <Equipment system={value as System} translate={text}/>
+      : <ListeningRoom room={value as Room} translate={text}/>}</DrawingLocale.Provider>));
+  };
+  update(model, locale, translate);
+  return { update, dispose: () => root.unmount() };
 }

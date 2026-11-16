@@ -441,10 +441,10 @@
     },
     {
       "id": "climate-air",
-      "version": "0.3.0",
-      "sourceTag": "climate-air/0.3.0",
-      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
-      "summary": "Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air",
+      "version": "0.3.1",
+      "sourceTag": "climate-air/0.3.1",
+      "sourceCommit": "ba7e298f44abc806b31aa450f2a2433f3a44a3cb",
+      "summary": "Temperature and humidity per room from Tapo sensors; CO2, fine dust, VOC and NOx from a Ruuvi Air, or CO2 alone from an M5Stack Unit CO2L",
       "requirements": [
         {
           "kind": "temperature-humidity-sensor",
@@ -467,6 +467,11 @@
           "setup": "discovered through a Bluetooth proxy; enable the air-quality score entity by hand, it is off by default"
         },
         {
+          "name": "esphome",
+          "source": "core",
+          "setup": "only for a Unit CO2L: the Atom Lite it hangs from, flashed and adopted as the device guide m5stack-unit-co2l describes"
+        },
+        {
           "name": "group",
           "source": "core"
         },
@@ -479,7 +484,8 @@
         {
           "kind": "air-quality-sensor",
           "recommend": [
-            "ruuvi-air"
+            "ruuvi-air",
+            "m5stack-unit-co2l"
           ],
           "feature": "air"
         },
@@ -531,19 +537,29 @@
           "required": false
         },
         {
+          "name": "comfort_defaults",
+          "type": "{temp_low, temp_high, humidity_low, humidity_high}",
+          "required": false
+        },
+        {
+          "name": "outside_comfort_defaults",
+          "type": "{temp_low, temp_high, humidity_low, humidity_high}",
+          "required": false
+        },
+        {
           "name": "bathroom_humidity",
           "type": "int",
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/climate-air",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/climate-air/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/ba7e298f44abc806b31aa450f2a2433f3a44a3cb/components/climate-air",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/ba7e298f44abc806b31aa450f2a2433f3a44a3cb/components/climate-air/UPGRADE.md"
     },
     {
       "id": "floorplan",
-      "version": "0.4.0",
-      "sourceTag": "floorplan/0.4.0",
-      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.5.0",
+      "sourceTag": "floorplan/0.5.0",
+      "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
       "summary": "A floor plan of the home with rooms, sensor readings and plants at their positions",
       "requirements": [],
       "integrations": [
@@ -571,8 +587,8 @@
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ],
       "inputs": [],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/floorplan",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/floorplan/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/d9da47444ed0db3a8f1f9a317234e7bbf6df8664/components/floorplan",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/d9da47444ed0db3a8f1f9a317234e7bbf6df8664/components/floorplan/UPGRADE.md"
     },
     {
       "id": "gate-remote",
@@ -785,9 +801,9 @@
     },
     {
       "id": "plants",
-      "version": "0.5.0",
-      "sourceTag": "plants/0.5.0",
-      "sourceCommit": "2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8",
+      "version": "0.6.0",
+      "sourceTag": "plants/0.6.0",
+      "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
       "summary": "Soil moisture, conductivity, light and temperature of houseplants from Mi Flora sensors",
       "requirements": [
         {
@@ -847,7 +863,7 @@
       "inputs": [
         {
           "name": "plants",
-          "type": "list[{entity: plant.*, label, name?, room?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, active_source?, sources?, legacy_moisture_history?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?}]",
+          "type": "list[{entity: plant.*, label, name?, room?, photo?, sensors?: {moisture, conductivity, brightness, temperature}, active_source?, sources?, legacy_moisture_history?, min_moisture?, max_moisture?, min_conductivity?, max_conductivity?, min_temperature?, max_temperature?, min_brightness?, check_days?, medium?: soil|hydroculture}]",
           "required": true
         },
         {
@@ -881,14 +897,14 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8/components/plants",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/2a78e92c4993de5fe6dd5aa4f6fbfd982ba718f8/components/plants/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/d9da47444ed0db3a8f1f9a317234e7bbf6df8664/components/plants",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/d9da47444ed0db3a8f1f9a317234e7bbf6df8664/components/plants/UPGRADE.md"
     },
     {
       "id": "ramka",
-      "version": "0.20.0",
-      "sourceTag": "ramka/0.20.0",
-      "sourceCommit": "e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c",
+      "version": "0.21.0",
+      "sourceTag": "ramka/0.21.0",
+      "sourceCommit": "9379e567cf5bc9f5a3a92e589413591f74775452",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -1163,6 +1179,11 @@
           "required": false
         },
         {
+          "name": "hifisync_music",
+          "type": "bool",
+          "required": false
+        },
+        {
           "name": "dashboard_path",
           "type": "string",
           "required": false
@@ -1223,8 +1244,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/e30de12b3c0bf62a74c3fe429448c92d9f8f9c7c/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/9379e567cf5bc9f5a3a92e589413591f74775452/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/9379e567cf5bc9f5a3a92e589413591f74775452/components/ramka/UPGRADE.md"
     },
     {
       "id": "timers",

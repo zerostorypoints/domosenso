@@ -4,6 +4,40 @@ The pilot adds System and Room to the Frame tablet's Music mode for one Home Ass
 
 [Skrócona instrukcja po polsku](#skrócona-instrukcja-po-polsku).
 
+## First-release candidate setup
+
+[SPEC-052](../../.ai/specs/SPEC-052-2026-11-15-hifisync-frame-v1.md) adds
+an optional per-panel setup in Studio. Use a matched release candidate of the
+HiFiSync connector, Frame HA and Frame app. The instructions below this section
+also describe the earlier pilot, whose HiFiSync screens used a separate template.
+
+1. Issue a read-only grant in the chosen HiFiSync environment. In Home Assistant,
+   add **HiFiSync**, paste the token once and choose the system and the player.
+   The connector works independently of Frame.
+2. Open **Studio → Sources → Music** for the intended panel and select that same
+   player. Confirm the linked system and room shown beneath the player. Turn on
+   **Show System and Room** and save the source mapping. Studio adds the screens
+   alongside Now Playing during playback. The setting applies to this panel and
+   uses its current saved layout.
+3. During playback, swipe outside the active controls to move between the pages.
+   In Room, selecting a speaker, rotating or zooming holds the slideshow.
+   After 30 seconds without interaction the page timer resumes. Swiping to a
+   different page releases this hold immediately. Speaker details stay visible
+   while Room remains on screen. Any separately configured rotation pause also
+   applies.
+
+When only the system is available, the playlist includes System. When the link
+needs repair, the source mapping identifies the problem while normal playback
+continues. Reconfigure or reauthenticate the HiFiSync integration in HA as
+indicated. To remove the screens from one Frame, turn off **Show System and Room**
+and save the mapping.
+
+W wersji kandydackiej otwórz **Studio → Źródła → Muzyka**, wybierz odtwarzacz
+i sprawdź nazwy podłączonego zestawu i pokoju. Włącz **Pokaż System i Pokój**
+i zapisz źródła. Dotknięcie kolumny, obrót lub zoom w Pokoju wstrzymują rotację.
+Ramka wznawia odliczanie po 30 sekundach bezczynności lub od razu po ręcznej
+zmianie ekranu. Dane kolumny pozostają widoczne, dopóki jesteś w Pokoju.
+
 ## Prerequisites
 
 - A HiFiSync environment running the pilot grant migration and web API.

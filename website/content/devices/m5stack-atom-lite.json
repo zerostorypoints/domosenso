@@ -23,15 +23,15 @@
     },
     {
       "id": "climate-air",
-      "version": "0.3.0"
+      "version": "0.3.1"
     },
     {
       "id": "plants",
-      "version": "0.5.0"
+      "version": "0.6.0"
     },
     {
       "id": "ramka",
-      "version": "0.20.0"
+      "version": "0.21.0"
     },
     {
       "id": "gate-remote",
