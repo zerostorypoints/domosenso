@@ -207,7 +207,34 @@ the slicer; the geometry gate's overhang report does not establish that a part n
 
 Provide removable external supports under the head flange/stop lug, unsupported bearing
 faces and outer receiver wings. Exclude supports from the spindle bore and its entrance, both key channels, base sockets,
-Atom keeper channels and latch window, radar-cap pockets and release gap, mast docking slots and wire eye. Generate the optional
+Atom keeper channels and latch window, radar-cap pockets and release gap, mast docking slots and wire eye. In your slicer, paint these surfaces as **no support**, or add support-blocker
+volumes around these passages. Check every layer in line-type view to ensure supports do not
+enter them; a blocker shape alone is not proof that a passage is clear.
+
+In Bambu Studio use **Normal (auto)**, style **Snug**, and set **Initial layer expansion**
+to **0 mm**. Default grid-style supports and first-layer expansion can fill the bore entrance.
+After reopening the project, verify supports, four walls and 25% gyroid, then slice again.
+
+The earlier local toolpath check sampled the spindle bores/entrance, key channels, base
+sockets and Atom keeper channels. It missed the radar-cap pockets: the later audit found
+support there. The V5 replacement-plate check now covers the cap pockets/release region,
+Atom keeper channels/window and USB envelope; no support centreline crosses those sampled
+interiors. Sampling does not establish the full deposited bead envelope or prove that a
+user's resliced file has the same paths. Inspect it in line-type view before printing.
+
+The cradle now prints **nose down**, on two deliberate front-corner feet, with an outer
+brim. Its lower stops are integral; remove accessible external support from the rear roots
+without scraping the fitted keys. Never auto-orient it without rechecking the blockers.
+The two keepers print flat in their supplied orientations; the radar cap's pockets open up.
+The cap has short unsupported latch/ledge spans which still need physical inspection for sag.
+Keep the dovetail receivers, USB opening and cable corridor free of supports.
+The keeper latches are designed for PETG: their nominal beam-strain estimates are approximately
+1.94% (Atom) and 1.41% (radar). These estimates do not certify fatigue life or make PLA a
+tested latch material.
+
+## Developer profile generation
+
+Generate the optional
 non-printing volumes in `blockers/` with `python3 build.py --support-blockers` from this
 directory. They come from [support-blockers.scad](support-blockers.scad) and are not included
 in the committed `stl/` folder.
@@ -229,24 +256,6 @@ count, infill and blocker types after reopening, then reslice in the GUI before 
 project ready. A missing Support column or a substantially different model weight warrants
 checking these settings; a successful CLI slice alone is insufficient.
 
-The earlier local toolpath check sampled the spindle bores/entrance, key channels, base
-sockets and Atom keeper channels. It missed the radar-cap pockets: the later audit found
-support there. The V5 replacement-plate check now covers the cap pockets/release region,
-Atom keeper channels/window and USB envelope; no support centreline crosses those sampled
-interiors. Sampling does not establish the full deposited bead envelope or prove that a
-user's resliced file has the same paths. Inspect it in line-type view before printing.
-
-The cradle now prints **nose down**, on two deliberate front-corner feet, with an outer
-brim. Its lower stops are integral; remove accessible external support from the rear roots
-without scraping the fitted keys. Never auto-orient it without rechecking the blockers.
-The two keepers print flat in their supplied orientations; the radar cap's pockets open up.
-The cap has short unsupported latch/ledge spans which still need physical inspection for sag.
-Keep the dovetail receivers, USB opening and cable corridor free of supports.
-The keeper latches are designed for PETG: their nominal beam-strain estimates are approximately
-1.94% (Atom) and 1.41% (radar). These estimates do not certify fatigue life or make PLA a
-tested latch material.
-
-## Developer profile generation
 
 Optional Bambu Studio projects can be made from the STL with the installed skill. Supply your
 own machine, material preset and support choice:

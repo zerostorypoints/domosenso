@@ -3,7 +3,7 @@ import zipfile
 
 import pytest
 
-from export_makerworld import package_model, section
+from export_makerworld import package_model, section, links
 
 
 def test_sections_keep_nested_assembly_steps_and_fail_on_missing_heading():
@@ -44,10 +44,22 @@ def test_rejects_paths_outside_model(tmp_path):
 
 def test_actual_catalog_packages_all_selected_files(tmp_path):
     import json
-    from pathlib import Path
+    import subprocess
     from export_makerworld import ROOT
     for item in json.loads((ROOT / "devices/enclosures/makerworld.json").read_text())["models"]:
+        folder = f"devices/enclosures/{item['id']}"
+        tracked = set(subprocess.check_output(
+            ['git', 'ls-files', folder], cwd=ROOT, text=True).splitlines())
+        declared = {f"{folder}/{path}" for path in item['files']} | {f"{folder}/README.md"}
+        assert tracked == declared, f"Unpackaged model files: {tracked - declared}"
         result = package_model(item, "b" * 40, lambda p: (ROOT / p).read_bytes(), tmp_path)
         with zipfile.ZipFile(result / (item["id"] + ".zip")) as archive:
             assert archive.testzip() is None
             assert not any("stand_plain" in name for name in archive.namelist())
+
+
+def test_fragment_links_resolve_against_source_document():
+    source = 'devices/enclosures/example/README.md'
+    revision = 'a' * 40
+    assert links('[Wiring](#wiring)', source, revision) == (
+        f'[Wiring](https://github.com/zerostorypoints/domosenso/blob/{revision}/{source}#wiring)')
