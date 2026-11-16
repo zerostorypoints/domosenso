@@ -1,0 +1,143 @@
+{
+  "models": [
+    {
+      "id": "hlk-ld2410c-atom-lite",
+      "title": "Atom Lite + LD2410C Desktop and Shelf Mount | DomoSenso",
+      "device": "devices/hlk-ld2410c.md",
+      "heading": "Desktop mount",
+      "sections": [
+        "Parts and assembly",
+        "Printing"
+      ],
+      "files": [
+        "enclosure.scad",
+        "build.py",
+        "stl/atom_cradle.stl",
+        "stl/atom_keeper.stl",
+        "stl/base_key.stl",
+        "stl/clamp.stl",
+        "stl/clamp_wedge.stl",
+        "stl/dock_coupon.stl",
+        "stl/fit_coupon.stl",
+        "stl/head.stl",
+        "stl/head_key.stl",
+        "stl/radar_keeper.stl",
+        "stl/stand.stl",
+        "stl/tower.stl",
+        "preview/assembly-guide.png",
+        "preview/assembly_clamp.png",
+        "preview/assembly_stand.png",
+        "preview/clamp.png",
+        "preview/dock.png",
+        "preview/explode_clamp.png",
+        "preview/explode_stand.png",
+        "preview/rear.png",
+        "preview/stand.png",
+        "preview/view_wires.png",
+        "support-blockers.scad",
+        "assembly-guide.py",
+        "assembly-guide.scad",
+        "preview/assembly-guide.svg",
+        "3mf/stand.3mf"
+      ],
+      "extraFiles": [
+        "devices/wiring/hlk-ld2410c-atom-lite.svg"
+      ],
+      "makerworldUrl": null
+    },
+    {
+      "id": "m5stack-co2l-atom-lite",
+      "title": "CO2 Dragon for M5Stack Unit CO2L + Atom Lite | DomoSenso",
+      "device": "devices/m5stack-unit-co2l.md",
+      "heading": "Enclosure",
+      "sections": [
+        "Parts",
+        "Assembly",
+        "Verification limits"
+      ],
+      "files": [
+        "enclosure.scad",
+        "build.py",
+        "stl/dragon_stand-dowel_4.stl",
+        "stl/dragon_stand-dowel_7.stl",
+        "stl/dragon_stand-dowel_8.stl",
+        "stl/dragon_stand-dowel_9.stl",
+        "stl/dragon_stand-key_bottom.stl",
+        "stl/dragon_stand-key_rear.stl",
+        "stl/dragon_stand-plate_coupon.stl",
+        "stl/dragon_stand-plate_dowels.stl",
+        "stl/dragon_stand-plunger.stl",
+        "stl/dragon_stand-wing_l.stl",
+        "stl/dragon_stand-wing_r.stl",
+        "preview/closed.png",
+        "preview/connections.png",
+        "preview/exploded.png",
+        "preview/other_side.png",
+        "3mf/dragon_stand-dowel_4.3mf",
+        "3mf/dragon_stand-dowel_7.3mf",
+        "3mf/dragon_stand-dowel_8.3mf",
+        "3mf/dragon_stand-dowel_9.3mf",
+        "3mf/dragon_stand-key_bottom.3mf",
+        "3mf/dragon_stand-key_rear.3mf",
+        "3mf/dragon_stand-plate_coupon.3mf",
+        "3mf/dragon_stand-plate_dowels_petg.3mf",
+        "3mf/dragon_stand-plunger.3mf",
+        "3mf/dragon_stand-wing_l.3mf",
+        "3mf/dragon_stand-wing_r.3mf",
+        "light_left/dragon_stand-half_l.stl",
+        "light_left/dragon_stand-half_r.stl",
+        "light_left/dragon_stand-half_l.3mf",
+        "light_left/dragon_stand-half_r.3mf",
+        "light_right/dragon_stand-half_l.stl",
+        "light_right/dragon_stand-half_r.stl",
+        "light_right/dragon_stand-half_l.3mf",
+        "light_right/dragon_stand-half_r.3mf",
+        "test/TEST1_cf_light_left.3mf",
+        "test/TEST1_cf_light_right.3mf",
+        "test/TEST2_petg_coupon.3mf",
+        "test/TEST3_cf_light_left.3mf",
+        "test/TEST3_cf_light_right.3mf"
+      ],
+      "extraFiles": [],
+      "makerworldUrl": null
+    },
+    {
+      "id": "m5stack-cc1101-atom-lite",
+      "title": "M5Stack CC1101 + Atom Lite Radio Enclosure | DomoSenso",
+      "device": "devices/m5stack-module-cc1101.md",
+      "heading": "Enclosure",
+      "sections": [
+        "Hardware",
+        "Printing",
+        "Wiring",
+        "Assembly"
+      ],
+      "files": [
+        "enclosure.scad",
+        "build.py",
+        "stl/base.stl",
+        "stl/base_wall.stl",
+        "stl/clamp.stl",
+        "stl/clamp_12mm.stl",
+        "stl/lid.stl",
+        "stl/lid_inlay_parts.stl",
+        "preview/back.png",
+        "preview/closed.png",
+        "preview/exploded.png",
+        "preview/open.png",
+        "preview/plate.png",
+        "preview/section.png",
+        "preview/top.png",
+        "3mf/base.3mf",
+        "3mf/base_wall.3mf",
+        "3mf/clamp.3mf",
+        "3mf/clamp_12mm.3mf",
+        "3mf/lid.3mf"
+      ],
+      "extraFiles": [
+        "devices/wiring/m5stack-cc1101-atom-lite.svg"
+      ],
+      "makerworldUrl": null
+    }
+  ]
+}
