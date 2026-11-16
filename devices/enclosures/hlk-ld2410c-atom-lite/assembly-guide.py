@@ -30,7 +30,7 @@ def text(x,y,t,size=24,color='#253b47'):
  s.append(f'<text x="{x}" y="{y}" font-family="Arial,DejaVu Sans,sans-serif" font-size="{size}" fill="{color}">{html.escape(t)}</text>')
 def img(name,x,y,w=650,h=552):
  data=base64.b64encode((p/(name+'.png')).read_bytes()).decode();s.append(f'<image x="{x}" y="{y}" width="{w}" height="{h}" href="data:image/png;base64,{data}"/>')
-text(50,58,'ATOM LITE + LD2410C · V5 desktop mount',38)
+text(50,58,'ATOM LITE + LD2410C · V5.1 desktop mount',38)
 text(50,98,'Standing or shelf base • sliding cradle with lower bearing pads',25)
 text(50,148,'Orange: cradle    Yellow: Atom keeper    Cream: radar keeper',23)
 img('stand',25,165,740,540);img('clamp',825,165,740,540)

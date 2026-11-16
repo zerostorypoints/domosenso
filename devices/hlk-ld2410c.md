@@ -8,7 +8,7 @@ radar like this to wake its screen. Device file: [hlk-ld2410c.yaml](hlk-ld2410c.
 
 ![V5 Atom Lite and LD2410C mount: desktop and shelf bases, cradle guides and USB routing](enclosures/hlk-ld2410c-atom-lite/preview/assembly-guide.png)
 
-A printable **V5 desktop-mount proposal** holds the Atom Lite below the radar, with the radar
+A printable **V5.1 desktop-mount proposal** holds the Atom Lite below the radar, with the radar
 vertical on a head that turns up to 60 degrees left or right. Choose a 70 × 60 mm standing
 base or an interchangeable shelf-edge clamp (12 mm shelf in the reference model). The radar
 centre is 82 mm above the supporting surface. Fasteners are printed; no screws are required.
@@ -17,6 +17,8 @@ The Atom slides into a cradle with lower pads against the mast and a removable k
 The assembled V5 was printed in PETG and reported to fit after several trials. **Finger access
 to the upward-facing Atom button remains cramped** beneath the stationary ring. A small front
 underside bevel is documented as a future proposal; it is not included in the V5 downloads.
+V5.1 adds only a 12 mm recessed DomoSenso.org symbol on the desktop base; the new engraving
+has not been physically printed. The supplied `stand.stl` includes the mark.
 Long-term retention, fatigue and standing-base stability have not been measured.
 
 - [Print settings, parts and assembly](enclosures/hlk-ld2410c-atom-lite/README.md), including

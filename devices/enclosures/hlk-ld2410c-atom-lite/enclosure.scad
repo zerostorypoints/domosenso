@@ -17,6 +17,8 @@
 // Previous review: 2026-11-15, gpt-6-astra. Docking review: 2026-11-16, claude-sonnet-5-5.
 // V5 candidate: male keys +0.15 mm, lower mast stops, thicker captured keeper,
 // radar cap entry bevels and explicit pocket/latch support exclusions.
+// V5.1: optional 12 mm DomoSenso.org symbol recessed 0.6 mm into the desk base.
+// Only the desk base changes; logo=false reproduces the plain V5 base.
 // === PRINT SETTINGS ===
 // Start with PETG for functional parts; PLA is an option for a rigid mockup.
 // 0.2 mm layers, 4 perimeters, 25% gyroid as a starting point.
@@ -75,6 +77,10 @@ stand_depth = 60;
 clamp_width = 38;
 wedge_adjustment = 4; // Max x travel left or right from reference.
 show_hardware = true;
+logo = true;
+logo_height = 12;
+logo_depth = 0.6;
+layer_height = 0.2;
 
 // === DERIVED CONSTANTS ===
 fudge = 0.01;
@@ -82,6 +88,20 @@ touch_gap = 0.03;
 wall = 4 * nozzle_diameter * 1.125;
 $fn = $preview ? 32 : 64;
 base_t = 2.5*wall;
+logo_unit = logo_height/52;
+logo_width = 48*logo_unit;
+logo_clear = 12*logo_unit;
+logo_x = -stand_width/2 + logo_width/2 + logo_clear + 1;
+logo_y = -1-stand_depth/2 + logo_height/2 + logo_clear + 1;
+if (logo) {
+    assert(6*logo_unit >= 3*nozzle_diameter*1.125, "Logo gaps need three extrusion widths");
+    assert(logo_depth > 0 && base_t-logo_depth >= wall, "Keep a full wall under logo");
+    assert(abs(logo_depth/layer_height-round(logo_depth/layer_height)) < 1e-6,
+           "Logo recess depth must be whole layers");
+    assert(logo_x+logo_width/2+logo_clear < -stem_w/2-socket_t-fit_clearance,
+           "Logo clear space must stay left of the mast socket");
+    assert(logo_y+logo_height/2+logo_clear < 0, "Keep logo at front of desk base");
+}
 mast_y = 8;
 mast_width = 38; // Wider upper frame leaves a wire corridor beside rear USB.
 mast_depth = 9;
@@ -329,9 +349,27 @@ module socket() {
     }
 }
 module stand() {
-    union() {
-        translate([0,-1,0]) flat_base(stand_width,stand_depth,6,base_t);
-        socket();
+    difference() {
+        union() {
+            translate([0,-1,0]) flat_base(stand_width,stand_depth,6,base_t);
+            socket();
+        }
+        if (logo) translate([logo_x,logo_y,base_t-logo_depth])
+            linear_extrude(logo_depth+fudge) framework_symbol();
+    }
+}
+// Exact brand construction, like the radio enclosure: avoids the OpenSCAD
+// SVG viewBox-offset bug. Source: branding/geometry.json, open right shoulder.
+module framework_symbol() {
+    scale([logo_unit,-logo_unit]) translate([-32,-32]) translate([0,2]) {
+        translate([8,28]) square([12,28]);
+        translate([44,28]) square([12,28]);
+        translate([26,44]) square([12,12]);
+        difference() {
+            translate([32,28]) difference() { circle(r=24,$fn=180); circle(r=12,$fn=180); }
+            translate([0,28]) square([64,64]);
+            translate([32,20]) square([64,64]);
+        }
     }
 }
 module jaw_bottom() {

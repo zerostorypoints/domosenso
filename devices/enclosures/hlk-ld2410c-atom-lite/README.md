@@ -9,10 +9,13 @@ are printed. Wiring and firmware remain as described in the [device guide](../..
 is still cramped below the yaw bearing. This is one successful physical fitting, not
 a measurement of retention force, fatigue life, stability or radar performance.
 
-The current downloadable design is **V5**, frozen after that fitting report. The proposed
+The current downloadable design is **V5.1**: the fitted V5 mechanism with a small
+DomoSenso.org symbol on the desktop base. The 12 mm-high symbol is recessed 0.6 mm into the
+front-left corner, leaving 3.9 mm beneath it. `stand.stl` is the single supplied desktop base. It has CAD verification but has not
+yet been physically printed; all fitted interfaces and the shelf clamp retain the V5 geometry. The proposed
 button-access bevel below is not included in the source or printable files.
 
-![V5 assembly guide: desktop and shelf bases, cradle guides and cable routing](preview/assembly-guide.png)
+![Assembly guide: desktop and shelf bases, cradle guides and cable routing](preview/assembly-guide.png)
 
 For a new build, follow [Parts and assembly](#parts-and-assembly) and [Printing](#printing).
 The [STL files](stl/) work with other slicers; [build.py](build.py) regenerates meshes and
@@ -21,6 +24,11 @@ support-exclusion volumes from [enclosure.scad](enclosure.scad). Render this gui
 install OpenSCAD and Cairo first. On macOS with Homebrew Cairo, prefix the command with
 `DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix cairo)/lib"`. These are CAD illustrations,
 not installation photographs.
+
+The [Bambu project for the branded base](3mf/stand.3mf) contains **only the desktop base**,
+using a P2S 0.4 mm nozzle, Generic PETG and 0.20 mm layers. It has been sliced successfully,
+but is not a physically tested print profile or a complete mount plate. Use the instructions
+below for the remaining parts and their support exclusions.
 
 ## Prototype history
 
