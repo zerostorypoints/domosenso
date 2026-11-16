@@ -1,6 +1,6 @@
 // Non-printing slicer volumes. Import as SUPPORT BLOCKERS, never normal parts.
 // Run with -D 'part="support_blockers"' and -D 'blocker_part="tower"'.
-// Uses the same dimensions and print transforms as the unchanged printable model.
+// Uses the same dimensions and print transforms as the printable model.
 include <enclosure.scad>
 blocker_part = "fit_coupon";
 assert(part=="support_blockers", "Use build.py --support-blockers; these volumes must not be printed.");
@@ -37,13 +37,13 @@ if (part=="support_blockers") {
         translate([0,-21,2-dock_z-fudge]) cradle_voids();
         translate([0,0,2-radar_bottom+wall-fudge]) rail_voids();
     }
-    if (blocker_part=="tower") translate([0,0,mast_y+mast_depth/2]) rotate([-90,0,0]) {
+    if (blocker_part=="tower" || blocker_part=="dock_coupon") translate([0,0,mast_y+mast_depth/2]) rotate([-90,0,0]) {
         bearing_voids();
         padded() base_key_slot();
-        padded() for (x=[-rail_mount_x,rail_mount_x])
-            bounds([x-rail_ear/2-fit_clearance,dock_y-fit_clearance,dock_z-fit_clearance],
-                   [x+rail_ear/2+fit_clearance,hanger_rear+fit_clearance,dock_z+dock_ear_h+12]);
-        translate([-mast_width/2-1.4,mast_y,49]) rod_y(8,4.2+hole_compensation+1.2);
+        padded() dock_voids();
+        padded() usb_docking_path();
+        wire_loop(0,1.2);
+        translate([-mast_width/2-1.4,mast_y,atom_top+8]) rod_y(8,4.2+hole_compensation+1.2);
     }
     if (blocker_part=="head") translate([0,0,-shaft_low]) {
         padded() head_key_slot();

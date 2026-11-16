@@ -3,6 +3,10 @@
 // Assembly: X lateral, Y rear (+), Z up; Z=0 is the desk/shelf top.
 // The mast, lift-off Atom cradle and yaw head fit either the desk foot or
 // shelf-edge clamp. All fasteners and contact pieces are printed.
+// The revised upper frame and both modules are 10 mm higher; the base tenon is unchanged.
+// Rear USB uses a 16 mm wide x 40 mm long envelope across the full case side.
+// Two solid dovetails replace fragile lift-off hooks; lower the cradle by dock_lift.
+// The 4 mm wire bundle runs beside USB through the widened frame, then above the bearing.
 // Hardware outline dimensions are nominal. Verify the assumed radar
 // thickness and assembled connector/wire envelopes with the fit coupon.
 //
@@ -10,7 +14,7 @@
 // "radar height" -> radar_center_height; "angle" -> yaw_limit, head();
 // "harness" -> harness_height, atom_clearance; "fit" -> fit_clearance.
 // Print selectors stand alone at Z=0; assembly selectors show use orientation.
-// Final review: 2026-11-15, gpt-6-astra (host-selected); corrective CAD review passed.
+// Previous review: 2026-11-15, gpt-6-astra. Revised docking/USB design awaits fresh review.
 // === PRINT SETTINGS ===
 // Start with PETG for functional parts; PLA is an option for a rigid mockup.
 // 0.2 mm layers, 4 perimeters, 25% gyroid as a starting point.
@@ -19,18 +23,19 @@
 // regions of the tower and coupon. Check support access and bridge quality
 // in the clamp socket, key bores and cradle rails before printing.
 // Check the preset's elephant-foot compensation on the coupon before printing.
-// Consider a brim at the head and both small cradle tooth footprints.
+// The cradle has one continuous first layer; its solid guides need no support.
+// Keep the rear USB opening, cable corridor and dovetail receivers support-free.
 // Confirm supports and compensation in the slicer preview.
 // The cap and keeper latch beams bend in the XY layer plane. Use PETG for
 // the released latch geometry and verify both snap positions on the coupon.
 
 // === PARAMETERS ===
-part = "assembly_stand"; // [tower, head, radar_keeper, atom_cradle, atom_keeper, stand, clamp, clamp_wedge, base_key, head_key, fit_coupon, assembly_stand, assembly_clamp, explode_stand, explode_clamp, clash_stand_tower, clash_clamp_tower, clash_base_insertion, clash_base_key, clash_base_key_near_preload, clash_head_sweep, clash_head_insertion, clash_head_key, clash_head_key_near_preload, clash_radar, clash_radar_insertion, clash_radar_keeper, check_radar_latch_lock, clash_atom, clash_atom_insertion, clash_atom_keeper, check_atom_latch_lock, clash_atom_dock, clash_atom_dock_insertion, clash_usb, clash_gpio, clash_button, clash_wires, clash_shelf, clash_wedge, clash_wedge_insertion]
+part = "assembly_stand"; // [tower, head, radar_keeper, atom_cradle, atom_keeper, stand, clamp, clamp_wedge, base_key, head_key, fit_coupon, dock_coupon, assembly_stand, assembly_clamp, explode_stand, explode_clamp, clash_stand_tower, clash_clamp_tower, clash_base_insertion, clash_base_key, clash_base_key_near_preload, clash_head_sweep, clash_head_insertion, clash_head_key, clash_head_key_near_preload, clash_radar, clash_radar_insertion, clash_radar_keeper, check_radar_latch_lock, clash_atom, clash_atom_insertion, clash_atom_keeper, check_atom_latch_lock, clash_atom_dock, clash_atom_dock_insertion, clash_loaded_dock, clash_usb_docking, clash_wire_usb, clash_usb, clash_gpio, clash_button, clash_wires, clash_shelf, clash_wedge, clash_wedge_insertion]
 
 nozzle_diameter = 0.4;
 fit_clearance = 0.30; // Per side, sliding fit; tune using fit_coupon.
 hole_compensation = 0.30; // Diametral manufacturing allowance.
-radar_center_height = 72; // Lowered from 80 mm to reserve jumper slack.
+radar_center_height = 82; // Paired 10 mm lift with the Atom after physical fit feedback.
 max_height = 100;
 yaw_limit = 60;
 yaw = 0; // Assembly preview angle.
@@ -43,16 +48,17 @@ radar_front_edge_keepout = 0.75; // Check that both face edges are clear of ante
 atom_width = 24;
 atom_depth = 24;
 atom_height = 9.5;
-atom_clearance = 27; // Case underside to the top of either base.
+atom_clearance = 37; // Case underside to the top of either base.
 harness_height = 25;
 jumper_total_length = 120; // Entire female-to-female jumper, housings included.
-atom_connector_housing = 14; // ASSUMED: measure actual rigid length.
-radar_connector_housing = 14; // ASSUMED: measure actual rigid length.
+atom_connector_housing = 12; // Reference rigid housing length; measure before export.
+radar_connector_housing = 12; // Longer housings require a longer jumper; see route assert.
 jumper_slack_reserve = 5.5; // Allowance beyond modeled route and endpoint provision.
 jumper_endpoint_provision = 3; // Provisional allowance for branch lengths; not measured.
 jumper_bundle_diameter = 4; // Swept nominal combined bundle clearance.
-atom_usb_plug_width = 12; // ASSUMED: actual USB-C plug overmold and access.
-atom_usb_plug_height = 6; // ASSUMED.
+atom_usb_plug_width = 16; // Clearance envelope, including space for larger overmolds.
+atom_usb_plug_length = 40; // Case face to flexible cable; not metal connector length.
+atom_usb_vertical_margin = 2; // Entire case side plus margin, not an assumed port centre.
 shelf_thickness = 12;
 shelf_engagement = 18;
 available_under_edge = 20;
@@ -69,7 +75,7 @@ wall = 4 * nozzle_diameter * 1.125;
 $fn = $preview ? 32 : 64;
 base_t = 2.5*wall;
 mast_y = 8;
-mast_width = 28;
+mast_width = 38; // Wider upper frame leaves a wire corridor beside rear USB.
 mast_depth = 9;
 stem_w = 23;
 stem_d = 7.6;
@@ -121,11 +127,17 @@ atom_top = atom_z+atom_height;
 atom_lip = 1.55;
 rim_t = wall;
 cradle_outer_w = atom_width + 2*(fit_clearance+2*wall);
-rail_ear = 4.2;
-rail_mount_x = cradle_outer_w/2-rail_ear/2;
+rail_ear = 7.2; // Broad rear face of the solid dovetail.
+rail_mount_x = 18.5; // Keep the structural guide walls outside the wire corridor.
 dock_ear_depth = 3.1;
-dock_ear_h = 6;
-dock_z = atom_z-rim_t;
+dock_ear_h = 5.4;
+dock_z = atom_z-3*wall; // Lower continuous rim supports the guides from the first layer.
+dock_neck_w = 4.5;
+dock_neck_y = atom_back+fit_clearance+wall+1.2;
+dock_wall = 1.5*wall;
+dock_lift = dock_ear_h+fit_clearance+0.6;
+usb_low = atom_z-atom_usb_vertical_margin;
+usb_high = atom_top+atom_usb_vertical_margin;
 dock_y = mast_y-mast_depth/2-dock_ear_depth-0.15;
 hanger_rear = dock_y+dock_ear_depth;
 tab_y = atom_back-1.35;
@@ -178,8 +190,8 @@ motion_angles = [-yaw_limit:yaw_limit/12:yaw_limit];
 jumper_free = jumper_total_length-atom_connector_housing-radar_connector_housing;
 function route(a) =
     let(r=radar_exit_local_y, za=atom_z-atom_connector_housing)
-    [[-8.7,atom_y+2.2,za], [-8.7,-9,za-1.75], [-8.7,-4,za],
-     [-5,5,31], [-3,15,41.5], [0,15,radar_center_height-8.6],
+    [[-8.7,atom_y+2.2,za], [-atom_usb_plug_width/2-2.5,6,atom_z-8.5],
+     [-atom_usb_plug_width/2-2.5,15,usb_high+2.5], [0,15,deck_z+2.2],
      [-r*sin(a),pivot_y+r*cos(a),radar_bottom+radar_connector_bottom+radar_connector_height/2]];
 function path_length(p,i=0) = i==len(p)-1 ? 0 : norm(p[i+1]-p[i])+path_length(p,i+1);
 function route_length(a) = path_length(route(a));
@@ -214,6 +226,12 @@ assert(yaw_limit>=15 && yaw_limit<=70 && abs(yaw)<=yaw_limit);
 assert(stop_channel_inner-shaft_d/2>wall && bearing_r-stop_channel_outer>wall);
 assert(stop_depth < bearing_h-wall && deck_z-bearing_top>touch_gap);
 assert(atom_clearance>=harness_height+2 && harness_height>=25 && atom_top+9 < shaft_low);
+assert(dock_neck_w>=2*wall && dock_ear_h/dock_neck_w<3);
+assert(rail_mount_x-rail_ear/2-fit_clearance-(atom_usb_plug_width/2+2.5+jumper_bundle_diameter/2+0.1)>=wall,
+       "Cable corridor must leave a full guide wall");
+assert(usb_high+dock_lift < bearing_low && atom_top+dock_lift < shaft_low);
+assert(atom_usb_plug_width>=16 && atom_usb_plug_length>=40);
+assert(mast_width/2-atom_usb_plug_width/2>=5, "USB opening must retain both mast columns");
 assert(atom_width-2*atom_lip>=digit_width && rim_t>=wall);
 assert(shelf_thickness>=5 && shelf_thickness<=45);
 assert(shelf_engagement>=14 && shelf_engagement<=available_under_edge);
@@ -335,17 +353,37 @@ module mast_strip(x1,z1,x2,z2,d=5.7) {
         translate([x2,mast_y,z2]) rod_y(mast_depth,d);
     }
 }
+// Solid dovetails have no hook slot and no thin joining web. They descend
+// into open-top receivers, whose floor takes the vertical load.
+module dock_profile(x,clear=0) {
+    translate([x,0]) offset(delta=clear) polygon([
+        [-dock_neck_w/2,dock_neck_y], [dock_neck_w/2,dock_neck_y],
+        [rail_ear/2,hanger_rear-0.8], [rail_ear/2,hanger_rear],
+        [-rail_ear/2,hanger_rear], [-rail_ear/2,hanger_rear-0.8]]);
+}
 module dock_pocket(x,clear=0) {
-    bounds([x-rail_ear/2-clear,dock_y-clear,dock_z-clear],
-           [x+rail_ear/2+clear,hanger_rear+clear,dock_z+dock_ear_h+clear]);
+    translate([0,0,dock_z]) linear_extrude(height=dock_ear_h)
+        dock_profile(x,clear);
+}
+module dock_voids() {
+    for (x=[-rail_mount_x,rail_mount_x]) {
+        translate([0,0,dock_z-touch_gap]) linear_extrude(height=dock_ear_h+dock_lift+wall)
+            dock_profile(x,fit_clearance);
+        // Slot mouth is open towards the full-depth cradle root.
+        bounds([x-dock_neck_w/2-fit_clearance,atom_back,dock_z-touch_gap],
+               [x+dock_neck_w/2+fit_clearance,dock_neck_y+fudge,dock_z+dock_ear_h+dock_lift+wall]);
+    }
 }
 module dock() {
-    for (x=[-rail_mount_x,rail_mount_x]) difference() {
-        bounds([x-rail_ear/2-2.4,dock_y-1.25,dock_z-2.4],
-               [x+rail_ear/2+2.4,mast_y+0.4,dock_z+dock_ear_h]);
-        bounds([x-rail_ear/2-fit_clearance,dock_y-fit_clearance,dock_z-fit_clearance],
-               [x+rail_ear/2+fit_clearance,hanger_rear+fit_clearance,dock_z+dock_ear_h+fudge]);
+    difference() {
+        for (x=[-rail_mount_x,rail_mount_x])
+            bounds([x-rail_ear/2-fit_clearance-dock_wall,dock_neck_y+fit_clearance,dock_z-dock_wall],
+                   [x+rail_ear/2+fit_clearance+dock_wall,mast_y+0.4,dock_z+dock_ear_h+fit_clearance]);
+        dock_voids();
     }
+}
+module usb_docking_path() {
+    hull() { usb_env(); translate([0,0,dock_lift]) usb_env(); }
 }
 module sector_2d(ri,ro,a) {
     n=ceil(2*a/3);
@@ -372,7 +410,7 @@ module bearing() {
 module wire_eye() {
     // Optional loop restraint with a rounded tie path. Use a loose harness loop.
     eye_x=-mast_width/2-1.4;
-    eye_z=49;
+    eye_z=atom_top+8;
     difference() {
         translate([eye_x,mast_y,eye_z]) rod_y(5.4,9);
         translate([eye_x,mast_y,eye_z]) rod_y(5.4+2*fudge,4.2+hole_compensation);
@@ -394,9 +432,16 @@ module tower() {
             wire_eye();
         }
         base_key_slot();
-        for (x=[-rail_mount_x,rail_mount_x])
-            bounds([x-rail_ear/2-fit_clearance,dock_y-fit_clearance,dock_z-fit_clearance],
-                   [x+rail_ear/2+fit_clearance,hanger_rear+fit_clearance,dock_z+dock_ear_h+12]);
+        dock_voids();
+        // Open cable corridor through the inner corner of the wide guide block.
+        // Its width leaves at least 2 mm to the dovetail void, not a thin hook root.
+        intersection() {
+            wire_loop(0,0.2);
+            bounds([-mast_width/2,2,dock_z-dock_wall-fudge],
+                   [0,mast_y+mast_depth/2,dock_z+dock_ear_h+fit_clearance+fudge]);
+        }
+        // The rear plug and rigid strain relief need an open path while docking.
+        minkowski() { usb_docking_path(); cube([0.2,0.2,0.2],center=true); }
         // Clear fore tip of upper braces below the yaw bearing; rear web stays.
         bounds([-20,-26,head_key_z-head_key_hi-0.6],[20,6.3,bearing_low]);
         // Socket clearance for the flared shoulder; leave the indexed tenon.
@@ -422,11 +467,10 @@ module atom_cradle() {
             if (s==1) bounds([atom_latch_x-fudge,atom_latch_tooth_y-0.20,keeper_z-fit_clearance],
                  [atom_latch_x+atom_latch_reach+0.25,atom_latch_tooth_y+2.6,keeper_z+wall+fit_clearance]);
         }
-        // Flange above the rear dock; rear teeth insert from above.
-        bounds([rail_mount_x-rail_ear/2,atom_back+0.55,dock_z+dock_ear_h+touch_gap],
-               [rail_mount_x+rail_ear/2,dock_y+0.7,dock_z+dock_ear_h+wall]);
+        // Full-depth root, continuous with the cradle side. No floating hook islands.
+        bounds([a+fit_clearance,atom_back+fit_clearance,dock_z],
+               [rail_mount_x+dock_neck_w/2,dock_neck_y+fudge,dock_z+dock_ear_h]);
         dock_pocket(rail_mount_x);
-        bounds([rail_mount_x-rail_ear/2,dock_y,dock_z],[rail_mount_x+rail_ear/2,dock_y+0.7,dock_z+dock_ear_h+wall]);
         // Short rear locator and front corner fence.
         bounds([a-atom_lip,atom_back+fit_clearance,dock_z],
                [cradle_outer_w/2,atom_back+fit_clearance+wall,atom_z+3]);
@@ -436,9 +480,12 @@ module atom_cradle() {
 
     }
     bounds([-cradle_outer_w/2,atom_back+fit_clearance,dock_z],
-           [cradle_outer_w/2,atom_back+fit_clearance+wall,atom_z+2.8]);
+           [cradle_outer_w/2,dock_neck_y,usb_low-touch_gap]);
 }
 module atom_keeper(deflect=0) {
+    difference() { atom_keeper_frame(deflect); minkowski() {usb_env();cube([0.2,0.2,0.2],center=true);} }
+}
+module atom_keeper_frame(deflect=0) {
     // Right-side tab is an in-plane cantilever. Push it left, then slide the
     // whole keeper forward. The square edge resists forward extraction.
     a=atom_width/2;
@@ -466,9 +513,8 @@ module gpio_env() {
            [ atom_width/2-2.6,atom_back-1.8,atom_z+fudge]);
 }
 module usb_env() {
-    usb_z=atom_top-2.15;
-    bounds([-atom_usb_plug_width/2,atom_front-24,usb_z-atom_usb_plug_height/2],
-           [ atom_usb_plug_width/2,atom_front+fudge,usb_z+atom_usb_plug_height/2]);
+    bounds([-atom_usb_plug_width/2,atom_back-fudge,usb_low],
+           [ atom_usb_plug_width/2,atom_back+atom_usb_plug_length,usb_high]);
 }
 module button_env() {
     bounds([-digit_width/2,atom_y-digit_width/2,atom_top-touch_gap],
@@ -580,9 +626,9 @@ module head_pose(a=0,dz=0) {
 }
 module section_bar(a,b,d) { hull() { translate(a) sphere(d=d); translate(b) sphere(d=d); } }
 // A representative rear slack loop; reshape this envelope for a real cable.
-module wire_loop(a) {
+module wire_loop(a,extra=0) {
     pts=route(a);
-    for (i=[0:len(pts)-2]) section_bar(pts[i],pts[i+1],jumper_bundle_diameter);
+    for (i=[0:len(pts)-2]) section_bar(pts[i],pts[i+1],jumper_bundle_diameter+extra);
 }
 module fit_coupon() {
     // Radar rails, Atom rim/keeper track and both keyed receivers.
@@ -602,6 +648,16 @@ module fit_coupon() {
         bounds([10,-36,0],[23,-32,2]);
         bounds([29,-28,0],[38,-4,2]);
         bounds([8,-2,0],[21,1,2]);
+    }
+}
+module dock_coupon() {
+    low=dock_z-dock_wall;
+    intersection() {
+        union() {
+            tower();
+            bounds([-mast_width/2,mast_y,low],[mast_width/2,mast_y+mast_depth/2,low+wall]);
+        }
+        bounds([-25,-1,low-fudge],[25,mast_y+mast_depth/2+fudge,bearing_low-0.2]);
     }
 }
 module assembly(clamped=false, exploded=false) {
@@ -642,6 +698,7 @@ if (part=="clamp_wedge") translate([0,0,wedge_z]) rotate([180,0,0]) wedge_use();
 if (part=="base_key") tapered_key(base_key_len,base_key_depth,base_key_lo,base_key_hi);
 if (part=="head_key") head_key();
 if (part=="fit_coupon") fit_coupon();
+if (part=="dock_coupon") translate([0,0,mast_y+mast_depth/2]) rotate([-90,0,0]) dock_coupon();
 if (part=="assembly_stand") assembly();
 if (part=="assembly_clamp") assembly(true);
 if (part=="explode_stand") assembly(false,true);
@@ -705,15 +762,21 @@ if (part=="check_atom_latch_lock") intersection() {
     atom_cradle();
 }
 if (part=="clash_atom_dock") intersection() { atom_cradle(); tower(); }
-if (part=="clash_atom_dock_insertion") for (dz=[1,4,9]) intersection() {
+if (part=="clash_atom_dock_insertion") for (dz=[0:dock_lift/20:dock_lift]) intersection() {
     translate([0,0,dz]) atom_cradle(); tower();
 }
+if (part=="clash_loaded_dock") for (dz=[0:dock_lift/20:dock_lift]) intersection() {
+    translate([0,0,dz]) union() {atom_cradle();atom_keeper();atom_body();usb_env();}
+    union() {tower(); head_pose(0) {head();head_key_at();} }
+}
+if (part=="clash_usb_docking") intersection() { usb_docking_path(); tower(); }
+if (part=="clash_wire_usb") for(a=motion_angles) intersection() {wire_loop(a);usb_env();}
 if (part=="clash_usb") intersection() { usb_env(); union() { atom_cradle(); atom_keeper(); tower(); } }
 if (part=="clash_gpio") intersection() { gpio_env(); union() { atom_cradle(); tower(); clamp(); stand(); } }
 if (part=="clash_button") intersection() { button_env();
     union() { atom_keeper(); atom_cradle(); tower(); for (a=motion_angles) head_pose(a) { head(); head_key_at(); } } }
 if (part=="clash_wires") for (a=motion_angles) intersection() {
-    wire_loop(a); union() { tower(); head_pose(a) head(); }
+    wire_loop(a); union() { tower(); atom_cradle(); atom_keeper(); stand(); clamp(); head_pose(a) head(); }
 }
 if (part=="clash_shelf") intersection() { shelf(); union() { clamp(); wedge_use(); } }
 if (part=="clash_wedge") intersection() { clamp(); wedge_use(); }

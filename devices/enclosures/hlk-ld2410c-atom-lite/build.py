@@ -12,10 +12,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PARTS = (
     "tower", "head", "radar_keeper", "atom_cradle", "atom_keeper", "stand", "clamp", "clamp_wedge",
-    "base_key", "head_key", "fit_coupon",
+    "base_key", "head_key", "fit_coupon", "dock_coupon",
 )
 VIEWS = ("assembly_stand", "assembly_clamp", "explode_stand", "explode_clamp", "view_wires")
-BLOCKER_PARTS = ("tower", "head", "atom_cradle", "stand", "clamp", "fit_coupon")
+BLOCKER_PARTS = ("tower", "head", "atom_cradle", "stand", "clamp", "fit_coupon", "dock_coupon")
 
 
 def main() -> None:
@@ -44,7 +44,7 @@ def main() -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
         # Keep an existing deliverable intact if compilation fails.
         temporary = target.with_name(target.stem + ".building" + target.suffix)
-        command = [exe, "-o", str(temporary), *defines, "-D", f'part="{part}"',
+        command = [exe, "--backend=Manifold", "-o", str(temporary), *defines, "-D", f'part="{part}"',
                    *extra, str(HERE / source)]
         try:
             result = subprocess.run(command, capture_output=True, text=True)
