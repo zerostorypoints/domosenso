@@ -3,6 +3,13 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.21.1
+
+On the regular dashboard, selecting a speaker, zooming or moving the Room
+illustration pauses music page rotation. After 30 seconds of inactivity, the
+remaining Room page time resumes. A manual page change clears the pause.
+Existing HiFiSync configuration and dashboard layouts need no migration.
+
 ## 0.21.0
 
 ### Optional HiFiSync System and Room in the regular music view

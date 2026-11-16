@@ -13,6 +13,7 @@ export class MusicPlaylist {
   pages = [PLAYER];
   page = PLAYER;
   deadline = 0;
+  roomHold = null;
 
   update(snapshot, now) {
     this.pages = !snapshot ? [PLAYER] : snapshot.room ? [PLAYER, SYSTEM, ROOM] : [PLAYER, SYSTEM];
@@ -24,8 +25,9 @@ export class MusicPlaylist {
   }
 
   select(page, now) {
-    if (!this.pages.includes(page)) return false;
+    if (page === this.page || !this.pages.includes(page)) return false;
     this.page = page;
+    this.roomHold = null;
     this.deadline = this.pages.length > 1 ? now + DWELL : 0;
     return true;
   }
@@ -36,12 +38,33 @@ export class MusicPlaylist {
     return this.select(this.pages[next], now);
   }
 
-  touch(now) {
-    if (this.page === ROOM) this.deadline = now + ROOM_IDLE;
+  interact(action, now, gestureId) {
+    if (this.page !== ROOM) return;
+    this.resumeAfterHold(now);
+
+    const currentGesture = this.roomHold?.gestureId;
+    if (action === 'progress' || action === 'end') {
+      if (!gestureId || gestureId !== currentGesture) return;
+    } else if (action !== 'touch' && (action !== 'begin' || !gestureId)) {
+      return;
+    }
+
+    this.roomHold ??= { remaining: Math.max(0, this.deadline - now) };
+    this.roomHold.until = now + ROOM_IDLE;
+    if (action === 'begin') this.roomHold.gestureId = gestureId;
+    if (action === 'end') this.roomHold.gestureId = undefined;
+  }
+
+  resumeAfterHold(now) {
+    if (this.roomHold && now >= this.roomHold.until) {
+      this.deadline = this.roomHold.until + this.roomHold.remaining;
+      this.roomHold = null;
+    }
   }
 
   tick(now) {
-    return this.deadline > 0 && now >= this.deadline ? this.step(1, now) : false;
+    this.resumeAfterHold(now);
+    return !this.roomHold && this.deadline > 0 && now >= this.deadline ? this.step(1, now) : false;
   }
 }
 
@@ -170,10 +193,12 @@ export class RamkaHiFiMusic {
       this.frame = document.createElement('domosenso-studio-frame');
       Object.assign(this.frame.style, {display: 'block', width: '100%', height: '100%'});
       this.frame.addEventListener('frame-action', event => {
-        const {kind, action} = event.detail;
+        const {kind, action, visitId, gestureId} = event.detail;
         if (kind === 'navigation' && action === 'next') this.step(1);
         if (kind === 'navigation' && action === 'previous') this.step(-1);
-        if (kind === 'room_interaction') this.queue.touch(Date.now());
+        if (kind === 'room_interaction' && visitId === 'room-' + this.visit) {
+          this.queue.interact(action, Date.now(), gestureId);
+        }
       });
       this.overlay.append(this.frame);
     }
@@ -207,7 +232,7 @@ export class RamkaHiFiMusic {
           padding: '4px 11px', border: 'none', borderRadius: '14px', font: 'inherit',
           color: selected ? '#211b15' : '#fff6e6', background: selected ? '#eca54b' : 'transparent',
         });
-        button.onclick = () => { this.queue.select(page, Date.now()); this.show(); };
+        button.onclick = () => { if (this.queue.select(page, Date.now())) this.show(); };
         return button;
       }));
     }
