@@ -19,19 +19,48 @@ test('uses the original Now Playing anchor and only valid HiFiSync pages', () =>
   assert.equal(queue.step(1, 5), false);
 });
 
-test('holds the Room during interaction and releases on manual navigation', () => {
+test('resumes the remaining Room time after a renewed inactivity hold', () => {
   const queue = new MusicPlaylist();
   queue.update({ room: { id: 'room' } }, 0);
   queue.step(-1, 0);
-  queue.touch(14_000);
-  assert.equal(queue.tick(43_999), false);
-  assert.equal(queue.tick(44_000), true);
+  queue.interact('touch', 12_000);
+  queue.interact('touch', 25_000);
+  assert.equal(queue.tick(54_999), false);
+  assert.equal(queue.tick(55_000), false);
+  assert.equal(queue.tick(57_999), false);
+  assert.equal(queue.tick(58_000), true);
   assert.equal(queue.page, 'playing');
-  queue.step(-1, 45_000);
-  queue.touch(46_000);
-  queue.step(-1, 47_000);
-  assert.equal(queue.tick(62_000), true);
-  assert.equal(queue.page, 'room');
+});
+
+test('counts inactivity from the end of a long Room gesture', () => {
+  const queue = new MusicPlaylist();
+  queue.update({ room: { id: 'room' } }, 0);
+  queue.step(-1, 0);
+  queue.interact('begin', 14_000, 'drag');
+  for (let now = 19_000; now <= 64_000; now += 5_000) {
+    queue.interact('progress', now, 'drag');
+    assert.equal(queue.tick(now), false);
+  }
+  queue.interact('end', 66_000, 'drag');
+  assert.equal(queue.tick(96_999), false);
+  assert.equal(queue.tick(97_000), true);
+});
+
+test('manual navigation and Room replacement clear a hold and discard a delayed end', () => {
+  const queue = new MusicPlaylist();
+  queue.update({ room: { id: 'room' } }, 0);
+  queue.step(-1, 0);
+  queue.interact('begin', 4_000, 'previous-visit');
+  assert.equal(queue.select('room', 5_000), false);
+  queue.step(1, 6_000);
+  queue.step(-1, 7_000);
+  queue.interact('end', 8_000, 'previous-visit');
+  assert.equal(queue.tick(22_000), true);
+  queue.step(-1, 23_000);
+  queue.interact('touch', 24_000);
+  queue.update({ room: { id: 'new-room' } }, 25_000);
+  assert.equal(queue.page, 'playing');
+  assert.equal(queue.tick(40_000), true);
 });
 
 test('only runs on the original now-playing dashboard state', () => {
