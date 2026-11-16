@@ -15,7 +15,8 @@
 // "harness" -> harness_height, atom_clearance; "fit" -> fit_clearance.
 // Print selectors stand alone at Z=0; assembly selectors show use orientation.
 // Previous review: 2026-11-15, gpt-6-astra. Docking review: 2026-11-16, claude-sonnet-5-5.
-// Post-review minor change: rear keeper tie thickened to at least wall; gate repeated.
+// V5 candidate: male keys +0.15 mm, lower mast stops, thicker captured keeper,
+// radar cap entry bevels and explicit pocket/latch support exclusions.
 // === PRINT SETTINGS ===
 // Start with PETG for functional parts; PLA is an option for a rigid mockup.
 // 0.2 mm layers, 4 perimeters, 25% gyroid as a starting point.
@@ -24,17 +25,23 @@
 // regions of the tower and coupon. Check support access and bridge quality
 // in the clamp socket, key bores and cradle rails before printing.
 // Check the preset's elephant-foot compensation on the coupon before printing.
-// The cradle has one continuous first layer; its solid guides need no support.
+// The cradle prints nose down with two broad first-layer feet; use an outer brim.
+// Lower stops bear on the existing tower; both module heights are unchanged.
 // Keep the rear USB opening, cable corridor and dovetail receivers support-free.
 // Confirm supports and compensation in the slicer preview.
 // The cap and keeper latch beams bend in the XY layer plane. Use PETG for
 // the released latch geometry and verify both snap positions on the coupon.
 
 // === PARAMETERS ===
-part = "assembly_stand"; // [tower, head, radar_keeper, atom_cradle, atom_keeper, stand, clamp, clamp_wedge, base_key, head_key, fit_coupon, dock_coupon, assembly_stand, assembly_clamp, explode_stand, explode_clamp, clash_stand_tower, clash_clamp_tower, clash_base_insertion, clash_base_key, clash_base_key_near_preload, clash_head_sweep, clash_head_insertion, clash_head_key, clash_head_key_near_preload, clash_radar, clash_radar_insertion, clash_radar_keeper, check_radar_latch_lock, clash_atom, clash_atom_insertion, clash_atom_keeper, check_atom_latch_lock, clash_atom_dock, clash_atom_dock_insertion, clash_loaded_dock, clash_usb_docking, clash_wire_usb, clash_usb, clash_gpio, clash_button, clash_wires, clash_shelf, clash_wedge, clash_wedge_insertion]
+part = "assembly_stand"; // [tower, head, radar_keeper, atom_cradle, atom_keeper, stand, clamp, clamp_wedge, base_key, head_key, fit_coupon, dock_coupon, assembly_stand, assembly_clamp, explode_stand, explode_clamp, clash_stand_tower, clash_clamp_tower, clash_base_insertion, clash_base_key, clash_base_key_near_preload, clash_head_sweep, clash_head_insertion, clash_head_key, clash_head_key_near_preload, clash_radar, clash_radar_insertion, clash_radar_keeper, check_radar_latch_lock, clash_atom, clash_atom_insertion, clash_atom_keeper, check_atom_latch_lock, check_atom_keeper_lift_left, check_atom_keeper_lift_right, check_cradle_pitch_stop_left, check_cradle_pitch_stop_right, clash_atom_dock, clash_atom_dock_insertion, clash_loaded_dock, clash_usb_docking, clash_wire_usb, clash_usb, clash_gpio, clash_button, clash_wires, clash_shelf, clash_wedge, clash_wedge_insertion]
 
 nozzle_diameter = 0.4;
 fit_clearance = 0.30; // Per side, sliding fit; tune using fit_coupon.
+dock_key_growth = 0.15; // Added to male keys only; V4 tower receivers stay unchanged.
+keeper_slide_clearance = 0.15; // Independent Atom keeper fit, test in PETG.
+radar_cap_clearance = 0.30; // Pocket clearance independent of the PCB edge slots.
+radar_cap_lead_in = 0.40; // 45-degree entry bevel on the two cap pockets.
+cradle_pad_gap = 0.15; // Nominal lower stop to existing mast; physical fit unverified.
 hole_compensation = 0.30; // Diametral manufacturing allowance.
 radar_center_height = 82; // Paired 10 mm lift with the Atom after physical fit feedback.
 max_height = 100;
@@ -145,11 +152,17 @@ tab_y = atom_back-wall-0.2; // Full wall remains after the padded rear USB cut.
 assert(atom_back-fudge-0.1-tab_y >= wall, "Rear keeper tie must retain a full wall");
 keeper_x = cradle_outer_w/2;
 keeper_z = atom_top+fit_clearance;
-keeper_guide_ear = 1.15;
+keeper_guide_ear = 1.60;
+keeper_thickness = 5*nozzle_diameter*1.125;
+cradle_pad_low = dock_z-18;
+cradle_pad_top = cradle_pad_low+5.4;
+cradle_pad_back = mast_y-mast_depth/2-cradle_pad_gap;
+cradle_rib_x = mast_width/2-5.7;
+cradle_rib_outer_x = mast_width/2-0.3;
 atom_latch_x = atom_width/2+fit_clearance+keeper_guide_ear;
 atom_latch_t = 1.55;
-atom_latch_reach = 0.85;
-atom_latch_deflect = 0.90;
+atom_latch_reach = 1.00;
+atom_latch_deflect = 1.10;
 atom_latch_tooth_y = atom_front+1.5;
 atom_latch_root_y = atom_front+13.0;
 radar_rail_x = radar_width/2+fit_clearance;
@@ -229,6 +242,11 @@ assert(stop_channel_inner-shaft_d/2>wall && bearing_r-stop_channel_outer>wall);
 assert(stop_depth < bearing_h-wall && deck_z-bearing_top>touch_gap);
 assert(atom_clearance>=harness_height+2 && harness_height>=25 && atom_top+9 < shaft_low);
 assert(dock_neck_w>=2*wall && dock_ear_h/dock_neck_w<3);
+assert(dock_key_growth>=0 && dock_key_growth<fit_clearance);
+assert(keeper_slide_clearance>=0.12 && keeper_slide_clearance<fit_clearance);
+assert(cradle_pad_low>base_t+socket_h+3 && cradle_pad_top+dock_lift<dock_z-dock_wall);
+assert(cradle_rib_x>atom_width/2-2.6+wall && cradle_pad_gap>=0.1);
+assert(radar_cap_clearance>=0.25 && radar_cap_clearance+radar_cap_lead_in<wall);
 assert(rail_mount_x-rail_ear/2-fit_clearance-(atom_usb_plug_width/2+2.5+jumper_bundle_diameter/2+0.1)>=wall,
        "Cable corridor must leave a full guide wall");
 assert(usb_high+dock_lift < bearing_low && atom_top+dock_lift < shaft_low);
@@ -455,6 +473,30 @@ module tower() {
     }
 }
 
+// Two broad pads bear against the existing mast below the receivers. Their
+// front webs transfer basket pitch into the mast without crossing the GPIO bay.
+module cradle_lower_stop() {
+    translate([cradle_rib_x,0,0]) rotate([90,0,90])
+        linear_extrude(height=cradle_rib_outer_x-cradle_rib_x)
+            polygon([[atom_back+fit_clearance,cradle_pad_low],
+                     [cradle_pad_back,cradle_pad_low],
+                     [cradle_pad_back,cradle_pad_top],
+                     [dock_neck_y+fit_clearance-cradle_pad_gap,cradle_pad_top+3.1],
+                     [dock_neck_y+fit_clearance-cradle_pad_gap,dock_z+fudge],
+                     [atom_back+fit_clearance,dock_z+fudge]]);
+    // The 45-degree fore gusset spreads the load into the side ledge.
+    hull() {
+        bounds([cradle_rib_x,atom_back+fit_clearance,cradle_pad_low],
+               [cradle_rib_outer_x,atom_back+fit_clearance+wall,cradle_pad_low+wall]);
+        bounds([cradle_rib_x,atom_back+fit_clearance-15,dock_z-fudge],
+               [cradle_outer_w/2,atom_back+fit_clearance+wall,dock_z+wall]);
+    }
+}
+module cradle_print_pose() {
+    // Nose down: the lower stops grow from the continuous side walls.
+    translate([0,0,-(atom_front-fit_clearance-wall)]) rotate([90,0,0]) children();
+}
+
 module atom_cradle() {
     // Only narrow edge ledges under the case. No web crosses the GPIO region.
     a=atom_width/2;
@@ -463,16 +505,17 @@ module atom_cradle() {
                [cradle_outer_w/2,atom_back+fit_clearance+wall,atom_z-touch_gap]);
         difference() {
             bounds([a+fit_clearance,atom_front-0.4,dock_z],
-                   [a+fit_clearance+wall+0.85,atom_back+fit_clearance+wall,keeper_z+2*wall+fit_clearance]);
-            bounds([a+fit_clearance-fudge,atom_front-0.4-fudge,keeper_z-fit_clearance],
-                   [a+fit_clearance+keeper_guide_ear+fit_clearance,atom_back+0.5,keeper_z+wall+fit_clearance]);
-            if (s==1) bounds([atom_latch_x-fudge,atom_latch_tooth_y-0.20,keeper_z-fit_clearance],
-                 [atom_latch_x+atom_latch_reach+0.25,atom_latch_tooth_y+2.6,keeper_z+wall+fit_clearance]);
+                   [cradle_outer_w/2,atom_back+fit_clearance+wall,keeper_z+keeper_thickness+wall+keeper_slide_clearance]);
+            bounds([a+fit_clearance-fudge,atom_front-0.4-fudge,keeper_z-keeper_slide_clearance],
+                   [a+fit_clearance+keeper_guide_ear+keeper_slide_clearance,atom_back+0.5,keeper_z+keeper_thickness+keeper_slide_clearance]);
+            if (s==1) bounds([atom_latch_x-fudge,atom_latch_tooth_y-0.20,keeper_z-keeper_slide_clearance],
+                 [cradle_outer_w/2+fudge,atom_latch_tooth_y+2.6,keeper_z+keeper_thickness+keeper_slide_clearance]);
         }
         // Full-depth root, continuous with the cradle side. No floating hook islands.
         bounds([a+fit_clearance,atom_back+fit_clearance,dock_z],
                [rail_mount_x+dock_neck_w/2,dock_neck_y+fudge,dock_z+dock_ear_h]);
-        dock_pocket(rail_mount_x);
+        dock_pocket(rail_mount_x,dock_key_growth);
+        cradle_lower_stop();
         // Short rear locator and front corner fence.
         bounds([a-atom_lip,atom_back+fit_clearance,dock_z],
                [cradle_outer_w/2,atom_back+fit_clearance+wall,atom_z+3]);
@@ -493,12 +536,12 @@ module atom_keeper_frame(deflect=0) {
     a=atom_width/2;
     xa=atom_latch_x;
     xi=a-atom_lip;
-    bounds([-xa,tab_y,keeper_z],[xa,atom_back+fit_clearance,keeper_z+wall]);
-    bounds([-xa,atom_front+2,keeper_z],[-xi,atom_back+fit_clearance,keeper_z+wall]);
-    bounds([xi,atom_latch_root_y-fudge,keeper_z],[xa,atom_back+fit_clearance,keeper_z+wall]);
+    bounds([-xa,tab_y,keeper_z],[xa,atom_back+fit_clearance,keeper_z+keeper_thickness]);
+    bounds([-xa,atom_front+2,keeper_z],[-xi,atom_back+fit_clearance,keeper_z+keeper_thickness]);
+    bounds([xi,atom_latch_root_y-fudge,keeper_z],[xa,atom_back+fit_clearance,keeper_z+keeper_thickness]);
     bounds([-xa,atom_front+0.8,keeper_z],
-           [xa-atom_latch_t-atom_latch_deflect-0.40,atom_front+2+fudge,keeper_z+wall]);
-    translate([0,0,keeper_z]) linear_extrude(height=wall)
+           [xa-atom_latch_t-atom_latch_deflect-0.40,atom_front+2+fudge,keeper_z+keeper_thickness]);
+    translate([0,0,keeper_z]) linear_extrude(height=keeper_thickness)
         polygon([[xa-atom_latch_t-deflect,atom_front-2.2],
                  [xa-deflect,atom_front-2.2],
                  [xa-deflect,atom_latch_tooth_y],
@@ -549,7 +592,7 @@ module radar_track(fill=0) {
 module radar_keeper(deflect=0) {
     // A lift-off U cap with two fitted side pockets. Internal ledges sit
     // above the PCB's outer corners and keep the center/antenna open.
-    rc=radar_fit*0.72;
+    rc=radar_cap_clearance;
     iz=radar_rail_top-3.8;
     midy=radar_y+radar_thickness/2;
     xa=radar_width/2-radar_front_edge_keepout;
@@ -561,6 +604,13 @@ module radar_keeper(deflect=0) {
                [xb+radar_cap_wall,yh+radar_cap_wall,radar_rail_top+radar_cap_wall+touch_gap]);
         bounds([xa-rc,yl-rc,iz-fudge],
                [xb+rc,yh+rc,radar_rail_top+touch_gap]);
+        // Flared entry tolerates a rough rail tip without widening the seated pocket.
+        hull() {
+            bounds([xa-rc-radar_cap_lead_in,yl-rc-radar_cap_lead_in,iz-fudge],
+                   [xb+rc+radar_cap_lead_in,yh+rc+radar_cap_lead_in,iz]);
+            bounds([xa-rc,yl-rc,iz+radar_cap_lead_in-fudge],
+                   [xb+rc,yh+rc,iz+radar_cap_lead_in]);
+        }
         // Only the actual board corner stops upwards travel.
         bounds([xa-wall*0.7-fudge,radar_y-radar_fit,iz-fudge],
                [xa+fudge,radar_y+radar_thickness+radar_fit,radar_top+fit_clearance]);
@@ -639,7 +689,10 @@ module fit_coupon() {
     union() {
         translate([0,0,2-radar_bottom+wall-fudge]) radar_track();
         translate([0,radar_y-0.5,0]) flat_base(29,8,1,2);
-        translate([0,-21,2-dock_z-fudge]) atom_cradle();
+        translate([0,-21,2-dock_z-fudge]) intersection() {
+            atom_cradle();
+            bounds([-25,atom_front-3,dock_z],[25,5,keeper_z+8]);
+        }
         translate([0,-36,0]) flat_base(34,34,2,2);
         translate([33,-mast_y,2-base_t-fudge]) socket();
         translate([33,0,0]) flat_base(34,17,1,2);
@@ -692,7 +745,7 @@ module assembly(clamped=false, exploded=false) {
 if (part=="tower") translate([0,0,mast_y+mast_depth/2]) rotate([-90,0,0]) tower();
 if (part=="head") translate([0,0,-shaft_low]) head();
 if (part=="radar_keeper") translate([0,0,radar_rail_top+radar_cap_wall+touch_gap]) rotate([180,0,0]) radar_keeper();
-if (part=="atom_cradle") translate([0,0,-dock_z]) atom_cradle();
+if (part=="atom_cradle") cradle_print_pose() atom_cradle();
 if (part=="atom_keeper") translate([0,0,-keeper_z]) atom_keeper();
 if (part=="stand") stand();
 if (part=="clamp") translate([0,0,clamp_width/2]) rotate([0,90,0]) clamp();
@@ -762,6 +815,19 @@ if (part=="clash_atom_keeper") for (dy=[0,-0.3,-1,-2,-5,-10,-20]) intersection()
 if (part=="check_atom_latch_lock") intersection() {
     translate([0,-0.65,0]) atom_keeper();
     atom_cradle();
+}
+// Positive diagnostics: the keeper roofs catch a lift and the lower pads
+// meet the mast after one degree of forward pitch (nominal CAD, not stiffness).
+if (part=="check_atom_keeper_lift_left" || part=="check_atom_keeper_lift_right") intersection() {
+    translate([0,0,0.65]) atom_keeper(); atom_cradle();
+    scale([part=="check_atom_keeper_lift_left" ? -1 : 1,1,1])
+        bounds([fudge,atom_front-5,keeper_z],[30,10,keeper_z+5]);
+}
+if (part=="check_cradle_pitch_stop_left" || part=="check_cradle_pitch_stop_right") intersection() {
+    translate([0,hanger_rear,dock_z+dock_ear_h/2]) rotate([1,0,0])
+        translate([0,-hanger_rear,-dock_z-dock_ear_h/2])
+            scale([part=="check_cradle_pitch_stop_left" ? -1 : 1,1,1]) cradle_lower_stop();
+    tower();
 }
 if (part=="clash_atom_dock") intersection() { atom_cradle(); tower(); }
 if (part=="clash_atom_dock_insertion") for (dz=[0:dock_lift/20:dock_lift]) intersection() {

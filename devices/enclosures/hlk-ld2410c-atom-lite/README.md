@@ -37,6 +37,38 @@ revision was subsequently printed, with the additional findings below.
   stability, long-term clamp retention and unobstructed yaw with the real harness remain
   unverified. Private photos and printer-specific records are kept outside this repository.
 
+### Revised-guide physical feedback (2026-11-16)
+
+All three replacement parts were reported printed and installed. The cradle still has
+excessive play in its tower receivers and pitches forward/down, rather than staying square.
+The Atom keeper falls out without useful resistance; the release direction and condition
+of its latch/rail lips have not yet been established. The radar keeper does not fully seat;
+obstructing plastic had to be removed. The saved full-mount toolpath contains 22 support
+segments inside its right rail pocket (sampled at 0.15 mm). The previous audit did not
+cover these pockets. No support centreline was found in the PCB slots or upper rail
+mating surfaces in that file. This identifies a support-placement defect, but does not
+prove the actual print used identical paths or rule out dimensional/component interference.
+
+The real harness is only just long enough. Preserve both module heights during the next
+correction. The calculated wire reserve is not a measurement of installed slack.
+
+The V5 correction adds 0.15 mm to the male guide profiles only, reducing nominal clearance
+against the existing V4 receivers from 0.30 to 0.15 mm per side. Two lower pads bear against
+the mast below those receivers; they are part of the cradle and leave the central GPIO bay
+open. The pads have a nominal 0.15 mm gap, with their bottom 18 mm below the guide bottoms.
+These are coupon targets, not validated printing tolerances or a measured stiffness.
+
+The Atom keeper is 2.25 mm thick instead of 1.8 mm, with 1.60 mm captured guide edges
+instead of 1.15 mm. Its separate sliding allowance is 0.15 mm. A 1.0 mm latch tooth and an
+open side window make engagement inspectable. The radar cap has 0.30 mm rail-pocket
+clearance, 0.40 mm entry bevels, and explicit support exclusions at both pockets and the latch.
+The nominal gap above the PCB to the cap crossbar remains approximately 2.8 mm: **do not
+push the crossbar onto the PCB**. The rail engagement is 3.8 mm when fully seated.
+
+The three small replacement parts serve as the next fit sample on the existing mount;
+there is no need to print another tower or base for this trial. No revised geometry is
+physically accepted until the checks below pass.
+
 | Standing base | Shelf clamp |
 |---|---|
 | ![Standing assembly](preview/assembly_stand.png) | ![Shelf assembly](preview/assembly_clamp.png) |
@@ -47,11 +79,12 @@ horizontally, independently of that vertical drop.
 
 ## Parts and assembly
 
-For the corrected prototype, replace **tower, atom_cradle and atom_keeper**. The head, radar
-keeper, both bases and their keys retain their geometry. First print `dock_coupon` with the new
-cradle and keeper to test the guide fit and USB access. The coupon is a short receiver slice,
-not a replacement base.
-
+For V5, replace **atom_cradle, atom_keeper and radar_keeper**. The V4 tower, head,
+both bases and their keys retain their geometry (compared against the V4 meshes).
+Do not pair the thicker V5 Atom keeper with the old cradle. Use the new cradle itself as
+the fit sample on the existing tower before installing electronics. `dock_coupon` remains
+available for new builds; its upper receiver dimensions match V4 and V5, but it does not
+represent the mast's lower bearing surface.
 For a complete new set, print one each of `tower`, `head`, `radar_keeper`, `atom_cradle`, `atom_keeper`, `base_key` and
 `head_key`. Add `stand` for the desktop version, or `clamp` and `clamp_wedge` for the shelf version.
 Print both bases to interchange them. The [STL folder](stl/) contains all parts;
@@ -73,7 +106,7 @@ Print both bases to interchange them. The [STL folder](stl/) contains all parts;
    USB-C towards the rear/mast, and slide the revised `atom_keeper` front to back until its
    right latch engages. The keeper's rear opening leaves the USB envelope clear. Bring both
    solid dovetails above the receiver mouths (6.3 mm lift), then lower the cradle onto their
-   stops. Keep the cradle level during insertion. It is a gravity-seated lift-off joint, not a
+   stops. Keep the cradle level during insertion and confirm both lower pads approach the mast. It is a gravity-seated lift-off joint, not a
    latch against upward cable pulls. Route the wires under the cradle, through the corridor beside USB, then behind and
    above the bearing with a free loop at the head. Do not use the small side eye as a mandatory
    waypoint or pull the wires tight.
@@ -123,6 +156,9 @@ Rebuild both sides of a mating interface when changing its dimensions.
 | `atom_connector_housing`, `radar_connector_housing` | Rigid connector lengths deducted from available wire |
 | `radar_thickness`, `radar_rear_depth` | PCB and rear hardware fit assumptions |
 | `fit_clearance`, `hole_compensation` | Sliding clearance and separate hole-size compensation |
+| `dock_key_growth`, `cradle_pad_gap` | V5 key growth and lower mast-stop gap; preserve V4 receiver geometry |
+| `keeper_slide_clearance` | Atom keeper allowance, independent of other joints |
+| `radar_cap_clearance`, `radar_cap_lead_in` | Cap pocket allowance and entry bevel |
 
 ## Printing
 
@@ -133,7 +169,7 @@ the slicer; the geometry gate's overhang report does not establish that a part n
 
 Provide removable external supports under the head flange/stop lug, unsupported bearing
 faces and outer receiver wings. Exclude supports from the spindle bore and its entrance, both key channels, base sockets,
-Atom keeper channels, mast docking slots and wire eye. The reference export includes optional
+Atom keeper channels and latch window, radar-cap pockets and release gap, mast docking slots and wire eye. The reference export includes optional
 non-printing volumes in `blockers/`, generated by [support-blockers.scad](support-blockers.scad).
 Keep each blocker in the same coordinates and orientation as its matching STL: import them as
 parts of one object, change the blocker volume's type to **Support blocker**, and move them
@@ -153,14 +189,22 @@ count, infill and blocker types after reopening, then reslice in the GUI before 
 project ready. A missing Support column or a substantially different model weight warrants
 checking these settings; a successful CLI slice alone is insufficient.
 
-The revised local toolpath check found no support extrusion in the sampled interiors of the
-spindle bores/entrance, key channels, base sockets or Atom keeper channels. Bridges across the
-horizontal tower bore and clamp socket still need physical inspection: a support-free channel
-can have a sagging roof. The revised cradle has one continuous first-layer region and solid guide roots. It has no
-rear hook gap. Keep the dovetail receivers, USB opening and cable corridor free of supports;
-check these with the small receiver coupon before a full mast print. Remove external supports before checking fit, without scraping fitted surfaces.
-The keeper latches are designed for PETG: their nominal beam-strain estimates are 1.58% and
-1.41%. These estimates do not certify fatigue life or make PLA a tested latch material.
+The earlier local toolpath check sampled the spindle bores/entrance, key channels, base
+sockets and Atom keeper channels. It missed the radar-cap pockets: the later audit found
+support there. The V5 replacement-plate check now covers the cap pockets/release region,
+Atom keeper channels/window and USB envelope; no support centreline crosses those sampled
+interiors. Sampling does not establish the full deposited bead envelope or prove that a
+user's resliced file has the same paths. Inspect it in line-type view before printing.
+
+The cradle now prints **nose down**, on two deliberate front-corner feet, with an outer
+brim. Its lower stops are integral; remove accessible external support from the rear roots
+without scraping the fitted keys. Never auto-orient it without rechecking the blockers.
+The two keepers print flat in their supplied orientations; the radar cap's pockets open up.
+The cap has short unsupported latch/ledge spans which still need physical inspection for sag.
+Keep the dovetail receivers, USB opening and cable corridor free of supports.
+The keeper latches are designed for PETG: their nominal beam-strain estimates are approximately
+1.94% (Atom) and 1.41% (radar). These estimates do not certify fatigue life or make PLA a
+tested latch material.
 
 Optional Bambu Studio projects can be made from the STL with the installed skill. Supply your
 own machine, material preset and support choice:
@@ -257,3 +301,23 @@ gate after parameter changes; the above record applies to the reference dimensio
 
 Original design and source: Apache-2.0, like the repository. Electronics shown in assembly
 previews are clearance references and are not printable parts.
+
+### V5 fit sequence on an existing V4 mount
+
+1. With the electronics out, lower both new cradle keys into the existing tower at once.
+   They must reach their stops by hand. Both lower pads should approach the mast without
+   lifting the keys out. Check forward/downward pitch before inserting the Atom.
+2. Slide the thicker keeper from front to back. Observe its right tooth in the side window.
+   Test separately for forward withdrawal and upward lift without pressing the release tab;
+   neither should release it. Press inward, then slide forward to remove it.
+3. Try the new radar cap on the empty head first, then with the PCB. If it seats without the
+   PCB but not with it, stop and inspect PCB-corner/component clearance rather than forcing
+   it. The cap crossbar intentionally stays above the PCB. Compare both rail insertion depths.
+4. Connect USB and all jumpers, repeat the keeper/docking check and turn the radar through
+   its intended range. The previously tested harness was only just long enough. Do not pull
+   connectors to reach a yaw endpoint.
+
+The CAD gate checks the same poses and insertion paths, including USB and GPIO envelopes;
+positive diagnostic intersections show nominal keeper lift capture and lower-stop contact
+at one degree of pitch. Printed friction, latch recovery, pad contact, cable flex and the
+actual PCB components still require the physical sequence above.

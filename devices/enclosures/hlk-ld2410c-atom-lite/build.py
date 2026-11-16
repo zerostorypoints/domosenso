@@ -15,7 +15,7 @@ PARTS = (
     "base_key", "head_key", "fit_coupon", "dock_coupon",
 )
 VIEWS = ("assembly_stand", "assembly_clamp", "explode_stand", "explode_clamp", "view_wires")
-BLOCKER_PARTS = ("tower", "head", "atom_cradle", "stand", "clamp", "fit_coupon", "dock_coupon")
+BLOCKER_PARTS = ("radar_keeper", "tower", "head", "atom_cradle", "stand", "clamp", "fit_coupon", "dock_coupon")
 
 
 def main() -> None:

@@ -22,8 +22,10 @@ module cradle_voids() {
         bounds([-atom_width/2-fit_clearance,atom_front-1,dock_z],
                [atom_width/2+fit_clearance,atom_back+fit_clearance,keeper_z+5]);
         for (s=[-1,1]) scale([s,1,1])
-            bounds([atom_width/2+fit_clearance-fudge,atom_front-1,keeper_z-fit_clearance],
-                   [atom_width/2+fit_clearance+keeper_guide_ear+fit_clearance,atom_back+0.5,keeper_z+wall+fit_clearance]);
+            bounds([atom_width/2+fit_clearance-fudge,atom_front-1,keeper_z-keeper_slide_clearance],
+                   [atom_width/2+fit_clearance+keeper_guide_ear+keeper_slide_clearance,atom_back+0.5,keeper_z+keeper_thickness+keeper_slide_clearance]);
+        bounds([atom_latch_x-fudge,atom_latch_tooth_y-0.2,keeper_z-keeper_slide_clearance],
+               [cradle_outer_w/2+fudge,atom_latch_tooth_y+2.6,keeper_z+keeper_thickness+keeper_slide_clearance]);
     }
 }
 module rail_voids() {
@@ -49,7 +51,12 @@ if (part=="support_blockers") {
         padded() head_key_slot();
         rail_voids();
     }
-    if (blocker_part=="atom_cradle") translate([0,0,-dock_z]) cradle_voids();
+    if (blocker_part=="atom_cradle") cradle_print_pose() cradle_voids();
+    if (blocker_part=="radar_keeper")
+        translate([0,0,radar_latch_roof]) rotate([180,0,0])
+            // Both fitted pockets, their entry bevels and the latch release gap.
+            padded() bounds([-radar_rail_x-wall-0.5,radar_y-wall-radar_fit-0.5,radar_rail_top-4.5],
+                            [radar_rail_x+wall+0.5,radar_latch_rail_y+wall+3,radar_latch_roof+0.1]);
     if (blocker_part=="stand") socket_voids();
     if (blocker_part=="clamp") translate([0,0,clamp_width/2]) rotate([0,90,0]) socket_voids();
 }
