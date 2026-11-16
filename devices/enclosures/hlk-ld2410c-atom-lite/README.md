@@ -117,7 +117,8 @@ horizontally, independently of that vertical drop.
 ## Parts and assembly
 
 For V5, replace **atom_cradle, atom_keeper and radar_keeper**. The V4 tower, head,
-both bases and their keys retain their geometry (compared against the V4 meshes).
+shelf base and keys retain their geometry (compared against the V4 meshes); the V5.1
+desktop base adds only the recessed symbol.
 Do not pair the thicker V5 Atom keeper with the old cradle. Use the new cradle itself as
 the fit sample on the existing tower before installing electronics. `dock_coupon` remains
 available for new builds; its upper receiver dimensions match V4 and V5, but it does not
@@ -244,6 +245,8 @@ Keep the dovetail receivers, USB opening and cable corridor free of supports.
 The keeper latches are designed for PETG: their nominal beam-strain estimates are approximately
 1.94% (Atom) and 1.41% (radar). These estimates do not certify fatigue life or make PLA a
 tested latch material.
+
+## Developer profile generation
 
 Optional Bambu Studio projects can be made from the STL with the installed skill. Supply your
 own machine, material preset and support choice:

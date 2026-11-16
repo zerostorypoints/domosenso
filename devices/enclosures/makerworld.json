@@ -91,7 +91,12 @@
         "light_right/dragon_stand-half_l.stl",
         "light_right/dragon_stand-half_r.stl",
         "light_right/dragon_stand-half_l.3mf",
-        "light_right/dragon_stand-half_r.3mf"
+        "light_right/dragon_stand-half_r.3mf",
+        "test/TEST1_cf_light_left.3mf",
+        "test/TEST1_cf_light_right.3mf",
+        "test/TEST2_petg_coupon.3mf",
+        "test/TEST3_cf_light_left.3mf",
+        "test/TEST3_cf_light_right.3mf"
       ],
       "extraFiles": [],
       "makerworldUrl": null

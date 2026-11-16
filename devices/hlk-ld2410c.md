@@ -6,7 +6,7 @@ radar like this to wake its screen. Device file: [hlk-ld2410c.yaml](hlk-ld2410c.
 
 ## Desktop mount
 
-![V5 Atom Lite and LD2410C mount: desktop and shelf bases, cradle guides and USB routing](enclosures/hlk-ld2410c-atom-lite/preview/assembly-guide.png)
+![V5.1 Atom Lite and LD2410C mount: desktop and shelf bases, cradle guides and USB routing](enclosures/hlk-ld2410c-atom-lite/preview/assembly-guide.png)
 
 A printable **V5.1 desktop-mount proposal** holds the Atom Lite below the radar, with the radar
 vertical on a head that turns up to 60 degrees left or right. Choose a 70 × 60 mm standing

@@ -90,10 +90,10 @@ Estimated, not measured: the USB-C plug (12.5 × 7 × 22 mm) and the cable (4.5 
 
 - The latest v2.6 build is reported printed and checked. Wing retention force, repeated disassembly and long-term fit have not been measured.
 - Small first-layer islands on the halves' cut faces: the Atom's stop lips and the edges round the key recesses. Use a brim or glue stick and watch the first layers.
-- The dowel and key fits in the halves themselves (the coupon set them; the halves' seam faces may print differently).
+- On each new print, check dowel and key fits in the halves: their seam faces may print differently from the coupon.
 - The head ceiling bridges 11 mm in PETG-CF and may sag slightly.
-- The plunger's travel and feel.
-- The stance on the wing feet.
+- Check the plunger's travel and feel on each new print.
+- Check that the assembled dragon stands steadily on its wing feet.
 - Sensor temperature: run the Sensirion acceptance test (15 minutes running, difference ≤ 0.5 °C from a reference, CO₂ step under 60 s). The sensor sits above the Atom, against Sensirion's advice; this was accepted for this design.
 
 ## Files

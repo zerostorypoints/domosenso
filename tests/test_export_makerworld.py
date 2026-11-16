@@ -40,3 +40,14 @@ def test_rejects_paths_outside_model(tmp_path):
             'heading': 'Enclosure', 'sections': [], 'files': ['../../private.txt']}
     with pytest.raises(ValueError, match='Unsafe'):
         package_model(item, 'a' * 40, lambda p: b'', tmp_path)
+
+
+def test_actual_catalog_packages_all_selected_files(tmp_path):
+    import json
+    from pathlib import Path
+    from export_makerworld import ROOT
+    for item in json.loads((ROOT / "devices/enclosures/makerworld.json").read_text())["models"]:
+        result = package_model(item, "b" * 40, lambda p: (ROOT / p).read_bytes(), tmp_path)
+        with zipfile.ZipFile(result / (item["id"] + ".zip")) as archive:
+            assert archive.testzip() is None
+            assert not any("stand_plain" in name for name in archive.namelist())

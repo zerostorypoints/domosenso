@@ -30,10 +30,10 @@ def links(text, source, revision):
     import posixpath
     def replace(match):
         target = match[2]
-        if re.match(r'^(https?://|mailto:|#)', target):
+        if re.match(r'^(https?://|mailto:)', target):
             return match[0]
         path, sep, anchor = target.partition('#')
-        path = posixpath.normpath(posixpath.join(posixpath.dirname(source), path))
+        path = posixpath.normpath(posixpath.join(posixpath.dirname(source), path)) if path else source
         safe_path(path)
         base = f'https://raw.githubusercontent.com/zerostorypoints/domosenso/{revision}' if match[1].startswith('!') else f'{REPO}/blob/{revision}'
         return f'{match[1]}{base}/{path}{sep}{anchor})'
