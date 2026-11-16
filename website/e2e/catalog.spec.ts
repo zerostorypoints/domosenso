@@ -54,7 +54,9 @@ test('hardware and journal routes render on narrow screens',async({page},info)=>
  await page.goto('/devices/hlk-ld2410c/');
  await expect(page.locator('article table').first()).toContainText('G22');
  await expect(page.getByRole('link',{name:/Open full-size diagram/})).toHaveAttribute('href',/\/wiring\/hlk-ld2410c-atom-lite.svg/);
- await expect(page.locator('article img')).toHaveAttribute('src',/\/wiring\/hlk-ld2410c-atom-lite.svg/);
+ await expect(page.getByRole('link',{name:/Open full-size diagram/}).locator('img')).toHaveAttribute('src',/\/wiring\/hlk-ld2410c-atom-lite.svg/);
+ await expect(page.getByRole('link',{name:/Open full-size image: V5 Atom/})).toHaveAttribute('href','/enclosures/hlk-ld2410c-atom-lite/assembly-guide.png');
+ await expect(page.getByRole('heading',{name:'Desktop mount',exact:true})).toBeVisible();
  await page.goto('/journal/');await page.getByRole('button',{name:'Releases',exact:true}).click();
  await expect(page.locator('.journal-card')).toHaveCount(5);
  const rss=await page.request.get('/journal/feed.xml');expect(rss.status()).toBe(200);expect(await rss.text()).toContain('<rss');

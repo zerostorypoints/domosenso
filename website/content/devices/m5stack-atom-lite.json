@@ -3,7 +3,7 @@
   "title": "M5Stack Atom Lite",
   "summary": "A compact board with three distinct installation roles.",
   "sourcePath": "devices/m5stack-atom-lite.yaml",
-  "sourceCommit": "10b863238b9d89208a60a6e3d9bd959d47a0f083",
+  "sourceCommit": "3fe3ed7ce0521bfb720b8f4ba2fe0f7af7309247",
   "components": [
     "bermuda-presence",
     "awnings",
@@ -38,6 +38,6 @@
       "version": "0.1.1"
     }
   ],
-  "body": "## Choose the role first\n\nFor Room presence, power the board from a plain 5 V USB supply and configure the ESPHome BLE proxy. Position proxies where Bluetooth coverage is needed. The optional radar has its own [wiring guide](/devices/hlk-ld2410c/).\n\nFor awnings, a separate board runs ESPSomfy-RTS firmware with a [CC1101 radio](/devices/cc1101/). It is not simultaneously the ESPHome Bluetooth proxy.\n\nFor a gate remote, a board runs the gate-remote component's firmware, first to capture the handset and then to send its code, with an [M5Stack CC1101 module](/devices/m5stack-module-cc1101/) for 868 MHz handsets. The module takes 5 V from the Atom's 5V socket.\n\n## Verify before use\n\nConfirm the selected firmware, network connection and Home Assistant integration before mapping component inputs. Keep Wi-Fi credentials and API encryption keys in your private home project.\n\n## Setup references\n\n- [Bluetooth proxy — ESPHome](https://esphome.io/components/bluetooth_proxy/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
+  "body": "## Choose the role first\n\nFor Room presence, power the board from a plain 5 V USB supply and configure the ESPHome BLE proxy. Position proxies where Bluetooth coverage is needed. The optional radar has its own [wiring guide](/devices/hlk-ld2410c/).\n\nFor awnings, a separate board runs ESPSomfy-RTS firmware with a [CC1101 radio](/devices/cc1101/). It is not simultaneously the ESPHome Bluetooth proxy.\n\nFor a gate remote, a board runs the gate-remote component's firmware, first to capture the handset and then to send its code, with an [M5Stack CC1101 module](/devices/m5stack-module-cc1101/) for 868 MHz handsets. The module takes 5 V from the Atom's 5V socket.\n\n## Verify before use\n\nConfirm the selected firmware, network connection and Home Assistant integration before mapping component inputs. Keep Wi-Fi credentials and API encryption keys in your private home project.\n\n## Setup references\n\n- [Bluetooth proxy — ESPHome](https://esphome.io/components/bluetooth_proxy/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.\n\n## Desktop mount with radar\n\nThe optional [V5 desktop mount for Atom Lite and HLK-LD2410C](/devices/hlk-ld2410c/#desktop-mount) has a turning radar head and a choice of standing base or shelf clamp. The guide includes an assembly diagram, printable STL files and editable source. One printed V5 assembly was reported to fit; finger access to the Atom button remains cramped, and the proposed bevel is not included.\n",
   "photo": "/hardware/m5stack-atom-lite.webp"
 }
