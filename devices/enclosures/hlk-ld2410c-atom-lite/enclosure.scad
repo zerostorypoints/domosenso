@@ -14,7 +14,8 @@
 // "radar height" -> radar_center_height; "angle" -> yaw_limit, head();
 // "harness" -> harness_height, atom_clearance; "fit" -> fit_clearance.
 // Print selectors stand alone at Z=0; assembly selectors show use orientation.
-// Previous review: 2026-11-15, gpt-6-astra. Revised docking/USB design awaits fresh review.
+// Previous review: 2026-11-15, gpt-6-astra. Docking review: 2026-11-16, claude-sonnet-5-5.
+// Post-review minor change: rear keeper tie thickened to at least wall; gate repeated.
 // === PRINT SETTINGS ===
 // Start with PETG for functional parts; PLA is an option for a rigid mockup.
 // 0.2 mm layers, 4 perimeters, 25% gyroid as a starting point.
@@ -140,7 +141,8 @@ usb_low = atom_z-atom_usb_vertical_margin;
 usb_high = atom_top+atom_usb_vertical_margin;
 dock_y = mast_y-mast_depth/2-dock_ear_depth-0.15;
 hanger_rear = dock_y+dock_ear_depth;
-tab_y = atom_back-1.35;
+tab_y = atom_back-wall-0.2; // Full wall remains after the padded rear USB cut.
+assert(atom_back-fudge-0.1-tab_y >= wall, "Rear keeper tie must retain a full wall");
 keeper_x = cradle_outer_w/2;
 keeper_z = atom_top+fit_clearance;
 keeper_guide_ear = 1.15;

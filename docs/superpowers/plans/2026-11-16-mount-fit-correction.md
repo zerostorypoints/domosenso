@@ -36,9 +36,9 @@
 ## Task 2: Deliverables and review
 
 - [x] Export shared STL/previews and local replacement/coupon 3MFs with native Bambu Studio.
-- [ ] Slice and inspect fitted regions for support paths; reopen/reslice in GUI if available.
-- [ ] Independent review in a separate owned session/worktree; address findings and reverify.
-- [ ] Update README and assembly drawings for both bases; run repository checks before commit.
+- [x] Slice and inspect fitted regions for support paths; reopen/reslice in GUI if available.
+- [x] Independent review in a separate owned session/worktree; address findings and reverify.
+- [x] Update README and assembly drawings for both bases; run repository checks before commit.
 - [ ] Preserve deliverables and recovery record; clean temporary review/build resources while retaining the active worktree for physical testing.
 
 ## Ledger
@@ -49,3 +49,7 @@
 - Geometry: full 45/45 gate passed after extending the wire corridor only through the inner guide corner; minimum remaining guide wall is asserted. Rear USB 16 × 40 mm, full case-height margin.
 - Ruling: widen the upper mast to 38 mm and place guides at ±18.5 mm to preserve a structural wall beside the wire corridor; the lower tenon remains unchanged. Reference housings are now 12 mm; longer housings require rerunning the slack assertion.
 - Native slicing: zero support paths in sampled fitted interfaces; 0.184 g external supports for the coupon plate and 0.259 g for replacement parts. The seven reusable part meshes compare equal at 0.00001 mm vertex resolution.
+
+- Independent review: claude-sonnet-5-5 in a separate named worktree at a0a1a73, workspace guard passed. No blockers. Rear keeper tie increased from approximately 1.24 mm to at least 1.8 mm; full gate passed again. Wing support and level insertion documented. Lift-off retention, real bundle fit and mast stiffness require physical tests; no new latch added to the approved lift-off design. Reviewer render-only limitations recorded in README.
+- Final handoff: updated drawings for both bases and a separate mast-only plate allow reuse of the coupon cradle/keeper. Local printer files and review logs remain outside Git. Shared source, STL and documentation are the reproducible result.
+- Website impact: enclosure documentation/previews only; no component capability, release or site deployment.
