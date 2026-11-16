@@ -3,7 +3,7 @@
   "title": "M5Stack Atom EchoS3R",
   "summary": "A small ESP32-S3 board with a microphone, used as a room sound sensor.",
   "sourcePath": "devices/m5stack-atom-echos3r.yaml",
-  "sourceCommit": "d855c744cc8a92cffed7a36c44746eacb0d32881",
+  "sourceCommit": "3fe3ed7ce0521bfb720b8f4ba2fe0f7af7309247",
   "components": [
     "audio-sensor"
   ],
