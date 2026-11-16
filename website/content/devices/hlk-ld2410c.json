@@ -3,7 +3,7 @@
   "title": "HLK-LD2410C radar",
   "summary": "Presence and distance over UART.",
   "sourcePath": "devices/hlk-ld2410c.md",
-  "sourceCommit": "16c535166d3dcca58c80fe22203f072010565491",
+  "sourceCommit": "d855c744cc8a92cffed7a36c44746eacb0d32881",
   "components": [
     "ramka",
     "bermuda-presence"

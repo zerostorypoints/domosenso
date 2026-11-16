@@ -3,7 +3,7 @@
   "title": "Tapo T315",
   "summary": "Room temperature and humidity through a Tapo hub.",
   "sourcePath": "devices/tapo-t315.yaml",
-  "sourceCommit": "16c535166d3dcca58c80fe22203f072010565491",
+  "sourceCommit": "d855c744cc8a92cffed7a36c44746eacb0d32881",
   "components": [
     "climate-air"
   ],

@@ -3,7 +3,7 @@
   "title": "ESP32-S3 with IM73D122",
   "summary": "A PDM sound-sensor assembly with an optional OLED, sharing the Atom spectrum pipeline.",
   "sourcePath": "devices/esp32-s3-im73d122.yaml",
-  "sourceCommit": "16c535166d3dcca58c80fe22203f072010565491",
+  "sourceCommit": "d855c744cc8a92cffed7a36c44746eacb0d32881",
   "components": [
     "audio-sensor"
   ],
