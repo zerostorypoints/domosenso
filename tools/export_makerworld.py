@@ -60,6 +60,17 @@ def package_model(item, revision, read, output):
     dest = output / model_id
     dest.mkdir(parents=True, exist_ok=True)
     (dest / 'description.md').write_text(description)
+    # Raw Model Files rejects documentation inside ZIPs (including extensionless LICENSE).
+    # Keep the complete source archive below; upload these notices under Documentation.
+    for notice in ('LICENSE', 'NOTICE'):
+        (dest / f'{notice}.txt').write_bytes(data[notice])
+    (dest / 'instructions.txt').write_text(description)
+    with zipfile.ZipFile(dest / f'{model_id}-raw-models.zip', 'w') as archive:
+        for path, content in data.items():
+            if PurePosixPath(path).suffix.lower() in {'.stl', '.scad', '.3mf'}:
+                info = zipfile.ZipInfo(path, date_time=(2026, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(info, content)
     with zipfile.ZipFile(dest / f'{model_id}.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
         for path, content in data.items():
             info = zipfile.ZipInfo(path, date_time=(2026, 1, 1, 0, 0, 0))

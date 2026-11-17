@@ -143,6 +143,15 @@ Each folder contains `description.md`, the existing CAD illustrations, a complet
 manifest recording the source SHA and SHA-256 of every source file. All inputs come from that
 commit, so uncommitted local edits cannot silently change an upload. Convert a description for
 a rich-text editor with Pandoc if needed: `pandoc description.md -f gfm -t html -o description.html`.
+
+Upload `<model-id>-raw-models.zip` to **Raw Model Files**: it contains only the supported STL,
+OpenSCAD and 3MF files. Do not upload the complete source ZIP there: MakerWorld rejects its
+documentation, including the extensionless `LICENSE`. Upload `LICENSE.txt`, `NOTICE.txt` and
+`instructions.txt` under **Documentation > Other Files**, and the existing assembly PNG under
+**Documentation > Assembly Guide**. The text notices are byte-identical to the source notices;
+the instruction text comes from the same source as the listing. Retain the complete ZIP for
+source distribution. Verify current accepted file formats before each submission.
+
 The website publishes its selected `documentationCommit` through its normal source/main gate;
 use the same revision for MakerWorld after the website pin has advanced. A draft may name a
 newer source revision, but do not claim it is already live on .org.

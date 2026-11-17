@@ -27,6 +27,12 @@ def test_export_copies_exact_source_and_fails_for_missing_parts(tmp_path):
     with zipfile.ZipFile(result / 'example.zip') as z:
         assert z.read('devices/enclosures/example/stl/base.stl') == files['devices/enclosures/example/stl/base.stl']
         assert z.read('LICENSE') == b'License'
+    with zipfile.ZipFile(result / 'example-raw-models.zip') as z:
+        assert z.namelist() == ['devices/enclosures/example/stl/base.stl']
+        assert z.read(z.namelist()[0]) == files[z.namelist()[0]]
+    assert (result / 'LICENSE.txt').read_bytes() == b'License'
+    assert (result / 'NOTICE.txt').read_bytes() == b'Notice'
+    assert (result / 'instructions.txt').read_text() == (result / 'description.md').read_text()
     import json
     manifest = json.loads((result / 'manifest.json').read_text())
     assert manifest['sha256']['devices/enclosures/example/stl/base.stl'] == hashlib.sha256(files['devices/enclosures/example/stl/base.stl']).hexdigest()
