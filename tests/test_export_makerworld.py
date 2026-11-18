@@ -23,10 +23,19 @@ def test_export_copies_exact_source_and_fails_for_missing_parts(tmp_path):
     item = {'id': 'example', 'title': 'Example', 'device': 'devices/example.md',
             'heading': 'Enclosure', 'sections': ['Assembly'], 'files': ['stl/base.stl']}
     result = package_model(item, 'a' * 40, files.__getitem__, tmp_path)
-    assert 'Shared site description.' in (result / 'description.md').read_text()
+    description = (result / 'description.md').read_text()
+    assert 'Shared site description.' in description
+    assert '[Read the hardware and setup guide on DomoSenso.org](https://domosenso.org/devices/example/)' in description
+    assert 'a' * 40 not in description
     with zipfile.ZipFile(result / 'example.zip') as z:
         assert z.read('devices/enclosures/example/stl/base.stl') == files['devices/enclosures/example/stl/base.stl']
         assert z.read('LICENSE') == b'License'
+    with zipfile.ZipFile(result / 'example-raw-models.zip') as z:
+        assert z.namelist() == ['devices/enclosures/example/stl/base.stl']
+        assert z.read(z.namelist()[0]) == files[z.namelist()[0]]
+    assert (result / 'LICENSE.txt').read_bytes() == b'License'
+    assert (result / 'NOTICE.txt').read_bytes() == b'Notice'
+    assert (result / 'instructions.txt').read_text() == (result / 'description.md').read_text()
     import json
     manifest = json.loads((result / 'manifest.json').read_text())
     assert manifest['sha256']['devices/enclosures/example/stl/base.stl'] == hashlib.sha256(files['devices/enclosures/example/stl/base.stl']).hexdigest()

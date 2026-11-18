@@ -168,6 +168,8 @@ an issue.
   members in order (itself or in sub-sessions, each in its own worktree), and merges each
   sub-branch into the feature branch after reading its diff against the issue. One pull request
   from the feature branch into `main` at the end, with a line per issue.
-- **Stop at the draft PR.** Push the task branch and open a draft PR only if the human authorised
-  that scope when the issue started; otherwise report the branch and ask. Merging, releasing and
+- **Stop at the ready-for-review PR.** Complete the checks and review evidence, then push the task
+  branch and open a normal PR only if the human authorised
+  that scope when the issue started; otherwise report the branch and ask. Do not create draft PRs
+  unless explicitly requested. Merging, releasing and
   any home's production remain separate decisions.

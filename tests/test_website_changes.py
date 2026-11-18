@@ -98,6 +98,18 @@ def test_docs_generated_changed_slugs(repo):
     assert [r for r, _ in got] == ['/docs/s2/', '/docs/s3/']
 
 
+def test_makerworld_listing_publication_reports_its_device_page(repo):
+    _, write, commit, git = repo
+    path = 'website/src/generated/makerworld.json'
+    profile = 'https://makerworld.com/en/@Domosenso'
+    write(path, json.dumps({'profileUrl': profile, 'models': []}))
+    commit(); git('tag', '-f', 'base')
+    write(path, json.dumps({'profileUrl': profile, 'models': [
+        {'deviceId': 'm5stack-unit-co2l', 'makerworldUrl': 'https://makerworld.com/en/models/123'}]}))
+    commit()
+    assert routes(repo, [path]) == [('/devices/m5stack-unit-co2l/', 'MakerWorld listing changed')]
+
+
 @pytest.mark.parametrize('path', ['website/src/app/page.tsx', 'website/public/a.png'])
 def test_site_code(repo, path):
     _, write, commit, _ = repo

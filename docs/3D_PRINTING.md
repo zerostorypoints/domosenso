@@ -133,6 +133,16 @@ READMEs supply parts, printing and assembly. Do not maintain a second hand-writt
 MakerWorld. `devices/enclosures/makerworld.json` selects the three models, README sections and
 exact files; `makerworldUrl` stays null until a publication URL has actually been verified.
 
+After each model is accepted, verify the public listing and its DomoSenso author, then record its
+URL in `makerworldUrl` and include the clickable link in the publication handoff. The hardware
+page on domosenso.org reads that catalog entry to display the model download link. Keep the
+DomoSenso profile in `profileUrl`; the site footer links to it so visitors can find all published
+models. Do not publish draft or failed-submission URLs. These publication links are maintained
+separately from the pinned technical guide revision; they do not advance its documentation pin.
+Put a clickable link to the corresponding public domosenso.org hardware guide near the top of
+each MakerWorld description. Verify the guide opens before publishing. Keep the source revision in
+the export manifest and the license notices with the files; keep the listing focused on the model.
+
 After committing the model and instructions, export a delivery directory outside the checkout:
 
 ```sh
@@ -143,6 +153,15 @@ Each folder contains `description.md`, the existing CAD illustrations, a complet
 manifest recording the source SHA and SHA-256 of every source file. All inputs come from that
 commit, so uncommitted local edits cannot silently change an upload. Convert a description for
 a rich-text editor with Pandoc if needed: `pandoc description.md -f gfm -t html -o description.html`.
+
+Upload `<model-id>-raw-models.zip` to **Raw Model Files**: it contains only the supported STL,
+OpenSCAD and 3MF files. Do not upload the complete source ZIP there: MakerWorld rejects its
+documentation, including the extensionless `LICENSE`. Upload `LICENSE.txt`, `NOTICE.txt` and
+`instructions.txt` under **Documentation > Other Files**, and the existing assembly PNG under
+**Documentation > Assembly Guide**. The text notices are byte-identical to the source notices;
+the instruction text comes from the same source as the listing. Retain the complete ZIP for
+source distribution. Verify current accepted file formats before each submission.
+
 The website publishes its selected `documentationCommit` through its normal source/main gate;
 use the same revision for MakerWorld after the website pin has advanced. A draft may name a
 newer source revision, but do not claim it is already live on .org.
