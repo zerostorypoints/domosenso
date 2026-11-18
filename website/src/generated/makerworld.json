@@ -2,7 +2,7 @@
   "profileUrl": "https://makerworld.com/en/@Domosenso",
   "models": [
     {
-      "device": "devices/hlk-ld2410c.md",
+      "deviceId": "hlk-ld2410c",
       "makerworldUrl": "https://makerworld.com/en/models/3630794-domosenso-atom-lite-ld2410c-desk-and-shelf-mount"
     }
   ]

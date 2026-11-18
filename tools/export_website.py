@@ -179,10 +179,17 @@ def main():
             verify_content_refs(ROOT, publication, content)
         catalog, docs = build(ROOT, publication)
         makerworld = json.loads((ROOT / 'devices/enclosures/makerworld.json').read_text())
+        device_ids = {device['id'] for device in content['devices']}
+        models = []
+        for model in makerworld['models']:
+            device_id = Path(model['device']).stem
+            if device_id not in device_ids:
+                raise ValueError(f'MakerWorld model has no public device guide: {device_id}')
+            if model.get('makerworldUrl'):
+                models.append({'deviceId': device_id, 'makerworldUrl': model['makerworldUrl']})
         write_json(ROOT / 'website/src/generated/makerworld.json', {
             'profileUrl': makerworld['profileUrl'],
-            'models': [{'device': model['device'], 'makerworldUrl': model['makerworldUrl']}
-                       for model in makerworld['models'] if model.get('makerworldUrl')],
+            'models': models,
         }, args.check)
         for path, data in outputs(content, catalog, docs, agent_content(ROOT, publication)).items():
             write_json(ROOT / path, data, args.check)

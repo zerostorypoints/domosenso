@@ -63,7 +63,7 @@ export function componentMarkdown(c:Component):string{
 }
 export function deviceMarkdown(d:Device):string{
  // The body opens with its own H1; the page title already carries it.
- const modelUrl=makerworldModel(d.sourcePath);
+ const modelUrl=makerworldModel(d.id);
  return markdownPage(`/devices/${d.id}/`,d.title,[d.summary,modelUrl?`[Download 3D print files on MakerWorld](${modelUrl})`:'',absolutize(d.body.replace(/^# .*\n+/,'').trim()),absolutize(dimensionsMarkdown(dimensionsOf(d),d.dimensionsDrawing??null)),`Source: ${d.sourceUrl}`]);
 }
 export function docMarkdown(d:Doc):string{

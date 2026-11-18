@@ -75,6 +75,16 @@ def routes_for(path, root, base, head):
         after = {d['slug']: d['body'] for d in json.loads(new)} if new else {}
         return [(f'/docs/{s}/', verb(before.get(s), after.get(s), 'document'))
                 for s in sorted(set(before) | set(after)) if before.get(s) != after.get(s)]
+    if path == GENERATED + 'makerworld.json':
+        before, after = (json.loads(value) if value else {} for value in (old, new))
+        old_links, new_links = ({model['deviceId']: model['makerworldUrl'] for model in data.get('models', [])}
+                                for data in (before, after))
+        pages = [('/devices/' + device_id + '/', 'MakerWorld listing changed')
+                 for device_id in sorted(old_links.keys() | new_links.keys())
+                 if old_links.get(device_id) != new_links.get(device_id)]
+        if before.get('profileUrl') != after.get('profileUrl'):
+            pages.append(('/', 'MakerWorld footer changed'))
+        return pages
     if path.startswith(GENERATED):
         return []
     if path.startswith(SITE_CODE):
