@@ -1,4 +1,5 @@
 {
+  "profileUrl": "https://makerworld.com/en/@Domosenso",
   "models": [
     {
       "id": "hlk-ld2410c-atom-lite",
@@ -43,7 +44,7 @@
       "extraFiles": [
         "devices/wiring/hlk-ld2410c-atom-lite.svg"
       ],
-      "makerworldUrl": null
+      "makerworldUrl": "https://makerworld.com/en/models/3630794-domosenso-atom-lite-ld2410c-desk-and-shelf-mount"
     },
     {
       "id": "m5stack-co2l-atom-lite",

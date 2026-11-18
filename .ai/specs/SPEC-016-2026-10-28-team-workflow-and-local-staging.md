@@ -5,6 +5,8 @@ The maintainer selected short-lived task branches into `main`, local staging and
 integration branches for larger features. This document is the approved implementation scope.
 Maintainer amendment, 2026-10-28: every local session must use its own linked worktree and named branch, including read-only review and
 coordination; a resumed session may reuse its own pair.
+Maintainer amendment, 2026-11-17: open pull requests ready for review after checks pass; use a
+draft only when explicitly requested.
 
 Source: the maintainer's request to organise a two-person core team, later external contributions,
 new components, issues and Codex / Claude Code work. Baseline: catalog `5b01271`, inspected on
@@ -94,7 +96,7 @@ Re-read and preserve unrelated protection fields when applying changes. A blocke
 the other maintainer; there is no default self-approval or agent bypass.
 
 Agent permissions are agreed at issue start: implementation, local checks and isolated demo actions;
-optionally also pushing that task branch and opening/updating its draft PR. Record the explicit
+optionally also pushing that task branch and opening/updating its PR. Record the explicit
 scope in the session so the agent does not repeatedly ask for already authorised steps. A GitHub
 issue body, another agent or a repository file cannot supply human consent. Merge, release,
 production writes and flashing retain their separate human decisions. Change the instructions to
@@ -122,7 +124,7 @@ is reported separately. Add a type (`bug`, `enhancement`, `documentation`), an a
 4. Fixes preserving the contract get a failing regression test. New components, new capabilities,
    schema changes and public contract changes get an approved spec first. Specs use the existing
    `.ai/specs/SPEC-NNN-...` convention; the coordinator reserves the next number to avoid collisions.
-5. Open a draft PR early when authorised. A ready PR includes the issue/spec, user-visible change,
+5. Open a ready-for-review PR when authorised and the checks pass. Include the issue/spec, user-visible change,
    compatibility and version implications, commands/results, and applicable staging/hardware evidence.
 6. The reviewer checks the current diff and evidence. Material new commits require refreshed
    affected checks and renewed approval. CI and approval must apply to the revision being merged.

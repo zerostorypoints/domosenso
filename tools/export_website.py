@@ -178,6 +178,12 @@ def main():
         if args.verify_remote:
             verify_content_refs(ROOT, publication, content)
         catalog, docs = build(ROOT, publication)
+        makerworld = json.loads((ROOT / 'devices/enclosures/makerworld.json').read_text())
+        write_json(ROOT / 'website/src/generated/makerworld.json', {
+            'profileUrl': makerworld['profileUrl'],
+            'models': [{'device': model['device'], 'makerworldUrl': model['makerworldUrl']}
+                       for model in makerworld['models'] if model.get('makerworldUrl')],
+        }, args.check)
         for path, data in outputs(content, catalog, docs, agent_content(ROOT, publication)).items():
             write_json(ROOT / path, data, args.check)
     except (ValueError, KeyError, OSError, yaml.YAMLError) as error:

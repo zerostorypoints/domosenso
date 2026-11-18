@@ -52,10 +52,12 @@ def package_model(item, revision, read, output):
     paths += [safe_path(p) for p in item.get('extraFiles', [])]
     # Read everything before creating output: a missing part must never yield a partial package.
     data = {p: read(p) for p in sorted(set(paths))}
-    body = [f"# {item['title']}", links(section(data[device].decode(), item['heading']), device, revision)]
+    website = f'https://domosenso.org/devices/{Path(device).stem}/'
+    body = [f"# {item['title']}",
+            f'[Read the hardware and setup guide on DomoSenso.org]({website}).',
+            links(section(data[device].decode(), item['heading']), device, revision)]
     for heading in item['sections']:
         body += [f'## {heading}', links(section(data[readme].decode(), heading), readme, revision)]
-    body += ['## Source and license', f'Original DomoSenso design. Apache-2.0; LICENSE and NOTICE are included.\n\nSource revision: `{revision}`. CAD illustrations show assembly; they are not photographs of printed parts.']
     description = '\n\n'.join(body) + '\n'
     dest = output / model_id
     dest.mkdir(parents=True, exist_ok=True)
@@ -78,7 +80,7 @@ def package_model(item, revision, read, output):
             archive.writestr(info, content)
         archive.writestr(zipfile.ZipInfo('START-HERE.md', date_time=(2026, 1, 1, 0, 0, 0)), f"# {item['title']}\n\n[Parts, printing and assembly]({readme}).\n\nSource revision: {revision}.\n")
     manifest = {'id': model_id, 'title': item['title'], 'sourceRevision': revision,
-                'website': f"https://domosenso.org/devices/{Path(device).stem}/",
+                'website': website,
                 'makerworldUrl': item.get('makerworldUrl'),
                 'sha256': {p: hashlib.sha256(v).hexdigest() for p, v in data.items()}}
     (dest / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')

@@ -133,6 +133,16 @@ READMEs supply parts, printing and assembly. Do not maintain a second hand-writt
 MakerWorld. `devices/enclosures/makerworld.json` selects the three models, README sections and
 exact files; `makerworldUrl` stays null until a publication URL has actually been verified.
 
+After each model is accepted, verify the public listing and its DomoSenso author, then record its
+URL in `makerworldUrl` and include the clickable link in the publication handoff. The hardware
+page on domosenso.org reads that catalog entry to display the model download link. Keep the
+DomoSenso profile in `profileUrl`; the site footer links to it so visitors can find all published
+models. Do not publish draft or failed-submission URLs. These publication links are maintained
+separately from the pinned technical guide revision; they do not advance its documentation pin.
+Put a clickable link to the corresponding public domosenso.org hardware guide near the top of
+each MakerWorld description. Verify the guide opens before publishing. Keep the source revision in
+the export manifest and the license notices with the files; keep the listing focused on the model.
+
 After committing the model and instructions, export a delivery directory outside the checkout:
 
 ```sh

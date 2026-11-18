@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import {makerworldProfile} from '@/lib/makerworld';
 import Image from 'next/image';
 import {componentName,evidenceLabel,type Component,repository} from '@/lib/catalog';
 import {MobileNav} from './mobile-nav';
@@ -39,7 +40,7 @@ export function Footer() {
       <RedditLink label="Contact & discussion · r/domosenso"/>
     </div>
     <nav aria-label="Footer">
-      <Link href="/contribute/">Contribute</Link><Link href="/how-to/">How-to</Link><Link href="/journal/">Journal</Link><Link href="/releases/">Releases & upgrades</Link>
+      <a href={makerworldProfile}>3D models on MakerWorld <Arrow/></a><Link href="/contribute/">Contribute</Link><Link href="/how-to/">How-to</Link><Link href="/journal/">Journal</Link><Link href="/releases/">Releases & upgrades</Link>
       <Link href="/professional-services/">Professional services</Link>
       <a href={repository+'/blob/main/SECURITY.md'}>Security</a>
       <Link href="/docs/licensing/">Apache-2.0 license</Link>
