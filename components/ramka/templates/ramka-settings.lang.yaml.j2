@@ -453,6 +453,10 @@ views:
   # ---- Music: the now-playing view and, with music_visual, the way to its visual -------------
   # SPEC-025 amendment 1: the page switch, the Live visualization switch (off: Classic) and the way
   # to the Live visualization sub-view, which holds everything of the visual; no preview here.
+[#- SPEC-054: how the now-playing card shares ambient (the package's music_mode, with a media
+    player), and its time per pass in rotation, shown whatever the mode. -#]
+[%- set music_mode_rows = [('input_select', 'music_mode', {'takeover': t('ui.settings.music_mode_takeover'),
+    'rotation': t('ui.settings.music_mode_rotation')}), ('input_number', 'music_turn_s')] %]
   - title: [[ t('ui.settings.pages.music') | yaml ]]
     path: music
     icon: [[ icons.music ]]
@@ -467,7 +471,7 @@ views:
         cards:[[ heading('basic', 'mdi:tune') ]]
           # The way to the sub-view shows with the switch off too, so the visual can be set up first.
           - type: entities
-            entities:[[ rows([('input_boolean', 'page_music'), ('input_boolean', 'music_live')]) ]]
+            entities:[[ rows([('input_boolean', 'page_music')] + music_mode_rows + [('input_boolean', 'music_live')]) ]]
               - type: button
                 name: [[ t('ui.settings.music_live_link') | yaml ]]
                 icon: mdi:waveform
@@ -482,7 +486,7 @@ views:
           - type: markdown
             visibility: [ {condition: state, entity: input_boolean.[[ p ]]_page_music, state: "off"} ]
             content: [[ t('ui.settings.page_off') | yaml ]][[ render_time([('inputs.music_visual', music_visual), ('inputs.media_player', inputs.media_player)]) ]]
-[%- else %][[ switch_section('music') ]]
+[%- else %][[ switch_section('music', music_mode_rows) ]]
       - type: grid
         cards:[[ not_configured('music_visual') ]][[ render_time([('inputs.media_player', inputs.media_player)]) ]]
 [%- endif %][[ reset('music') ]]

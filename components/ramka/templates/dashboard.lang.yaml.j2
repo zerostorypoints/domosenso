@@ -220,6 +220,16 @@ views:
                     states: [controls, calendar]
                 up: script.[[ p ]]_swipe_up
                 down: script.[[ p ]]_swipe_down
+              [%- if mp %]
+              # SPEC-054: on the now-playing card's turn in the rotation (music mode rotation), up
+              # ends the turn: the rotation goes on with its first page, the next view.
+              - conditions:
+                  - entity: input_select.[[ p ]]_mode
+                    states: [ambient]
+                  - entity: input_boolean.[[ p ]]_music_turn
+                    states: ["on"]
+                up: script.[[ p ]]_ambient_next
+              [%- endif %]
               - conditions:
                   - entity: input_select.[[ p ]]_mode
                     states: [ambient]
