@@ -37,5 +37,11 @@
         ]
       }
     }
+  },
+  "ui": {
+    "presence": {
+      "on": "włączone po wejściu, jasność {value}",
+      "off": "wyłączone po {minutes} min bez obecności, ostatnio widziany w odległości {distance}"
+    }
   }
 }

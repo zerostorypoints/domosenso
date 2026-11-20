@@ -37,5 +37,11 @@
         ]
       }
     }
+  },
+  "ui": {
+    "presence": {
+      "on": "beim Eintreten eingeschaltet, Helligkeit {value}",
+      "off": "nach {minutes} Min. ohne Anwesenheit ausgeschaltet, zuletzt erkannt bei {distance}"
+    }
   }
 }

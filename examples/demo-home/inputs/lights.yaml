@@ -12,3 +12,12 @@ rooms:
 battery_sensors:
   - sensor.hall_motion_sensor_battery
   - sensor.living_room_dimmer_switch_battery
+# The office light follows presence (0.5.0): a radar on the desk, its illuminance and distance.
+presence_rooms:
+  - group: light.office
+    name: Office
+    presence: binary_sensor.office_presence
+    illuminance: sensor.office_illuminance
+    dark_below: 15
+    off_after: "00:03:00"
+    distance: sensor.office_presence_distance

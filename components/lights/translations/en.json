@@ -37,5 +37,11 @@
         ]
       }
     }
+  },
+  "ui": {
+    "presence": {
+      "on": "switched on at entry, illuminance {value}",
+      "off": "switched off after {minutes} min without presence, last seen at {distance}"
+    }
   }
 }

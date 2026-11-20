@@ -90,3 +90,61 @@ def test_presence_room_without_optional_sensors(tmp_path):
     sensors = _template_sensors(package)
     assert not any(uid.startswith("lights_presence_") for uid in sensors)
     assert "sensor" not in package
+
+
+def _automations(package):
+    return {a["id"]: a for a in package["automation"]}
+
+
+def _actions(node):
+    """Every action mapping in an automation, nested ones (if/then, choose) included."""
+    if isinstance(node, dict):
+        if "action" in node:
+            yield node
+        for value in node.values():
+            yield from _actions(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _actions(item)
+
+
+def test_presence_automation_triggers(tmp_path):
+    main = _automations(_package(tmp_path, [OFFICE]))["lights_presence_office"]
+    triggers = {t["id"]: t for t in main["triggers"]}
+    assert set(triggers) == {"enter", "empty_lit", "leave", "manual_off", "manual_on"}
+    assert main["mode"] == "queued"
+    assert triggers["empty_lit"]["for"] == "00:03:00"
+    assert triggers["leave"]["for"] == "00:03:00"
+
+
+def test_turn_on_sends_no_data(tmp_path):
+    automations = _automations(_package(tmp_path, [OFFICE]))
+    turn_ons = [a for auto in automations.values() for a in _actions(auto["actions"])
+                if a["action"] == "light.turn_on"]
+    assert turn_ons
+    for action in turn_ons:
+        assert "data" not in action
+        assert action["target"] == {"entity_id": "light.office"}
+
+
+def test_start_automation(tmp_path):
+    start = _automations(_package(tmp_path, [OFFICE]))["lights_presence_office_start"]
+    assert start["triggers"] == [{"trigger": "homeassistant", "event": "start"}]
+    waits = [step for step in start["actions"] if "wait_for_trigger" in step]
+    assert waits and waits[0]["timeout"] == "00:03:00"
+
+
+def test_off_after_default(tmp_path):
+    room = {k: OFFICE[k] for k in ("group", "name", "presence")}
+    main = _automations(_package(tmp_path, [room]))["lights_presence_office"]
+    assert {t["id"]: t for t in main["triggers"]}["leave"]["for"] == "00:05:00"
+
+
+def test_presence_translations():
+    import json
+    for lang in ("en", "de", "pl"):
+        ui = json.loads((REPO / f"components/lights/translations/{lang}.json").read_text())["ui"]
+        assert "{value}" in ui["presence"]["on"]
+        assert all(p in ui["presence"]["off"] for p in ("{minutes}", "{distance}"))
+        if lang == "de":
+            assert "ß" not in json.dumps(ui, ensure_ascii=False)

@@ -169,3 +169,143 @@ sensor:
 [%- endfor %]
 [%- endif %]
 [%- endif %]
+[%- if presence_rooms %]
+
+# One automation per presence room (SPEC-053), queued so an entry and a switch-off by hand that
+# arrive together are handled in order. turn_on carries no data: the bridge restores the room's last
+# brightness and colour temperature. Switch-offs happen only while the room is empty, so the
+# manual_off trigger only ever sees a person's own switch-off.
+automation:
+[%- for room in presence_rooms %]
+[%- set id = room.id | default(room.group.split('.', 1)[1]) %]
+[%- set off_after = room.off_after | default('00:05:00') %]
+[%- set hms = off_after.split(':') %]
+[%- set minutes_text = '%g' % (hms[0] | int * 60 + hms[1] | int + hms[2] | int / 60) %]
+[%- set lit = "expand(state_attr('" ~ room.group ~ "', 'entity_id') or []) | selectattr('state', 'eq', 'on') | list | count > 0" %]
+[%- set has_illuminance = room.illuminance is defined and room.illuminance is not none %]
+[%- set has_distance = room.distance is defined and room.distance is not none %]
+[%- set label = room.name ~ ' presence light' %]
+  - id: lights_presence_[[ id ]]
+    alias: [[ label | yaml ]]
+    mode: queued
+    max: 10
+    variables:
+      room: [[ room.name | yaml ]]
+      text_on: [[ t('ui.presence.on') | yaml ]]
+      text_off: [[ t('ui.presence.off') | yaml ]]
+    triggers:
+      - trigger: state
+        entity_id: [[ room.presence ]]
+        to: "on"
+        id: enter
+      # Leaving, and a light switched on in an empty room.
+      - trigger: template
+        value_template: "{{ [[ lit ]] and is_state('[[ room.presence ]]', 'off') }}"
+        for: [[ off_after | yaml ]]
+        id: empty_lit
+      - trigger: state
+        entity_id: [[ room.presence ]]
+        to: "off"
+        for: [[ off_after | yaml ]]
+        id: leave
+      - trigger: state
+        entity_id: [[ room.group ]]
+        from: "on"
+        to: "off"
+        id: manual_off
+      - trigger: state
+        entity_id: [[ room.group ]]
+        to: "on"
+        id: manual_on
+    actions:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: enter
+              - condition: template
+                value_template: "{{ not ([[ lit ]]) }}"
+              - condition: state
+                entity_id: input_boolean.lights_presence_[[ id ]]_hold
+                state: "off"
+[%- if has_illuminance %]
+              # Unknown or unavailable counts as dark: a room left dark by a restarting sensor is
+              # worse than one lit in daylight.
+              - condition: template
+                value_template: >-
+                  {% set m = states('sensor.lights_presence_[[ id ]]_illuminance') | float(none) %}
+                  {{ m is none or not has_value('[[ room.illuminance ]]') or m < [[ room.dark_below ]] }}
+[%- endif %]
+            sequence:
+              - action: light.turn_on
+                target: {entity_id: [[ room.group ]]}
+              - action: logbook.log
+                data:
+                  name: "{{ room }}"
+                  entity_id: [[ room.group ]]
+                  message: >-
+                    {{ text_on | replace('{value}', [% if has_illuminance %]states('sensor.lights_presence_[[ id ]]_illuminance')[% else %]'—'[% endif %]) }}
+          - conditions:
+              - condition: trigger
+                id: empty_lit
+            sequence:
+              - action: light.turn_off
+                target: {entity_id: [[ room.group ]]}
+              - action: logbook.log
+                data:
+                  name: "{{ room }}"
+                  entity_id: [[ room.group ]]
+                  message: >-
+                    {{ text_off | replace('{minutes}', '[[ minutes_text ]]')
+                       | replace('{distance}', [% if has_distance %]states('sensor.lights_presence_[[ id ]]_last_distance')[% else %]'—'[% endif %]) }}
+          - conditions:
+              - condition: trigger
+                id: manual_off
+              - condition: state
+                entity_id: [[ room.presence ]]
+                state: "on"
+            sequence:
+              - action: input_boolean.turn_on
+                target: {entity_id: input_boolean.lights_presence_[[ id ]]_hold}
+          - conditions:
+              - condition: trigger
+                id: [leave, manual_on]
+            sequence:
+              - action: input_boolean.turn_off
+                target: {entity_id: input_boolean.lights_presence_[[ id ]]_hold}
+[%- set label = room.name ~ ' presence light after a restart' %]
+  # A restart cancels a running `for`, and a template trigger already true at start does not fire:
+  # a room left lit and empty is switched off here once off_after has passed without presence.
+  - id: lights_presence_[[ id ]]_start
+    alias: [[ label | yaml ]]
+    mode: single
+    variables:
+      room: [[ room.name | yaml ]]
+      text_off: [[ t('ui.presence.off') | yaml ]]
+    triggers:
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: template
+        value_template: "{{ [[ lit ]] and is_state('[[ room.presence ]]', 'off') }}"
+    actions:
+      - wait_for_trigger:
+          - trigger: state
+            entity_id: [[ room.presence ]]
+            to: "on"
+        timeout: [[ off_after | yaml ]]
+        continue_on_timeout: true
+      - if:
+          - condition: template
+            value_template: "{{ wait.trigger is none }}"
+        then:
+          - action: light.turn_off
+            target: {entity_id: [[ room.group ]]}
+          - action: logbook.log
+            data:
+              name: "{{ room }}"
+              entity_id: [[ room.group ]]
+              message: >-
+                {{ text_off | replace('{minutes}', '[[ minutes_text ]]')
+                   | replace('{distance}', [% if has_distance %]states('sensor.lights_presence_[[ id ]]_last_distance')[% else %]'—'[% endif %]) }}
+[%- endfor %]
+[%- endif %]
