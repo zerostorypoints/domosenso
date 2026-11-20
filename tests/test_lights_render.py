@@ -148,3 +148,19 @@ def test_presence_translations():
         assert all(p in ui["presence"]["off"] for p in ("{minutes}", "{distance}"))
         if lang == "de":
             assert "ß" not in json.dumps(ui, ensure_ascii=False)
+
+
+def test_automation_aliases_give_the_provided_entity_ids(tmp_path):
+    # HA makes an automation's entity id from its alias, not from its id.
+    import re
+    automations = _automations(_package(tmp_path, [OFFICE]))
+    for auto_id, auto in automations.items():
+        assert re.sub(r"[^a-z0-9]+", "_", auto["alias"].lower()).strip("_") == auto_id
+
+
+def test_statistics_name_gives_the_provided_entity_id(tmp_path):
+    # A YAML statistics sensor takes its entity id from its name (no default_entity_id).
+    import re
+    package = _package(tmp_path, [OFFICE])
+    for s in (s for s in package["sensor"] if s["platform"] == "statistics"):
+        assert re.sub(r"[^a-z0-9]+", "_", s["name"].lower()).strip("_") == s["unique_id"]

@@ -158,8 +158,8 @@ sensor:
   # Median over 2 minutes: a radar photodiode jumps by tens for a second at a time. keep_last_sample,
   # because a steady reading sends no new state and an emptied window would read as dark at noon.
   - platform: statistics
-    [%- set label = room.name ~ ' presence illuminance' %]
-    name: [[ label | yaml ]]
+    # The name makes the entity id: a YAML statistics sensor has no default_entity_id.
+    name: Lights presence [[ id ]] illuminance
     unique_id: lights_presence_[[ id ]]_illuminance
     entity_id: sensor.lights_presence_[[ id ]]_ambient
     state_characteristic: median
@@ -180,13 +180,15 @@ automation:
 [%- set id = room.id | default(room.group.split('.', 1)[1]) %]
 [%- set off_after = room.off_after | default('00:05:00') %]
 [%- set hms = off_after.split(':') %]
-[%- set minutes_text = '%g' % (hms[0] | int * 60 + hms[1] | int + hms[2] | int / 60) %]
+[%- set minutes_text = '%g' % ((hms[0] | int * 60 + hms[1] | int + hms[2] | int / 60) | round(1)) %]
 [%- set lit = "expand(state_attr('" ~ room.group ~ "', 'entity_id') or []) | selectattr('state', 'eq', 'on') | list | count > 0" %]
 [%- set has_illuminance = room.illuminance is defined and room.illuminance is not none %]
 [%- set has_distance = room.distance is defined and room.distance is not none %]
-[%- set label = room.name ~ ' presence light' %]
+  # The alias makes the entity id (automation.lights_presence_<id>); the room's name is in the
+  # description and in every logbook line.
   - id: lights_presence_[[ id ]]
-    alias: [[ label | yaml ]]
+    alias: Lights presence [[ id ]]
+    description: [[ room.name | yaml ]]
     mode: queued
     max: 10
     variables:
@@ -272,11 +274,12 @@ automation:
             sequence:
               - action: input_boolean.turn_off
                 target: {entity_id: input_boolean.lights_presence_[[ id ]]_hold}
-[%- set label = room.name ~ ' presence light after a restart' %]
+
   # A restart cancels a running `for`, and a template trigger already true at start does not fire:
   # a room left lit and empty is switched off here once off_after has passed without presence.
   - id: lights_presence_[[ id ]]_start
-    alias: [[ label | yaml ]]
+    alias: Lights presence [[ id ]] start
+    description: [[ room.name | yaml ]]
     mode: single
     variables:
       room: [[ room.name | yaml ]]
