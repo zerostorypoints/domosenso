@@ -7,6 +7,8 @@
 [%- set rooms = inputs.rooms | default([]) -%]
 [%- set batteries = inputs.battery_sensors | default([]) -%]
 [%- set battery_list = batteries | tojson | replace('"', "'") -%]
+[%- set presence_rooms = inputs.presence_rooms | default([]) -%]
+[%- for room in presence_rooms %][% if room.illuminance is defined and room.illuminance is not none and (room.dark_below is not defined or room.dark_below is none) %][[ fail('presence_rooms: ' ~ room.name ~ ' has illuminance but no dark_below') ]][% endif %][% endfor -%]
 # Hue lights, from the Domosenso catalog (component lights). Edit the inputs and render again rather
 # than editing this file.
 
