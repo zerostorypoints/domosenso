@@ -123,9 +123,36 @@
     },
     "photo_albums": {
       "all": "All albums",
+      "all_hint": "Every album, the ones added later too",
       "missing": "not found",
-      "filter": "Filter albums",
-      "none": "No albums in the photo folder yet."
+      "filter": "Filter by name",
+      "none": "No albums in the photo folder yet.",
+      "title": "Choose albums",
+      "choose": "Choose albums",
+      "summary_all": "All albums ({total})",
+      "summary_some": "{n} of {total} albums",
+      "more": "and {n} more",
+      "missing_count": "Chosen but no longer in the photo folder: {n}",
+      "count": "{n} of {total} ticked",
+      "show_label": "Show",
+      "show": {
+        "all": "All",
+        "chosen": "Ticked",
+        "unchosen": "Unticked"
+      },
+      "sort_label": "Sort",
+      "sort": {
+        "newest": "Newest first",
+        "oldest": "Oldest first",
+        "az": "Name A–Z",
+        "za": "Name Z–A"
+      },
+      "tick_shown": "Tick shown",
+      "untick_shown": "Untick shown",
+      "no_match": "No album matches.",
+      "pick_one": "Tick at least one album, or All albums.",
+      "cancel": "Cancel",
+      "save": "Save"
     },
     "climate_rooms": {
       "label": "Name",
@@ -477,7 +504,7 @@
       "calendar_by_url": "Add a calendar by URL",
       "calendar_by_url_how": "No account login needed: [an ICS link](/config/integrations/dashboard/add?domain=remote_calendar) (Remote calendar, refreshed once a day) or [a CalDAV account](/config/integrations/dashboard/add?domain=caldav) (server URL, user and app password, refreshed every 15 minutes). Then put the new `calendar.*` entity into `calendar` in `domosenso/ramka.inputs.yaml`, run `domosenso render ramka` and deploy.",
       "photo_albums": "Albums",
-      "photo_albums_how": "The photo series come from the ticked albums, the top-level folders of the photo folder. With All albums ticked they come from every album and the ticks wait, greyed out, for it to be unticked; none ticked is all of them too. The list follows the folder within 15 minutes.",
+      "photo_albums_how": "The photo series come from the chosen albums, the top-level folders of the photo folder. Choose albums opens the list: filter it by name, sort it by the date in the name, tick or untick what it shows, then Save. All albums includes the albums added later. The list follows the folder within 15 minutes.",
       "photo_count": "Photos per series",
       "photo_s": "Time per photo",
       "plants_per_page": "Plants per page",
