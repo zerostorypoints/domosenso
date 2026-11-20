@@ -93,3 +93,79 @@ template:
           component: lights
 [%- endfor %]
 [%- endif %]
+[%- if presence_rooms %]
+
+  # Presence rooms (SPEC-053). The ambient reading follows the room's illuminance only while no bulb
+  # of the group is on and holds its last value while one is: a sensor in the room sees the room's
+  # own light, and without the hold a quick return after an automatic switch-off would read as
+  # daylight.
+[%- for room in presence_rooms %]
+[%- set id = room.id | default(room.group.split('.', 1)[1]) %]
+[%- if room.illuminance is defined and room.illuminance is not none %]
+  - triggers:
+      - trigger: state
+        entity_id: [[ room.illuminance ]]
+      - trigger: state
+        entity_id: [[ room.group ]]
+    sensor:
+      [%- set label = room.name ~ ' presence ambient' %]
+      - name: [[ label | yaml ]]
+        unique_id: lights_presence_[[ id ]]_ambient
+        default_entity_id: sensor.lights_presence_[[ id ]]_ambient
+        state: >-
+          {% set lit = expand(state_attr('[[ room.group ]]', 'entity_id') or [])
+                       | selectattr('state', 'eq', 'on') | list | count > 0 %}
+          {{ this.state if lit else states('[[ room.illuminance ]]') }}
+        attributes:
+          component: lights
+          source: [[ room.illuminance ]]
+[%- endif %]
+[%- if room.distance is defined and room.distance is not none %]
+  # The distance the presence sensor last saw someone at, for the switch-off line in the logbook:
+  # by the time the room counts as empty the sensor reads 0.
+  - triggers:
+      - trigger: state
+        entity_id: [[ room.distance ]]
+    sensor:
+      [%- set label = room.name ~ ' presence last distance' %]
+      - name: [[ label | yaml ]]
+        unique_id: lights_presence_[[ id ]]_last_distance
+        default_entity_id: sensor.lights_presence_[[ id ]]_last_distance
+        state: >-
+          {% set d = states('[[ room.distance ]]') | float(0) %}
+          {{ d if is_state('[[ room.presence ]]', 'on') and d > 0 else this.state }}
+        attributes:
+          component: lights
+[%- endif %]
+[%- endfor %]
+
+input_boolean:
+[%- for room in presence_rooms %]
+[%- set id = room.id | default(room.group.split('.', 1)[1]) %]
+  # On after the light was switched off by hand in an occupied room: entry does not relight it until
+  # the room has been empty for off_after.
+  lights_presence_[[ id ]]_hold:
+    [%- set label = room.name ~ ' presence hold' %]
+    name: [[ label | yaml ]]
+    icon: mdi:lightbulb-off-outline
+[%- endfor %]
+[%- set lit_rooms = presence_rooms | selectattr('illuminance', 'defined') | rejectattr('illuminance', 'none') | list %]
+[%- if lit_rooms %]
+
+sensor:
+[%- for room in lit_rooms %]
+[%- set id = room.id | default(room.group.split('.', 1)[1]) %]
+  # Median over 2 minutes: a radar photodiode jumps by tens for a second at a time. keep_last_sample,
+  # because a steady reading sends no new state and an emptied window would read as dark at noon.
+  - platform: statistics
+    [%- set label = room.name ~ ' presence illuminance' %]
+    name: [[ label | yaml ]]
+    unique_id: lights_presence_[[ id ]]_illuminance
+    entity_id: sensor.lights_presence_[[ id ]]_ambient
+    state_characteristic: median
+    max_age: {minutes: 2}
+    keep_last_sample: true
+    sampling_size: 200
+[%- endfor %]
+[%- endif %]
+[%- endif %]

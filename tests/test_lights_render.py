@@ -54,3 +54,39 @@ def test_manifest_version():
     manifest = yaml.safe_load((REPO / "components/lights/component.yaml").read_text())
     assert manifest["version"] == "0.5.0"
     assert manifest["inputs"]["presence_rooms"]["default"] == []
+
+
+OFFICE = {"group": "light.office", "name": "Office", "presence": "binary_sensor.office_presence",
+          "illuminance": "sensor.office_illuminance", "dark_below": 15, "off_after": "00:03:00",
+          "distance": "sensor.office_presence_distance"}
+
+
+def _package(tmp_path, rooms):
+    return yaml.safe_load(_render(tmp_path, presence_rooms=rooms))
+
+
+def _template_sensors(package):
+    return {s["unique_id"]: s for block in package["template"] for s in block.get("sensor", [])}
+
+
+def test_presence_room_helpers_and_sensors(tmp_path):
+    package = _package(tmp_path, [OFFICE])
+    assert "lights_presence_office_hold" in package["input_boolean"]
+    sensors = _template_sensors(package)
+    for uid in ("lights_presence_office_ambient", "lights_presence_office_last_distance"):
+        assert sensors[uid]["attributes"]["component"] == "lights"
+    stats = {s["unique_id"]: s for s in package["sensor"] if s["platform"] == "statistics"}
+    median = stats["lights_presence_office_illuminance"]
+    assert median["entity_id"] == "sensor.lights_presence_office_ambient"
+    assert median["state_characteristic"] == "median"
+    assert median["keep_last_sample"] is True
+    assert median["max_age"] == {"minutes": 2}
+
+
+def test_presence_room_without_optional_sensors(tmp_path):
+    room = {k: OFFICE[k] for k in ("group", "name", "presence")}
+    package = _package(tmp_path, [room])
+    assert "lights_presence_office_hold" in package["input_boolean"]
+    sensors = _template_sensors(package)
+    assert not any(uid.startswith("lights_presence_") for uid in sensors)
+    assert "sensor" not in package
