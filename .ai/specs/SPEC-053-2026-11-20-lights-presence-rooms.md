@@ -1,6 +1,6 @@
 # SPEC-053: `lights` 0.5.0 — rooms whose light follows presence
 
-Status: draft 2026-11-20.
+Status: approved 2026-11-20 by the maintainer (draft 2026-11-20).
 Source: the maintainer, in a design conversation on 2026-11-20 about one room with an LD2410C radar
 and Hue spots. That room's data (illuminance by hour, presence gaps, when the light was switched on
 by hand) stays in the home's own records; only the conclusions that hold for any home are here.
