@@ -140,7 +140,7 @@
 ### Task 6: Home rollout
 
 Lives in the home's own repository and plan, not here: this repository is public. After the tag
-`lights/<0.5.0>` exists, the home updates the component, adds its room to its inputs, stages,
+`lights/0.5.0` exists, the home updates the component, adds its room to its inputs, stages,
 deploys to production with the owner's go-ahead, verifies, checks on the real bridge that a bare
 `turn_on` restores the last brightness and colour temperature, and records any installation that
 does not run the room as a parity gap.
