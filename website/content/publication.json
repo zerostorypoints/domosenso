@@ -78,9 +78,9 @@
     },
     {
       "id": "lights",
-      "version": "0.4.0",
-      "tag": "lights/0.4.0",
-      "commit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
+      "version": "0.5.1",
+      "tag": "lights/0.5.1",
+      "commit": "4a4c04ca3a286a51df07b70eb29cebcb4bd14c25",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
