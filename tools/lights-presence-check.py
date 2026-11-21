@@ -33,6 +33,7 @@ from domosenso_render import render_component
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = 'homeassistant/home-assistant:2026.9.2'
 OFF_AFTER = 10  # seconds
+SETTLE = 10  # seconds a reading waits before the ambient sensor takes it (the template's settle)
 ROOM = {'group': 'light.office', 'name': 'Office', 'presence': 'binary_sensor.office_presence',
         'illuminance': 'sensor.office_illuminance', 'dark_below': 15, 'off_after': '00:00:10',
         'distance': 'sensor.office_presence_distance'}
@@ -187,6 +188,34 @@ def cases(ha):
     # The daylight samples leave the 2-minute median window; a real radar reports every second, so
     # there the median turns within the window without a two-sample average in between.
     time.sleep(125)
+
+    # A sensor in the room sees the light a few seconds before the bulbs report on (seen with a
+    # radar photodiode and Hue): those readings stay out of the ambient reading, and so does the
+    # first one after the lamp is off.
+    ambient = 'sensor.lights_presence_office_ambient'
+    before = ha.state(ambient)
+    lux(ha, 40)
+    time.sleep(2)
+    ha.service('light', 'turn_on', entity_id='light.office')
+    stays(ha, ambient, before, 4, 'lit before the bulbs report on')
+    wait_for(ha, bulb, 'off', OFF_AFTER + 5, 'lit before the bulbs report on')  # empty_lit
+    lux(ha, 40)  # the lamp still fading as the bulbs report off
+    time.sleep(2)
+    lux(ha, 2)
+    stays(ha, ambient, before, SETTLE + 4, 'lit before the bulbs report on, after the switch-off')
+    print(f'ok lit before the bulbs report on: ambient stayed {before}')
+
+    # A reading that changes every two seconds, as a radar's does, never holds for `settle`: the
+    # ambient sensor takes it from the readings waiting.
+    for value in (3, 4, 3, 4, 3, 4, 3, 4, 3):
+        lux(ha, value)
+        time.sleep(2)
+    if ha.state(ambient) not in ('3', '4'):
+        raise Failure(f'jittering reading: ambient is {ha.state(ambient)!r}, expected 3 or 4')
+    print(f'ok jittering reading: ambient took {ha.state(ambient)} without the reading holding still')
+    lux(ha, 2)
+    wait_for(ha, ambient, '2', SETTLE + 5, 'jittering reading, settled')
+
     since = now()
     presence(ha, True)
     wait_for(ha, bulb, 'on', 10, 'entry in the dark')
@@ -196,7 +225,6 @@ def cases(ha):
     print('ok entry in the dark: switched on, logbook line written')
 
     # The room's own light does not reach the ambient reading.
-    ambient = 'sensor.lights_presence_office_ambient'
     before = ha.state(ambient)
     lux(ha, 40)
     stays(ha, ambient, before, 4, 'own light held')

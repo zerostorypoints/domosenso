@@ -3,6 +3,17 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
+## 0.5.1 (2026-11-21): lit readings stay out of the ambient median
+
+The presence room's ambient sensor takes a reading only once it is 10 s old and no bulb of the group
+has switched meanwhile: a sensor in the room sees the lamp a few seconds before the bulbs report on,
+and those readings had reached the median (SPEC-053, implementation notes 0.5.1). The sensor gains a
+`pending` attribute; entity ids are unchanged.
+
+### What a home does
+
+Nothing: `update lights` renders it. Without `presence_rooms` the package is the same as in 0.5.0.
+
 ## 0.5.0 (2026-11-20): rooms whose light follows presence
 
 Adds the optional input `presence_rooms` (SPEC-053): per room an automation that switches the Hue
