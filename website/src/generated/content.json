@@ -832,8 +832,8 @@
         "Verify group state and brightness; configure Ramka lights inputs for tablet controls."
       ],
       "id": "lights",
-      "version": "0.4.0",
-      "sourceCommit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
+      "version": "0.5.0",
+      "sourceCommit": "2f6546407efca4ed415ef4698a16a84cc04ca499",
       "evidencePaths": [
         "components/lights/component.yaml"
       ],
@@ -1669,7 +1669,7 @@
       "compatibility": [
         {
           "id": "lights",
-          "version": "0.4.0"
+          "version": "0.5.0"
         }
       ],
       "body": "## Connect existing lighting\n\nSet up the bridge and pair the bulbs using the manufacturer’s setup process. Organize lights into room groups, then add the Hue integration in Home Assistant.\n\n## Verify the group\n\nCheck that the expected room entity responds to on/off and brightness changes before mapping it into DomoSenso. Ramka can show controls for configured light entities. No additional circuit wiring is specified by this component.\n\n## Setup references\n\n- [Philips Hue setup and room groups — Home Assistant](https://www.home-assistant.io/integrations/hue/)\n\nThese upstream instructions may evolve; the component versions and pinned source above record the DomoSenso scope.",
