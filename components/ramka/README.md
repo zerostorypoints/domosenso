@@ -350,13 +350,18 @@ lovelace:
   General says so. A live switch waits for the spike (SPEC-021, "language, a spike first"), which
   has not run on the tested tablet yet.
 - **Photos**: photos per series (5), the time per photo (10 s) and, in Advanced, the albums (their
-  own section, in the right column next to Basic; the render-time inputs and Reset below), a
-  checkbox each for the top-level folders of `photo_dir` that hold photos, "All albums" first (none
-  ticked is all too). "All albums" keeps the ticks, greyed out, for when it is unticked. The list follows the folder: the photo index sends it after each run (at start,
-  every 15 minutes). The choice is kept by `sensor.<prefix>_photo_albums` over a restart; a chosen
-  album whose folder is gone stays ticked, marked "not found", and is skipped until it is back.
-  With one folder per event the list is long: the card has a filter, and grouping folders (by year,
-  `2025/…`) gives a shorter list.
+  own section, in the right column next to Basic; the render-time inputs and Reset below): a
+  summary of the choice and Choose albums, which opens the album picker, a dialog listing the
+  top-level folders of `photo_dir` that hold photos. It filters by name, shows all, the ticked or the
+  unticked albums, sorts by the date at the start of the name (`DD.MM.YYYY`, a span
+  `DD.MM-DD.MM.YYYY`, `YYYY-MM-DD`, `YYYY`; else a year anywhere) or by name, and selects or deselects
+  every album shown at once (Select all, Deselect all). Ticks are a draft: Save writes them once, Cancel or Escape drops them.
+  "All albums" is every album, later ones too; under it every box shows ticked, and unticking a few
+  keeps the others as a choice of their own. Unticking "All albums" brings back the ticks from before
+  it; a choice saves only with an album ticked. The list follows the folder: the photo index sends it
+  after each run (at start, every 15 minutes). The choice is kept by `sensor.<prefix>_photo_albums`
+  over a restart; a chosen album whose folder is gone stays ticked, marked "not found", and is skipped
+  until it is back.
 - **Colours** (SPEC-024). Every colour a setting picks comes from one list, the Ramka's named colours
   (`cards/lib/colours.js`): green, teal, blue, light blue, purple, pink, magenta, amber, orange,
   red, grey, each a series colour of the Ramka's theme, so it follows the theme mode. A select
