@@ -1,6 +1,6 @@
 # weather: upgrade notes
 
-## Unreleased (SPEC-053): the wind status and official weather warnings
+## 0.3.0 (2026-11-21): the wind status and official weather warnings
 
 Adds a package, `packages/weather.yaml`, and a script, `shell/weather_warnings.py`:
 
