@@ -78,7 +78,8 @@ const STYLE = `
   .tools input, .tools select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color);
                                 border: 1px solid var(--divider-color); border-radius: 6px; padding: 6px 8px; min-height: 36px;
                                 box-sizing: border-box; min-width: 0; }
-  @media (max-width: 480px) { .tools { grid-template-columns: 1fr 1fr; } .tools input { grid-column: 1 / -1; } }
+  @media (max-width: 480px) { .tools { grid-template-columns: 1fr 1fr; } .tools input { grid-column: 1 / -1; }
+                              .bulk .count { flex-basis: 100%; } }
   .bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .bulk .count { flex: 1; color: var(--secondary-text-color); min-width: 8em; }
   ul { list-style: none; margin: 0; padding: 0 4px 0 0; overflow-y: auto; min-height: 120px; flex: 1 1 auto;
