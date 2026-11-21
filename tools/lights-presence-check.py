@@ -200,8 +200,19 @@ def cases(ha):
     before = ha.state(ambient)
     lux(ha, 40)
     stays(ha, ambient, before, 4, 'own light held')
-    lux(ha, 2)
     print(f'ok own light held: ambient stayed {before} while the lit room read 40')
+
+    # A quick return after an automatic switch-off, with a sparse sensor: lit for longer than the
+    # median window (only the kept pre-light sample is left), and no new report after the lamp goes
+    # off (it still reads the lit 40). The room is dark, so the light comes back on.
+    time.sleep(125)
+    presence(ha, False)
+    wait_for(ha, bulb, 'off', OFF_AFTER + 5, 'quick return')
+    presence(ha, True)
+    wait_for(ha, bulb, 'on', 10, 'quick return')
+    lux(ha, 2)
+    time.sleep(2)  # the switch-on's logbook line lands before the next case starts counting
+    print('ok quick return: switched on again within the median window')
 
     # A flapping sensor with the light on: nothing switches, no new switch-on line.
     since = now()
@@ -214,6 +225,7 @@ def cases(ha):
     print('ok flapping presence: light stayed on, nothing logged')
 
     # Switched off by hand while present: held through a short drop-out, released after off_after.
+    time.sleep(6)  # a switch-off by hand counts once presence has held 5 s
     ha.service('light', 'turn_off', entity_id='light.office')
     wait_for(ha, hold, 'on', 5, 'switch-off by hand')
     presence(ha, False); time.sleep(4); presence(ha, True)
@@ -233,7 +245,8 @@ def cases(ha):
     wait_for(ha, bulb, 'off', 10, 'switched on in an empty room')
     print('ok switched on in an empty room: off after off_after')
 
-    # After a restart (the start automation, run by hand with the main one paused).
+    # After a restart: the start automation, triggered by hand with the main one paused (a real
+    # restart would also restart this check's container).
     ha.service('automation', 'turn_off', entity_id='automation.lights_presence_office')
     ha.service('light', 'turn_on', entity_id='light.office')
     wait_for(ha, bulb, 'on', 5, 'restart')
@@ -244,7 +257,7 @@ def cases(ha):
     trigger_start(ha)
     wait_for(ha, bulb, 'off', OFF_AFTER + 5, 'restart, room empty')
     ha.service('automation', 'turn_on', entity_id='automation.lights_presence_office')
-    print('ok restart: kept on when someone came in, off when nobody did')
+    print('ok restart (start automation triggered by hand): kept on when someone came in, off when nobody did')
 
     # Bulbs gone (a wall switch cut them): entry still runs, nothing errors.
     ha.service('input_boolean', 'turn_on', entity_id='input_boolean.office_bulbs_unavailable')

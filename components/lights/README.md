@@ -52,7 +52,9 @@ last seen at …`): read them to tune the two numbers below.
   switch-off tells a drop-out at a desk from someone leaving.
 - **Switched off by hand** in an occupied room, the light stays off until the room has been empty
   for `off_after`. A light switched on in an empty room goes off after `off_after`, and so does one
-  left on and empty across a restart (`automation.lights_presence_<id>_start`).
+  left on and empty across a restart, a reload of automations or a resumed pause
+  (`automation.lights_presence_<id>_start`). A switch-off counts as by hand once presence has held
+  for 5 seconds, so walking back in while the room switches itself off does not set the hold.
 - **One Home Assistant per Hue group.** Two installations that reach the same bridge must not both
   run a presence room for the same group: their automations would switch against each other.
 - **Remove an older automation first.** A local motion or presence automation on the same group

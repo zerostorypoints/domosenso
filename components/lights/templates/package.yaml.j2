@@ -102,11 +102,12 @@ template:
 [%- for room in presence_rooms %]
 [%- set id = room.id | default(room.group.split('.', 1)[1]) %]
 [%- if room.illuminance is defined and room.illuminance is not none %]
+  # Only the illuminance triggers it: on a trigger from the group the moment the bulbs report off,
+  # the sensor would still hold the reading taken with the lamp lit, and a sparse sensor keeps it
+  # in the window for up to two minutes. The first reading after the lamp is dark is the next one.
   - triggers:
       - trigger: state
         entity_id: [[ room.illuminance ]]
-      - trigger: state
-        entity_id: [[ room.group ]]
     sensor:
       [%- set label = room.name ~ ' presence ambient' %]
       - name: [[ label | yaml ]]
@@ -173,8 +174,9 @@ sensor:
 
 # One automation per presence room (SPEC-053), queued so an entry and a switch-off by hand that
 # arrive together are handled in order. turn_on carries no data: the bridge restores the room's last
-# brightness and colour temperature. Switch-offs happen only while the room is empty, so the
-# manual_off trigger only ever sees a person's own switch-off.
+# brightness and colour temperature. Switch-offs happen only while the room is empty; manual_off
+# also asks for presence held a few seconds, so it sees a person's own switch-off and not someone
+# walking in during this automation's.
 automation:
 [%- for room in presence_rooms %]
 [%- set id = room.id | default(room.group.split('.', 1)[1]) %]
@@ -262,9 +264,12 @@ automation:
           - conditions:
               - condition: trigger
                 id: manual_off
+              # For a few seconds: someone walking back in while this automation switches off
+              # is not a switch-off by hand.
               - condition: state
                 entity_id: [[ room.presence ]]
                 state: "on"
+                for: "00:00:05"
             sequence:
               - action: input_boolean.turn_on
                 target: {entity_id: input_boolean.lights_presence_[[ id ]]_hold}
@@ -284,9 +289,17 @@ automation:
     variables:
       room: [[ room.name | yaml ]]
       text_off: [[ t('ui.presence.off') | yaml ]]
+    # A reload of automations, and switching the paused room back on, also leave a lit empty room
+    # without a running `for`.
     triggers:
       - trigger: homeassistant
         event: start
+      - trigger: event
+        event_type: automation_reloaded
+      - trigger: state
+        entity_id: automation.lights_presence_[[ id ]]
+        from: "off"
+        to: "on"
     conditions:
       - condition: template
         value_template: "{{ [[ lit ]] and is_state('[[ room.presence ]]', 'off') }}"

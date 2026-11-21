@@ -149,3 +149,15 @@ the gap.
 
 None for the maintainer at draft time. Inference marked above: the Hue restore, and whether an
 existing kind fits the radar.
+
+## Implementation notes (2026-11-21, from the branch review)
+
+- The ambient sensor triggers on the illuminance only: a trigger from the group wrote the reading
+  taken with the lamp still lit, and a sparse sensor kept it in the median window.
+- `manual_off` needs presence held for 5 seconds, so an entry during the automation's own
+  switch-off does not set the hold.
+- The start automation also runs after `automation_reloaded` and when the room's automation is
+  switched back on; both leave a lit empty room without a running `for`.
+- Automation and statistics entity ids come from their alias and name in HA, so those spell the ids
+  (`Lights presence <id>`, `Lights presence <id> start`, `Lights presence <id> illuminance`).
+

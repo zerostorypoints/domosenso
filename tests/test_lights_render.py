@@ -129,7 +129,7 @@ def test_turn_on_sends_no_data(tmp_path):
 
 def test_start_automation(tmp_path):
     start = _automations(_package(tmp_path, [OFFICE]))["lights_presence_office_start"]
-    assert start["triggers"] == [{"trigger": "homeassistant", "event": "start"}]
+    assert {"trigger": "homeassistant", "event": "start"} in start["triggers"]
     waits = [step for step in start["actions"] if "wait_for_trigger" in step]
     assert waits and waits[0]["timeout"] == "00:03:00"
 
@@ -164,3 +164,30 @@ def test_statistics_name_gives_the_provided_entity_id(tmp_path):
     package = _package(tmp_path, [OFFICE])
     for s in (s for s in package["sensor"] if s["platform"] == "statistics"):
         assert re.sub(r"[^a-z0-9]+", "_", s["name"].lower()).strip("_") == s["unique_id"]
+
+
+def test_ambient_follows_only_the_illuminance(tmp_path):
+    # Review I1: a group trigger writes the reading taken while the lamp was still lit the moment
+    # the bulbs report off; the ambient sensor follows the illuminance alone.
+    package = _package(tmp_path, [OFFICE])
+    block = next(b for b in package["template"]
+                 if any(s.get("unique_id") == "lights_presence_office_ambient" for s in b.get("sensor", [])))
+    assert [t["entity_id"] for t in block["triggers"]] == ["sensor.office_illuminance"]
+
+
+def test_manual_off_needs_presence_for_a_few_seconds(tmp_path):
+    # Review I3: someone walking back in while the automation switches off is not a switch-off by hand.
+    main = _automations(_package(tmp_path, [OFFICE]))["lights_presence_office"]
+    branch = next(c for c in main["actions"][0]["choose"]
+                  if {"condition": "trigger", "id": "manual_off"} in c["conditions"])
+    presence = next(c for c in branch["conditions"] if c.get("condition") == "state")
+    assert presence == {"condition": "state", "entity_id": "binary_sensor.office_presence",
+                        "state": "on", "for": "00:00:05"}
+
+
+def test_start_automation_runs_after_a_reload_and_a_resume(tmp_path):
+    # Review I4: a reload cancels a running `for` and re-attaches a template trigger that is
+    # already true; so does switching the paused room back on.
+    start = _automations(_package(tmp_path, [OFFICE]))["lights_presence_office_start"]
+    assert {"trigger": "event", "event_type": "automation_reloaded"} in start["triggers"]
+    assert {"trigger": "state", "entity_id": "automation.lights_presence_office", "from": "off", "to": "on"} in start["triggers"]
