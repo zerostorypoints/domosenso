@@ -754,8 +754,8 @@ shell_command:
   # shell/ramka_index.py writes index.json (event and EXIF date per photo) into the photo folder for
   # the photo card's caption; it runs at start and whenever the number of photos changes.
   [[ p ]]_index: [[ index_command | yaml ]]
-  # The next series: one folder with photos drawn at random (any depth, inside the chosen albums
-  # when there are any), `count` shuffled photos from it, as JSON on stdout for the loop's
+  # The next series: the next album, event and `count` photos of the rotation cycles (inside the
+  # chosen albums when there are any; shell/ramka_pick.py, its cycles in .ramka_rotation.json), as JSON on stdout for the loop's
   # response_variable. A templated command runs without a shell, its arguments split like a shell's:
   # each album is single-quoted, a quote in its name closed, escaped and reopened.
   [[ p ]]_pick: >-
@@ -1353,8 +1353,8 @@ script:
           entity_id: input_text.[[ p ]]_photo
         data:
           value: "{{ photos[index] }}"
-  # A new series (SPEC-026): shell/ramka_pick.py draws one folder that holds photos, at any depth
-  # (inside the chosen albums), with equal chances, then up to `count` different photos from it. An
+  # A new series (SPEC-026): shell/ramka_pick.py takes the next album of its cycle (inside the
+  # chosen albums), the next event in it, then up to `count` photos not yet shown from it. An
   # empty folder tree gives an empty series. Returns once sensor.[[ p ]]_photo_series holds it.
   [[ p ]]_photo_series_new:
     alias: [[ named(' photo series new') ]]
