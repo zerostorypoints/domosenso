@@ -46,7 +46,46 @@ def test_pick_alternates_folders_and_refreshes_a_stale_index(tmp_path):
     assert (root / "index.json").is_file()  # built because no index knew the photos
     second = json.loads(run("ramka_pick.py", root, 2).stdout)
     assert second["folder"] != first["folder"]
-    assert (tmp_path / "www" / ".ramka_last_pick").read_text() == second["folder"]
+    rotation = json.loads((tmp_path / "www" / ".ramka_rotation.json").read_text(encoding="utf-8"))
+    assert rotation["last_album"] == second["folder"]
+
+
+def test_pick_shows_every_album_once_per_cycle(tmp_path):
+    root = tmp_path / "www" / "ramka"
+    names = [f"album {n}" for n in range(7)]
+    for name in names:
+        photo(root / name / "a.jpg")
+    (tmp_path / "www" / ".ramka_last_pick").write_text("album 0")
+    picks = [json.loads(run("ramka_pick.py", root, 1).stdout)["folder"] for _ in range(21)]
+    for cycle in range(3):
+        assert sorted(picks[cycle * 7:cycle * 7 + 7]) == names
+    assert all(a != b for a, b in zip(picks, picks[1:]))  # no album twice in a row, across cycles too
+    assert not (tmp_path / "www" / ".ramka_last_pick").exists()
+
+
+def test_pick_weighs_albums_not_events(tmp_path):
+    root = tmp_path / "www" / "ramka"
+    for n in range(6):
+        photo(root / "2026" / f"0{n}" / "a.jpg")
+    photo(root / "garden" / "a.jpg")
+    picks = [json.loads(run("ramka_pick.py", root, 1).stdout)["folder"] for _ in range(12)]
+    assert picks.count("garden") == 6  # every other series, though 2026 holds six events
+    assert sorted(p for p in picks if p != "garden") == [f"2026/0{n}" for n in range(6)]
+
+
+def test_pick_shows_every_photo_of_an_album_with_the_count_kept(tmp_path):
+    root = tmp_path / "www" / "ramka"
+    for n in range(7):
+        photo(root / "fale" / f"{n}.jpg")
+    series = [json.loads(run("ramka_pick.py", root, 3).stdout)["photos"] for _ in range(4)]
+    assert all(len(s) == len(set(s)) == 3 for s in series)
+    first_cycle = series[0] + series[1] + series[2][:1]  # 7 photos: 3 + 3 + 1, then the next cycle
+    assert sorted(first_cycle) == [f"fale/{n}.jpg" for n in range(7)]
+    second_cycle = series[2][1:] + series[3]
+    assert len(set(second_cycle)) == 5
+    photo(root / "fale" / "new.jpg")  # a photo added mid-cycle comes in that cycle
+    rest = [p for _ in range(2) for p in json.loads(run("ramka_pick.py", root, 3).stdout)["photos"]]
+    assert "fale/new.jpg" in rest[:3]
 
 
 def test_pick_without_photos(tmp_path):
