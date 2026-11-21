@@ -43,8 +43,10 @@ last seen at …`): read them to tune the two numbers below.
   photodiode reads 0-255 in no unit. Two readings settle it: the hourly medians over a week with the
   light off (night and daylight separate clearly), and the reading in the two minutes before people
   switched the light on by hand. Put the threshold just above the second. The decision reads the
-  room's ambient sensor, which holds its value while the room's own light is on, so a sensor that
-  sees the room's bulbs does not block the next switch-on.
+  room's ambient sensor, which holds its value while the room's own light is on and takes a reading
+  only once it is 10 s old and no bulb has switched meanwhile (0.5.1), so a sensor that sees the
+  room's bulbs, even a few seconds before they report on, does not block the next switch-on. The
+  ambient sensor's `pending` attribute shows the readings still waiting.
 - **Picking `off_after`.** mmWave radars lose a person who sits or stands still for seconds to
   minutes at a time. A short delay switches the light off at the desk now and then; a long one leaves
   it on after people leave. Count the presence drop-outs between one and ten minutes while the light

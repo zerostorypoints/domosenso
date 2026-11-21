@@ -93,7 +93,7 @@ One automation per room, `mode: queued`, triggers with ids:
 |---|---|---|---|
 | `automation.lights_presence_<id>` | `lights_presence_<id>` | stable | switching it off is how a home pauses the room |
 | `input_boolean.lights_presence_<id>_hold` | — (YAML helper, id from the key) | stable | on after a switch-off by hand in an occupied room |
-| `sensor.lights_presence_<id>_ambient` | `lights_presence_<id>_ambient` | stable | trigger template: `illuminance` while no bulb of the group is on, held while one is; only with `illuminance`; `component: lights` |
+| `sensor.lights_presence_<id>_ambient` | `lights_presence_<id>_ambient` | stable | trigger template: `illuminance` while no bulb of the group is on, held while one is and for 10 s around a switch (0.5.1); only with `illuminance`; `component: lights` |
 | `sensor.lights_presence_<id>_illuminance` | `lights_presence_<id>_illuminance` | stable | `statistics` of the ambient sensor, median, `max_age` 2 min; only with `illuminance` |
 | `sensor.lights_presence_<id>_last_distance` | `lights_presence_<id>_last_distance` | stable | trigger template: the distance while presence is on; only with `distance`; `component: lights` |
 
@@ -161,3 +161,18 @@ existing kind fits the radar.
 - Automation and statistics entity ids come from their alias and name in HA, so those spell the ids
   (`Lights presence <id>`, `Lights presence <id> start`, `Lights presence <id> illuminance`).
 
+## Implementation notes (2026-11-21, 0.5.1, from the first real home)
+
+- A radar photodiode saw the lit room about 3 s before the Hue bulbs reported "on", so the ambient
+  sensor took three lit readings and the median read 6 where the room read 2. A reading now waits
+  10 s (`settle`, a constant) in the sensor's `pending` attribute before the sensor takes it; a
+  reading taken while a bulb of the group is on empties the readings waiting, and one taken within
+  10 s after the group switched between on and off is not kept (the lamp still fading as the bulbs
+  report off). A start of Home Assistant is not a switch: with the bulbs' `last_changed` instead, a
+  steady sensor's readings were all dropped after a restart and the room read as dark. A reading
+  that holds for 10 s is taken without a further report, so a sensor that reports only on change
+  still reaches the median. The group trigger never writes the current reading (review I1 holds).
+  The ambient reading lags the room by 10 s, which a 2-minute median does not notice.
+  The waiting readings live in the entity's templates, not the trigger block's `actions`: `this`
+  is undefined there (the block's coordinator is shared).
+  (Builder's call, recorded: the maintainer asked for the fix, not for this design.)
