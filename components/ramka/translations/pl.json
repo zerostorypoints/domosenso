@@ -123,9 +123,36 @@
     },
     "photo_albums": {
       "all": "Wszystkie albumy",
+      "all_hint": "Każdy album, także dodane później",
       "missing": "nie znaleziono",
-      "filter": "Filtruj albumy",
-      "none": "Brak albumów w folderze zdjęć."
+      "filter": "Filtruj po nazwie",
+      "none": "Brak albumów w folderze zdjęć.",
+      "title": "Wybierz albumy",
+      "choose": "Wybierz albumy",
+      "summary_all": "Wszystkie albumy ({total})",
+      "summary_some": "{n} z {total} albumów",
+      "more": "i {n} więcej",
+      "missing_count": "Wybrane albumy, których nie ma już w folderze zdjęć: {n}",
+      "count": "Zaznaczone: {n} z {total}",
+      "show_label": "Pokaż",
+      "show": {
+        "all": "Wszystkie",
+        "chosen": "Zaznaczone",
+        "unchosen": "Niezaznaczone"
+      },
+      "sort_label": "Sortuj",
+      "sort": {
+        "newest": "Najnowsze najpierw",
+        "oldest": "Najstarsze najpierw",
+        "az": "Nazwa A–Z",
+        "za": "Nazwa Z–A"
+      },
+      "select_all": "Zaznacz wszystkie",
+      "deselect_all": "Odznacz wszystkie",
+      "no_match": "Żaden album nie pasuje.",
+      "pick_one": "Zaznacz co najmniej jeden album albo Wszystkie albumy.",
+      "cancel": "Anuluj",
+      "save": "Zapisz"
     },
     "climate_rooms": {
       "label": "Nazwa",
@@ -477,7 +504,7 @@
       "calendar_by_url": "Kalendarz z adresu URL",
       "calendar_by_url_how": "Bez logowania do konta: [link ICS](/config/integrations/dashboard/add?domain=remote_calendar) (Remote calendar, odświeżany raz dziennie) albo [konto CalDAV](/config/integrations/dashboard/add?domain=caldav) (adres serwera, użytkownik i hasło aplikacji, odświeżane co 15 minut). Potem wpisz nową encję `calendar.*` w `calendar` w `domosenso/ramka.inputs.yaml`, uruchom `domosenso render ramka` i wdróż.",
       "photo_albums": "Albumy",
-      "photo_albums_how": "Serie zdjęć pochodzą z zaznaczonych albumów, czyli folderów najwyższego poziomu w folderze zdjęć. Gdy zaznaczone są Wszystkie albumy, pochodzą ze wszystkich, a zaznaczenia czekają wyszarzone na jego odznaczenie; bez zaznaczenia także ze wszystkich. Lista nadąża za folderem w ciągu 15 minut.",
+      "photo_albums_how": "Serie zdjęć pochodzą z wybranych albumów, czyli folderów najwyższego poziomu w folderze zdjęć. Wybierz albumy otwiera listę: przefiltruj ją po nazwie, posortuj po dacie w nazwie, zaznacz lub odznacz to, co pokazuje, i Zapisz. Wszystkie albumy obejmuje także albumy dodane później. Lista nadąża za folderem w ciągu 15 minut.",
       "photo_count": "Zdjęć w serii",
       "photo_s": "Czas na zdjęcie",
       "plants_per_page": "Roślin na stronę",
