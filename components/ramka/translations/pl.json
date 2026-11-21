@@ -570,7 +570,11 @@
       "about_discovery_how": "Listy poniżej pochodzą z niego; Odśwież znajduje nowe komponenty, urządzenia i wersje.",
       "music_strip": "Taśma muzyczna",
       "music_strip_palette_sync": "Taśma używa palety Ramki",
-      "music_strip_device": "Wszystkie ustawienia taśmy na stronie urządzenia"
+      "music_strip_device": "Wszystkie ustawienia taśmy na stronie urządzenia",
+      "music_mode": "Teraz gra na ścianie",
+      "music_mode_takeover": "Gdy gra muzyka, widok Teraz gra zostaje na ścianie; przesunięcie palcem na kontrolkach pokazuje rotację.",
+      "music_mode_rotation": "Gdy gra muzyka, rotacja trwa dalej, a widok Teraz gra jest jeszcze jednym jej widokiem, raz na każde okrążenie.",
+      "music_turn_s": "Czas widoku Teraz gra"
     },
     "exit": {
       "button": "Wyjdź"

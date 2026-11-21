@@ -570,7 +570,11 @@
       "about_discovery_how": "Die Listen unten stammen daraus; Aktualisieren findet neue Komponenten, Geräte und Versionen.",
       "music_strip": "Musik-Streifen",
       "music_strip_palette_sync": "Streifen übernimmt die Farben der Ramka",
-      "music_strip_device": "Alle Streifen-Einstellungen auf der Geräteseite"
+      "music_strip_device": "Alle Streifen-Einstellungen auf der Geräteseite",
+      "music_mode": "Wiedergabe an der Wand",
+      "music_mode_takeover": "Während Musik läuft, bleibt die Wiedergabe an der Wand; ein Wischen auf der Bedienung zeigt die Rotation.",
+      "music_mode_rotation": "Während Musik läuft, geht die Rotation weiter, und die Wiedergabe ist eine weitere Ansicht darin, einmal pro Durchgang.",
+      "music_turn_s": "Now-Playing-Dauer"
     },
     "exit": {
       "button": "Verlassen"

@@ -3,6 +3,27 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## 0.22.0
+
+### Now playing in the rotation
+
+A new setting on the Ramka Settings' **Music** page decides how the now-playing card shares the wall
+while the player plays (only with a `media_player`):
+
+- **Now playing on the wall** (`input_select.<prefix>_music_mode`): `takeover`, **the default and
+  first option**, is today's behaviour: the now-playing card stays on ambient, and the swipes on the
+  controls switch between it and the rotation. `rotation`: the rotation keeps running and the
+  now-playing card is one more view of it, once per pass, after the last page and before the first.
+  A swipe up on the card ends its turn early (the rotation goes on with the first page).
+- **Now playing time** (`input_number.<prefix>_music_turn_s`, 10-600 s, default 30, seeded once):
+  how long the card stays each pass in rotation mode.
+
+Both are on the Music page's reset; `settings_defaults` accepts `music_mode` and `music_turn_s`. New
+entities: `input_boolean.<prefix>_music_turn` (the card's turn, internal state),
+`script.<prefix>_music_turn`, automations `<prefix>_music_turn_start` and `<prefix>_music_turn_end`.
+`binary_sensor.<prefix>_music_view` keeps its id and meaning. Nothing to do: a home that updates
+stays on takeover until it chooses rotation.
+
 ## 0.21.1
 
 On the regular dashboard, selecting a speaker, zooming or moving the Room
