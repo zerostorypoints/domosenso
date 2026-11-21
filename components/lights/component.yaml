@@ -2,7 +2,7 @@
 # 0.2.0 a package with room lights that follow the bulbs, a lights-on count and the lowest battery
 # (SPEC-008).
 id: lights
-version: 0.4.0
+version: 0.5.0
 summary: Philips Hue lights per room, from the bridge's room groups
 description_key: meta.description
 photo: null
@@ -21,6 +21,11 @@ host:
 integrations:
   - {name: hue, source: core, setup: "press the button on the bridge when Home Assistant asks; it then talks to the bridge on the home network"}
   - {name: template, source: core}
+  # 0.5.0, only with presence_rooms.
+  - {name: statistics, source: core}
+  - {name: input_boolean, source: core}
+  - {name: automation, source: core}
+  - {name: logbook, source: core}
 
 inputs:
   lights:                       # the Ramka's room tiles read these
@@ -38,6 +43,10 @@ inputs:
     type: "list[entity_id]"
     default: []
     example: [sensor.hall_motion_sensor_battery]
+  presence_rooms:               # 0.5.0 (SPEC-053): a room's light follows presence; one automation per entry
+    type: "list[{group, name, presence, illuminance?, dark_below?, off_after?, distance?, id?}]"
+    default: []
+    example: [{group: light.office, name: Office, presence: binary_sensor.office_presence, illuminance: sensor.office_illuminance, dark_below: 15, off_after: "00:03:00"}]
 
 assistant:
   version: 1
@@ -66,6 +75,13 @@ provides:
     - {id: "light.room_<id>", unique_id: "room_<id>", stability: stable, note: "on only while a reachable bulb of the group is on; commands go to the group"}
     - {id: sensor.lights_on, unique_id: lights_on_count, stability: stable, note: "Hue bulbs that are on, groups excluded"}
     - {id: sensor.hue_lowest_battery, unique_id: hue_lowest_battery, stability: stable, note: "%, unavailable while no battery sensor has a value; with battery_sensors"}
+    # Presence rooms (0.5.0, SPEC-053), per entry of presence_rooms.
+    - {id: "automation.lights_presence_<id>", unique_id: "lights_presence_<id>", stability: stable, note: "switches the room on at entry in the dark and off after off_after without presence; switch it off to pause the room"}
+    - {id: "automation.lights_presence_<id>_start", unique_id: "lights_presence_<id>_start", stability: stable, note: "after a restart, switches off a lit empty room once off_after has passed"}
+    - {id: "input_boolean.lights_presence_<id>_hold", stability: stable, note: "on after a switch-off by hand in an occupied room, off once it has been empty for off_after"}
+    - {id: "sensor.lights_presence_<id>_ambient", unique_id: "lights_presence_<id>_ambient", stability: stable, note: "the illuminance while no bulb of the group is on, held while one is; with illuminance"}
+    - {id: "sensor.lights_presence_<id>_illuminance", unique_id: "lights_presence_<id>_illuminance", stability: stable, note: "statistics median of the ambient sensor over 2 minutes; with illuminance. A statistics sensor, so it carries no component attribute"}
+    - {id: "sensor.lights_presence_<id>_last_distance", unique_id: "lights_presence_<id>_last_distance", stability: stable, note: "the last distance seen while presence was on; with distance"}
 
   upstream:
     - {id: "light.<room>", owner: integration}

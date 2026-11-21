@@ -1,0 +1,274 @@
+# Hue lights, from the Domosenso catalog (component lights). Edit the inputs and render again rather
+# than editing this file.
+
+template:
+  - sensor:
+      - name: Lights on
+        unique_id: lights_on_count
+        icon: mdi:lightbulb-group
+        state_class: measurement
+        # Individual Hue bulbs that are on (room groups and zones excluded, and so are the room_*
+        # template lights below, which are not Hue entities).
+        state: >
+          {{ integration_entities('hue') | select('match', 'light\\.') | expand
+             | rejectattr('attributes.is_hue_group', 'eq', true)
+             | selectattr('state', 'eq', 'on')
+             | list | count }}
+        attributes:
+          component: lights
+      - name: Hue lowest battery
+        unique_id: hue_lowest_battery
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        # Unavailable while no battery sensor has a value (a Zigbee mesh falling apart, or the first
+        # seconds after a start): a numeric sensor that renders "unknown" logs an ERROR each time.
+        availability: >-
+          {{ ['sensor.hall_motion_sensor_battery', 'sensor.living_room_dimmer_switch_battery'] | select('has_value') | list | count > 0 }}
+        state: >-
+          {{ ['sensor.hall_motion_sensor_battery', 'sensor.living_room_dimmer_switch_battery'] | select('has_value') | map('states') | map('int') | min }}
+        attributes:
+          component: lights
+
+  # Room lights as they really are. Where lights are switched at the wall, the switch cuts the
+  # bulbs' power: they drop off the Zigbee mesh and go unavailable, and the bridge's grouped light
+  # keeps the state it had when they went, "on" all night with every bulb dead. Polling would not
+  # help: Home Assistant already follows the bridge's event stream, and the group's state is what the
+  # bridge sends.
+  #
+  # Each light here mirrors one Hue room and counts as on only while one of its bulbs is reachable
+  # and on; a room whose bulbs have all lost power is off. Commands go to the Hue group, so the
+  # bridge still switches the room in one Zigbee broadcast. Unavailable only when the group is, i.e.
+  # when the bridge cannot be reached.
+  - light:
+      - name: "Living room"
+        unique_id: room_living_room
+        default_entity_id: light.room_living_room
+        icon: mdi:lightbulb-group
+        availability: "{{ has_value('light.living_room') }}"
+        state: >-
+          {{ expand(state_attr('light.living_room', 'entity_id') or [])
+             | selectattr('state', 'eq', 'on') | list | count > 0 }}
+        level: "{{ state_attr('light.living_room', 'brightness') }}"
+        temperature: >-
+          {% set k = state_attr('light.living_room', 'color_temp_kelvin') %}
+          {{ (1000000 / k) | round | int if k else none }}
+        min_mireds: "{{ (1000000 / state_attr('light.living_room', 'max_color_temp_kelvin') | float(6500)) | round | int }}"
+        max_mireds: "{{ (1000000 / state_attr('light.living_room', 'min_color_temp_kelvin') | float(2000)) | round | int }}"
+        turn_on:
+          - action: light.turn_on
+            target: {entity_id: light.living_room}
+        turn_off:
+          - action: light.turn_off
+            target: {entity_id: light.living_room}
+        set_level:
+          - action: light.turn_on
+            target: {entity_id: light.living_room}
+            data: {brightness: "{{ brightness }}"}
+        set_temperature:
+          - action: light.turn_on
+            target: {entity_id: light.living_room}
+            # A call with both runs only this action; brightness comes along when given.
+            data: >-
+              {{ {'color_temp_kelvin': color_temp_kelvin}
+                 | combine({'brightness': brightness} if brightness is defined and brightness is not none else {}) }}
+        attributes:
+          component: lights
+      - name: "Dining"
+        unique_id: room_dining
+        default_entity_id: light.room_dining
+        icon: mdi:lightbulb-group
+        availability: "{{ has_value('light.dining') }}"
+        state: >-
+          {{ expand(state_attr('light.dining', 'entity_id') or [])
+             | selectattr('state', 'eq', 'on') | list | count > 0 }}
+        level: "{{ state_attr('light.dining', 'brightness') }}"
+        temperature: >-
+          {% set k = state_attr('light.dining', 'color_temp_kelvin') %}
+          {{ (1000000 / k) | round | int if k else none }}
+        min_mireds: "{{ (1000000 / state_attr('light.dining', 'max_color_temp_kelvin') | float(6500)) | round | int }}"
+        max_mireds: "{{ (1000000 / state_attr('light.dining', 'min_color_temp_kelvin') | float(2000)) | round | int }}"
+        turn_on:
+          - action: light.turn_on
+            target: {entity_id: light.dining}
+        turn_off:
+          - action: light.turn_off
+            target: {entity_id: light.dining}
+        set_level:
+          - action: light.turn_on
+            target: {entity_id: light.dining}
+            data: {brightness: "{{ brightness }}"}
+        set_temperature:
+          - action: light.turn_on
+            target: {entity_id: light.dining}
+            # A call with both runs only this action; brightness comes along when given.
+            data: >-
+              {{ {'color_temp_kelvin': color_temp_kelvin}
+                 | combine({'brightness': brightness} if brightness is defined and brightness is not none else {}) }}
+        attributes:
+          component: lights
+      - name: "Kitchen"
+        unique_id: room_kitchen
+        default_entity_id: light.room_kitchen
+        icon: mdi:lightbulb-group
+        availability: "{{ has_value('light.kitchen') }}"
+        state: >-
+          {{ expand(state_attr('light.kitchen', 'entity_id') or [])
+             | selectattr('state', 'eq', 'on') | list | count > 0 }}
+        level: "{{ state_attr('light.kitchen', 'brightness') }}"
+        temperature: >-
+          {% set k = state_attr('light.kitchen', 'color_temp_kelvin') %}
+          {{ (1000000 / k) | round | int if k else none }}
+        min_mireds: "{{ (1000000 / state_attr('light.kitchen', 'max_color_temp_kelvin') | float(6500)) | round | int }}"
+        max_mireds: "{{ (1000000 / state_attr('light.kitchen', 'min_color_temp_kelvin') | float(2000)) | round | int }}"
+        turn_on:
+          - action: light.turn_on
+            target: {entity_id: light.kitchen}
+        turn_off:
+          - action: light.turn_off
+            target: {entity_id: light.kitchen}
+        set_level:
+          - action: light.turn_on
+            target: {entity_id: light.kitchen}
+            data: {brightness: "{{ brightness }}"}
+        set_temperature:
+          - action: light.turn_on
+            target: {entity_id: light.kitchen}
+            # A call with both runs only this action; brightness comes along when given.
+            data: >-
+              {{ {'color_temp_kelvin': color_temp_kelvin}
+                 | combine({'brightness': brightness} if brightness is defined and brightness is not none else {}) }}
+        attributes:
+          component: lights
+      - name: "Office"
+        unique_id: room_office
+        default_entity_id: light.room_office
+        icon: mdi:lightbulb-group
+        availability: "{{ has_value('light.office') }}"
+        state: >-
+          {{ expand(state_attr('light.office', 'entity_id') or [])
+             | selectattr('state', 'eq', 'on') | list | count > 0 }}
+        level: "{{ state_attr('light.office', 'brightness') }}"
+        temperature: >-
+          {% set k = state_attr('light.office', 'color_temp_kelvin') %}
+          {{ (1000000 / k) | round | int if k else none }}
+        min_mireds: "{{ (1000000 / state_attr('light.office', 'max_color_temp_kelvin') | float(6500)) | round | int }}"
+        max_mireds: "{{ (1000000 / state_attr('light.office', 'min_color_temp_kelvin') | float(2000)) | round | int }}"
+        turn_on:
+          - action: light.turn_on
+            target: {entity_id: light.office}
+        turn_off:
+          - action: light.turn_off
+            target: {entity_id: light.office}
+        set_level:
+          - action: light.turn_on
+            target: {entity_id: light.office}
+            data: {brightness: "{{ brightness }}"}
+        set_temperature:
+          - action: light.turn_on
+            target: {entity_id: light.office}
+            # A call with both runs only this action; brightness comes along when given.
+            data: >-
+              {{ {'color_temp_kelvin': color_temp_kelvin}
+                 | combine({'brightness': brightness} if brightness is defined and brightness is not none else {}) }}
+        attributes:
+          component: lights
+      - name: "Bedroom"
+        unique_id: room_bedroom
+        default_entity_id: light.room_bedroom
+        icon: mdi:lightbulb-group
+        availability: "{{ has_value('light.bedroom') }}"
+        state: >-
+          {{ expand(state_attr('light.bedroom', 'entity_id') or [])
+             | selectattr('state', 'eq', 'on') | list | count > 0 }}
+        level: "{{ state_attr('light.bedroom', 'brightness') }}"
+        temperature: >-
+          {% set k = state_attr('light.bedroom', 'color_temp_kelvin') %}
+          {{ (1000000 / k) | round | int if k else none }}
+        min_mireds: "{{ (1000000 / state_attr('light.bedroom', 'max_color_temp_kelvin') | float(6500)) | round | int }}"
+        max_mireds: "{{ (1000000 / state_attr('light.bedroom', 'min_color_temp_kelvin') | float(2000)) | round | int }}"
+        turn_on:
+          - action: light.turn_on
+            target: {entity_id: light.bedroom}
+        turn_off:
+          - action: light.turn_off
+            target: {entity_id: light.bedroom}
+        set_level:
+          - action: light.turn_on
+            target: {entity_id: light.bedroom}
+            data: {brightness: "{{ brightness }}"}
+        set_temperature:
+          - action: light.turn_on
+            target: {entity_id: light.bedroom}
+            # A call with both runs only this action; brightness comes along when given.
+            data: >-
+              {{ {'color_temp_kelvin': color_temp_kelvin}
+                 | combine({'brightness': brightness} if brightness is defined and brightness is not none else {}) }}
+        attributes:
+          component: lights
+      - name: "Kids' room"
+        unique_id: room_kids
+        default_entity_id: light.room_kids
+        icon: mdi:lightbulb-group
+        availability: "{{ has_value('light.kids_room') }}"
+        state: >-
+          {{ expand(state_attr('light.kids_room', 'entity_id') or [])
+             | selectattr('state', 'eq', 'on') | list | count > 0 }}
+        level: "{{ state_attr('light.kids_room', 'brightness') }}"
+        temperature: >-
+          {% set k = state_attr('light.kids_room', 'color_temp_kelvin') %}
+          {{ (1000000 / k) | round | int if k else none }}
+        min_mireds: "{{ (1000000 / state_attr('light.kids_room', 'max_color_temp_kelvin') | float(6500)) | round | int }}"
+        max_mireds: "{{ (1000000 / state_attr('light.kids_room', 'min_color_temp_kelvin') | float(2000)) | round | int }}"
+        turn_on:
+          - action: light.turn_on
+            target: {entity_id: light.kids_room}
+        turn_off:
+          - action: light.turn_off
+            target: {entity_id: light.kids_room}
+        set_level:
+          - action: light.turn_on
+            target: {entity_id: light.kids_room}
+            data: {brightness: "{{ brightness }}"}
+        set_temperature:
+          - action: light.turn_on
+            target: {entity_id: light.kids_room}
+            # A call with both runs only this action; brightness comes along when given.
+            data: >-
+              {{ {'color_temp_kelvin': color_temp_kelvin}
+                 | combine({'brightness': brightness} if brightness is defined and brightness is not none else {}) }}
+        attributes:
+          component: lights
+      - name: "Hall"
+        unique_id: room_hall
+        default_entity_id: light.room_hall
+        icon: mdi:lightbulb-group
+        availability: "{{ has_value('light.hall') }}"
+        state: >-
+          {{ expand(state_attr('light.hall', 'entity_id') or [])
+             | selectattr('state', 'eq', 'on') | list | count > 0 }}
+        level: "{{ state_attr('light.hall', 'brightness') }}"
+        temperature: >-
+          {% set k = state_attr('light.hall', 'color_temp_kelvin') %}
+          {{ (1000000 / k) | round | int if k else none }}
+        min_mireds: "{{ (1000000 / state_attr('light.hall', 'max_color_temp_kelvin') | float(6500)) | round | int }}"
+        max_mireds: "{{ (1000000 / state_attr('light.hall', 'min_color_temp_kelvin') | float(2000)) | round | int }}"
+        turn_on:
+          - action: light.turn_on
+            target: {entity_id: light.hall}
+        turn_off:
+          - action: light.turn_off
+            target: {entity_id: light.hall}
+        set_level:
+          - action: light.turn_on
+            target: {entity_id: light.hall}
+            data: {brightness: "{{ brightness }}"}
+        set_temperature:
+          - action: light.turn_on
+            target: {entity_id: light.hall}
+            # A call with both runs only this action; brightness comes along when given.
+            data: >-
+              {{ {'color_temp_kelvin': color_temp_kelvin}
+                 | combine({'brightness': brightness} if brightness is defined and brightness is not none else {}) }}
+        attributes:
+          component: lights

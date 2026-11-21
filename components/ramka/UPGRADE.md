@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased
+
+### Photos in rotation cycles
+
+The photos page no longer draws one event folder at random. It goes round the albums (the
+top-level folders of `photo_dir`) in cycles: every album once per cycle, in random order, never
+the same album twice in a row. Inside an album its events take turns the same way, and inside an
+event the series show the photos not yet shown, each still with the Photos page's count of photos.
+So an album with many events is not shown more often than one with a single event, and every
+photo of a big album comes round.
+
+The picker keeps its cycles in `.ramka_rotation.json` next to `photo_dir` and removes the old
+`.ramka_last_pick` on its first draw. Nothing to do: the first series after the update starts the
+first cycle.
 ## 0.22.0
 
 ### Now playing in the rotation

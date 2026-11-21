@@ -87,6 +87,7 @@ if [ "$mode" = full ]; then
 step "Home Assistant image" ha_image
 # Home staging first: it is the longest, the others fill the remaining slots.
 background "home staging runtime" uv run tools/home-staging-check.py
+background "lights presence behaviour" uv run tools/lights-presence-check.py
 background "Ramka startup screen runtime" tools/check-ramka-startup.sh
 for manifest in components/*/component.yaml; do
   dir=$(dirname "$manifest"); comp=$(basename "$dir")

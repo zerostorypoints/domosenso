@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed and what a home that already runs the component has to do.
 
 
+## 0.5.0 (2026-11-20): rooms whose light follows presence
+
+Adds the optional input `presence_rooms` (SPEC-053): per room an automation that switches the Hue
+group on at entry in the dark and off after `off_after` without presence, a hold helper, an ambient
+and a median illuminance sensor, a last-distance sensor and an automation for restarts. Assistant
+and assistant-action metadata are unchanged.
+
+### What a home does
+
+Nothing: without `presence_rooms` the package renders as in 0.4.0. To use it, remove any local
+automation on the same group, add the room to the inputs, render and stage. Run it on one Home
+Assistant per Hue group.
+
+
 ## 0.4.0 (2026-11-04): optional assistant action metadata
 
 Adds a private managed `domosenso/assistant-actions/lights.yaml` sidecar for explicit light on/off.
