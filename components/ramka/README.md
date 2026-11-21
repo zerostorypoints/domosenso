@@ -354,8 +354,8 @@ lovelace:
   summary of the choice and Choose albums, which opens the album picker, a dialog listing the
   top-level folders of `photo_dir` that hold photos. It filters by name, shows all, the ticked or the
   unticked albums, sorts by the date at the start of the name (`DD.MM.YYYY`, a span
-  `DD.MM-DD.MM.YYYY`, `YYYY-MM-DD`, `YYYY`; else a year anywhere) or by name, and ticks or unticks
-  every album shown at once. Ticks are a draft: Save writes them once, Cancel or Escape drops them.
+  `DD.MM-DD.MM.YYYY`, `YYYY-MM-DD`, `YYYY`; else a year anywhere) or by name, and selects or deselects
+  every album shown at once (Select all, Deselect all). Ticks are a draft: Save writes them once, Cancel or Escape drops them.
   "All albums" is every album, later ones too; under it every box shows ticked, and unticking a few
   keeps the others as a choice of their own. Unticking "All albums" brings back the ticks from before
   it; a choice saves only with an album ticked. The list follows the folder: the photo index sends it

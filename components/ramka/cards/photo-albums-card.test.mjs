@@ -73,7 +73,7 @@ test("ticking changes the draft only; Save writes it once, Cancel drops it", () 
   tick(box(dialog, "a"));
   tick(box(dialog, "b"));
   assert.equal(calls.length, 0);
-  assert.equal(text(card, ".count"), "1 of 3 ticked");
+  assert.equal(text(card, ".count"), "1 of 3 selected");
   dialog.querySelector("button.cancel").click();
   assert.equal(card.shadowRoot.querySelector("dialog"), null);
   dialog = open(card);
@@ -128,7 +128,7 @@ test("nothing ticked does not save", () => {
   assert.equal(calls.length, 0);
 });
 
-test("filter, show and sort; tick and untick what is shown", () => {
+test("filter, show and sort; select all and deselect all of what is shown", () => {
   const available = ["01.02.2024 Paris", "02.09.2022 Rome", "05.07.2023 Rome beach", "Family"];
   const { card, calls } = makeCard({ available, chosen: ["Family"], all: false });
   const dialog = open(card);
@@ -137,7 +137,7 @@ test("filter, show and sort; tick and untick what is shown", () => {
   assert.equal(rows(dialog)[0][0], "02.09.2022 Rome");
   filter(dialog, "rome");
   assert.equal(rows(dialog).length, 2);
-  dialog.querySelector("button.tick-shown").click();
+  dialog.querySelector("button.select-all").click();
   filter(dialog, "");
   choose(dialog, "show", "chosen");
   assert.deepEqual(rows(dialog).map(([n]) => n), ["02.09.2022 Rome", "05.07.2023 Rome beach", "Family"]);
@@ -147,7 +147,7 @@ test("filter, show and sort; tick and untick what is shown", () => {
   filter(dialog, "zzz");
   assert.equal(text(card, "ul li.empty"), "No album matches.");
   filter(dialog, "rome");
-  dialog.querySelector("button.untick-shown").click();
+  dialog.querySelector("button.deselect-all").click();
   save(dialog);
   assert.deepEqual(calls, [[...SCRIPT, { chosen: ["Family"], all_albums: false }]]);
 });
@@ -166,6 +166,7 @@ test("labels per language; an album name is text, not markup", () => {
   assert.equal(text(card, "button.choose"), "Wybierz albumy");
   const dialog = open(card);
   assert.equal(dialog.querySelector("label.all span span").textContent, "Wszystkie albumy");
+  assert.equal(dialog.querySelector("button.select-all").textContent, "Zaznacz wszystkie");
   assert.equal(card.shadowRoot.querySelectorAll("b").length, 0);
   assert.equal(text(makeCard({ available: ["a"], chosen: ["a"], all: false, lang: "de" }).card, ".summary"), "1 von 1 Alben");
 });

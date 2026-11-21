@@ -147,8 +147,8 @@
         "az": "Nazwa A–Z",
         "za": "Nazwa Z–A"
       },
-      "tick_shown": "Zaznacz widoczne",
-      "untick_shown": "Odznacz widoczne",
+      "select_all": "Zaznacz wszystkie",
+      "deselect_all": "Odznacz wszystkie",
       "no_match": "Żaden album nie pasuje.",
       "pick_one": "Zaznacz co najmniej jeden album albo Wszystkie albumy.",
       "cancel": "Anuluj",

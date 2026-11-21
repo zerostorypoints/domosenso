@@ -133,12 +133,12 @@
       "summary_some": "{n} von {total} Alben",
       "more": "und {n} weitere",
       "missing_count": "Gewählte Alben, die nicht mehr im Fotoordner sind: {n}",
-      "count": "{n} von {total} angehakt",
+      "count": "{n} von {total} ausgewählt",
       "show_label": "Zeigen",
       "show": {
         "all": "Alle",
-        "chosen": "Angehakt",
-        "unchosen": "Nicht angehakt"
+        "chosen": "Ausgewählt",
+        "unchosen": "Nicht ausgewählt"
       },
       "sort_label": "Sortieren",
       "sort": {
@@ -147,10 +147,10 @@
         "az": "Name A–Z",
         "za": "Name Z–A"
       },
-      "tick_shown": "Gezeigte anhaken",
-      "untick_shown": "Gezeigte abhaken",
+      "select_all": "Alle auswählen",
+      "deselect_all": "Alle abwählen",
       "no_match": "Kein Album passt.",
-      "pick_one": "Mindestens ein Album anhaken oder Alle Alben.",
+      "pick_one": "Mindestens ein Album auswählen oder Alle Alben.",
       "cancel": "Abbrechen",
       "save": "Speichern"
     },
@@ -504,7 +504,7 @@
       "calendar_by_url": "Kalender per URL hinzufügen",
       "calendar_by_url_how": "Ohne Konto-Anmeldung: [ein ICS-Link](/config/integrations/dashboard/add?domain=remote_calendar) (Remote-Kalender, einmal am Tag aktualisiert) oder [ein CalDAV-Konto](/config/integrations/dashboard/add?domain=caldav) (Server-URL, Benutzer und App-Passwort, alle 15 Minuten aktualisiert). Danach die neue `calendar.*`-Entität unter `calendar` in `domosenso/ramka.inputs.yaml` eintragen, `domosenso render ramka` ausführen und bereitstellen.",
       "photo_albums": "Alben",
-      "photo_albums_how": "Die Fotoserien kommen aus den gewählten Alben, den obersten Ordnern des Fotoordners. Alben wählen öffnet die Liste: nach Name filtern, nach dem Datum im Namen sortieren, das Gezeigte an- oder abhaken, dann Speichern. Alle Alben schliesst später hinzugefügte Alben ein. Die Liste folgt dem Ordner innerhalb von 15 Minuten.",
+      "photo_albums_how": "Die Fotoserien kommen aus den gewählten Alben, den obersten Ordnern des Fotoordners. Alben wählen öffnet die Liste: nach Name filtern, nach dem Datum im Namen sortieren, das Gezeigte aus- oder abwählen, dann Speichern. Alle Alben schliesst später hinzugefügte Alben ein. Die Liste folgt dem Ordner innerhalb von 15 Minuten.",
       "photo_count": "Fotos pro Serie",
       "photo_s": "Zeit pro Foto",
       "plants_per_page": "Pflanzen pro Seite",

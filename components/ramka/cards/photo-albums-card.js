@@ -9,7 +9,7 @@
 // choice as it was. Ticking a box changes the draft only, so the list is never redrawn under a finger
 // and keeps its scroll; updates of the sensor wait until the dialog closes. It filters by name, shows
 // all, the ticked or the unticked albums, sorts by the date in the name (newest or oldest first) or by
-// name, and ticks or unticks every album shown at once.
+// name, and selects or deselects all albums shown at once ("Select all", "Deselect all").
 //
 // "All albums" is every album, the ones added later too. Then every box shows ticked; unticking one
 // leaves all the others ticked as a choice of their own. Unticking "All albums" itself brings back the
@@ -174,8 +174,8 @@ class PhotoAlbumsCard extends HTMLElement {
         </div>
         <div class="bulk">
           <span class="count" aria-live="polite"></span>
-          <button type="button" class="tick-shown"></button>
-          <button type="button" class="untick-shown"></button>
+          <button type="button" class="select-all"></button>
+          <button type="button" class="deselect-all"></button>
         </div>
         <ul></ul>
         <p class="hint" role="alert"></p>
@@ -212,10 +212,10 @@ class PhotoAlbumsCard extends HTMLElement {
       select.value = this[`_${name}`];
       select.addEventListener("change", () => { this[`_${name}`] = select.value; this._list(true); });
     }
-    q("button.tick-shown").textContent = this._t("card.photo_albums.tick_shown");
-    q("button.untick-shown").textContent = this._t("card.photo_albums.untick_shown");
-    q("button.tick-shown").addEventListener("click", () => this._bulk(true));
-    q("button.untick-shown").addEventListener("click", () => this._bulk(false));
+    q("button.select-all").textContent = this._t("card.photo_albums.select_all");
+    q("button.deselect-all").textContent = this._t("card.photo_albums.deselect_all");
+    q("button.select-all").addEventListener("click", () => this._bulk(true));
+    q("button.deselect-all").addEventListener("click", () => this._bulk(false));
     q("button.cancel").textContent = this._t("card.photo_albums.cancel");
     q("button.save").textContent = this._t("card.photo_albums.save");
     q("ul").addEventListener("change", (ev) => {
@@ -335,7 +335,7 @@ class PhotoAlbumsCard extends HTMLElement {
     this._sync();
   }
 
-  // Tick or untick every album shown.
+  // Select all or deselect all: every album shown (the filter and the show narrow it).
   _bulk(on) {
     if (on && this._draft.all) return;
     const ticked = this._ticked();
