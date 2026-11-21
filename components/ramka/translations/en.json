@@ -597,7 +597,11 @@
       "about_discovery_how": "The lists below come from it; Refresh finds new components, devices and versions.",
       "music_strip": "Music strip",
       "music_strip_palette_sync": "Strip uses the Ramka palette",
-      "music_strip_device": "All strip settings on its device page"
+      "music_strip_device": "All strip settings on its device page",
+      "music_mode": "Now playing on the wall",
+      "music_mode_takeover": "While the music plays, Now playing stays on the wall; a swipe on the controls shows the rotation.",
+      "music_mode_rotation": "While the music plays, the rotation keeps running and Now playing is one more view of it, once per pass.",
+      "music_turn_s": "Now playing time"
     },
     "exit": {
       "button": "Exit"
