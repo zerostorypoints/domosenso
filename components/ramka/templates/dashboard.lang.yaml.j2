@@ -179,6 +179,37 @@ views:
           - type: custom:timer-status-card
             timers: [[ timers | yaml ]]
           [%- endif %]
+          [%- if not preview %]
+          # SPEC-053 amendment 1: dangerous weather (the weather component's binary_sensor.weather_warning),
+          # floating at the top left over the ambient pages; it takes no row, the screens keep their
+          # height. Off until the home turns it on (input_select.[[ p ]]_weather_banner). Not over the
+          # controls (their warnings list below) nor the Climate page, whose weather widget says it
+          # (its section's conditions, mirrored). A home without the weather component never sees it.
+          - type: custom:weather-banner-card
+            mode: input_select.[[ p ]]_mode
+            modes: [ambient]
+            [%- if inputs.climate is defined %]
+            hide_when:
+              - {entity: input_select.[[ p ]]_ambient, state: climate}
+              - {entity: binary_sensor.[[ p ]]_music_view, state: "off"}
+            [%- endif %]
+            style: input_select.[[ p ]]_weather_banner
+            seconds: input_number.[[ p ]]_weather_banner_s
+            [%- if inputs.wind_sensor is defined %]
+            awnings: [[ inputs.wind_sensor ]]
+            [%- endif %]
+          # The controls' weather warnings: a button at the top right while the warning is on
+          # (whatever the banner's setting), its list in an overlay. Its taps are its own
+          # (data-own-tap); each one keeps the controls up as a tap on them does.
+          - type: custom:weather-warnings-card
+            mode: input_select.[[ p ]]_mode
+            modes: [controls]
+            [%- if inputs.floorplan | default(false) %]
+            hide_when:
+              - {entity: input_boolean.[[ p ]]_controls_plan, state: "on"}
+            [%- endif %]
+            keep: script.[[ p ]]_show_controls
+          [%- endif %]
           - type: custom:corner-taps-card
             [%- if mp and not preview and (inputs.hifisync_music | default(false)) %]
             hifisync_music:
@@ -373,6 +404,9 @@ views:
           - type: custom:clock-weather-card
             weather: [[ inputs.weather ]]
             forecast: 4
+            # SPEC-053 amendment 1: the most severe weather warning in the condition line, while the
+            # weather banner is on (its setting); the floating banner stays off this page.
+            warnings: input_select.[[ p ]]_weather_banner
             [%- if inputs.pressure is defined %]
             pressure: [[ inputs.pressure ]]
             [%- endif %]

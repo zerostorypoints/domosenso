@@ -3,6 +3,49 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased (SPEC-053)
+
+### Dangerous weather from the weather component
+
+With `weather` at the release that brings SPEC-053 and its amendment 1 (`sensor.weather_wind_level`,
+`binary_sensor.weather_warning`, `sensor.weather_warnings` and `input_number.weather_wind_*`), the
+Ramka shows the wind and the official weather warnings:
+
+- **Clock line:** from breezy, the wind part reads the level, speed and direction ("Breezy,
+  32 km/h SW", ", gusts 49" when a gust is known) instead of "wind 32 km/h"; calm keeps today's text.
+- **Controls: the warnings list.** While `binary_sensor.weather_warning` is on (strong wind, a gale
+  or any official warning, yellow and up), a "Weather warnings" button floats at the top right of
+  the controls, with the number of official warnings in the most severe one's icon and colour. A
+  tap opens a list of every warning (type icon, level colour, the feed's event and headline, until
+  when) and the wind level with speed and gusts; a tap on the backdrop or Close closes it, and so
+  does leaving the controls. Its taps are its own (`data-own-tap`) and each one keeps the controls
+  up as a tap on them does; a drag on it is no swipe (`corner-taps-card` now also leaves
+  `data-own-swipe` elements' drags alone). This shows whatever the banner's setting.
+- **Weather banner, off by default:** a floating indicator at the top left of the ambient pages (on
+  the now-playing screen over the artwork), not over the controls: the most severe warning
+  ("Orange warning: Thunderstorm · until 22:00 · +1") in its level's colour with its type's icon,
+  or the wind level ("Strong wind · 45 km/h SW"). It says its full text for 30 s, then only its
+  icon (or nothing, or the text always) until the warnings or the wind level change.
+  General's Weather section sets it: `input_select.<prefix>_weather_banner` (off, icon, hide,
+  always; **off first and the default**, so a home that updates sees nothing new until it turns it
+  on) and `input_number.<prefix>_weather_banner_s`, seeded once.
+- **Climate page:** with the banner on, the warning goes into the weather widget instead: the most
+  severe warning (or the strong/gale wind level) takes the condition's line in its level's colour,
+  without an icon, and the condition moves to the line below; the card keeps its height. The
+  floating banner stays off the Climate page.
+- **Settings, General page:** a Weather section with the three wind thresholds (km/h), Home
+  Assistant helpers of the weather component, not on the Ramka's resets; and the banner's two
+  settings.
+
+Nothing to do in the inputs. Update `weather` first: without its entities (no weather component,
+or an older one) nothing of this shows and the dashboards behave as before. Two new cards, so two
+new Lovelace resources: `custom:weather-banner-card` and `custom:weather-warnings-card`; both float
+(position: fixed) and take no row, so the screens keep their full height. While the awnings' wind
+sensor (`wind_sensor`) is on, their own heading shows instead of the banner, as before. The
+preview frames show the banner over the ambient screens but the Climate page, and the warnings
+button over the controls, whatever the tablet's mode. Official warnings need the weather
+component's `warnings` input (its UPGRADE.md).
+
 ## 0.21.1
 
 On the regular dashboard, selecting a speaker, zooming or moving the Room

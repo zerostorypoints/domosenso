@@ -21,16 +21,23 @@
 //       Assistant's weather conditions
 //   <pocket-forecast mode="row|strip|list">   the widget: el.ctx = ctx (page contract) draws it;
 //       it watches the forecast while it is connected and stops when it leaves the page or the
-//       sheet. row: the current condition with today's high / low and its chance of rain; strip:
-//       today and the next days in columns; list: one line per day the forecast has.
+//       sheet. row: the current condition with today's high / low and its chance of rain, then the
+//       wind (lib/weather-warnings.js windText) when the weather component's level sensor is there; strip:
+//       today and the next days in columns; list: one line per day the forecast has, with the
+//       day's wind and gust maximum under its condition when given (lib/weather-warnings.js dayWind).
 //   forecastSpec(ctx) -> spec   the sheet behind Home's weather row and the Climate strip
-//   forecastSheet = {render(ctx, spec), update(el, ctx)}   that sheet's content (kind "forecast")
+//   forecastSheet = {render(ctx, spec), update(el, ctx)}   that sheet's content (kind "forecast"):
+//       at its top, while a warning is in effect or the wind is strong (lib/weather-warnings.js
+//       sheetRows), a list of every official warning and the wind line, each row its type's icon in
+//       its level's colour, its headline and its level with until when; then the row and the days
 //
-// A day: {datetime, condition, temperature (the high), templow?, precipitation_probability?}.
+// A day: {datetime, condition, temperature (the high), templow?, precipitation_probability?,
+// wind_speed? (in the entity's wind_speed_unit)}.
 // Nothing is guessed: a value the forecast does not give is left out.
 
 import { formatDate } from "./i18n.js";
 import { el, setText, number } from "./page-kit.js";
+import { windOf, windText, dayWind, dayWindText, sheetRows } from "./weather-warnings.js";
 
 export const NEXT_DAYS = 4;
 
@@ -235,7 +242,11 @@ const STYLE = `
   .list .day:first-child { border-top: 0; }
   .list .dn { flex: 0 0 auto; min-width: 48px; font-size: 15px; font-weight: 600; }
   .list .day ha-icon { --mdc-icon-size: 26px; }
-  .list .cond { flex: 1; min-width: 0; font-size: 15px; overflow-wrap: anywhere; }
+  .list .mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .list .cond { font-size: 15px; overflow-wrap: anywhere; }
+  .wind { font-size: 12.5px; color: var(--mut); overflow-wrap: break-word; }
+  .row .wind { flex: 1 1 100%; }
+  .wind[hidden] { display: none; }
   .list .hl { flex: 0 0 auto; font-size: 15px; font-weight: 600; }
   .empty { margin: 8px 0; font-size: 15px; color: var(--mut); text-align: center; }
 `;
@@ -297,23 +308,29 @@ class PocketForecast extends HTMLElement {
       timeZoneOf(ctx.hass));
     const days = [today, ...next].filter(Boolean);
     const current = state && !GONE.has(state.state) ? state.state : today?.condition;
-    const key = JSON.stringify([mode, ctx.lang, current, days, ctx.t("card.pocket.weather.today")]);
+    // The wind is the weather component's (SPEC-053); without it the texts are empty.
+    const wind = mode === "row" ? windText(ctx, windOf(ctx.hass)) : "";
+    const zone = timeZoneOf(ctx.hass);
+    const winds = mode === "list"
+      ? days.map((day) => dayWindText(ctx, dayWind(ctx.hass, entity, day, dayKey(day, zone)?.date))) : [];
+    const key = JSON.stringify([mode, ctx.lang, current, days, ctx.t("card.pocket.weather.today"), wind, winds]);
     if (key === this._drawn) return;
     this._drawn = key;
-    if (mode === "row") this._row(box, ctx, current, today);
-    else this._days(box, ctx, mode, days, today);
+    if (mode === "row") this._row(box, ctx, current, today, wind);
+    else this._days(box, ctx, mode, days, today, winds);
   }
 
-  _row(box, ctx, current, today) {
+  _row(box, ctx, current, today, wind) {
     box.className = "row";
-    box.innerHTML = `<ha-icon></ha-icon><span class="cond"></span><span class="hl"></span>${rainHtml}`;
+    box.innerHTML = `<ha-icon></ha-icon><span class="cond"></span><span class="hl"></span>${rainHtml}<span class="wind"></span>`;
     box.querySelector("ha-icon").setAttribute("icon", iconOf(current));
     setText(box.querySelector(".cond"), conditionName(ctx, current));
     setText(box.querySelector(".hl"), highLow(ctx, today));
     fillRain(box.querySelector(".rain"), ctx, rainOf(today));
+    fillWind(box.querySelector(".wind"), wind);
   }
 
-  _days(box, ctx, mode, days, today) {
+  _days(box, ctx, mode, days, today, winds) {
     box.className = mode;
     if (!days.length) {
       box.replaceChildren(el("p", "empty"));
@@ -321,10 +338,10 @@ class PocketForecast extends HTMLElement {
       return;
     }
     box.style.setProperty("--days", String(days.length));
-    box.replaceChildren(...days.map((day) => {
+    box.replaceChildren(...days.map((day, i) => {
       const node = el("div", "day", mode === "strip"
         ? `<span class="dn"></span><ha-icon></ha-icon><span class="hi"></span><span class="lo"></span>${rainHtml}`
-        : `<span class="dn"></span><ha-icon></ha-icon><span class="cond"></span>${rainHtml}<span class="hl"></span>`);
+        : `<span class="dn"></span><ha-icon></ha-icon><span class="mid"><span class="cond"></span><span class="wind"></span></span>${rainHtml}<span class="hl"></span>`);
       setText(node.querySelector(".dn"), dayName(ctx, day, today));
       const icon = node.querySelector("ha-icon");
       icon.setAttribute("icon", iconOf(day.condition));
@@ -335,6 +352,7 @@ class PocketForecast extends HTMLElement {
       } else {
         setText(node.querySelector(".cond"), conditionName(ctx, day.condition));
         setText(node.querySelector(".hl"), highLow(ctx, day));
+        fillWind(node.querySelector(".wind"), winds[i]);
       }
       fillRain(node.querySelector(".rain"), ctx, rainOf(day));
       return node;
@@ -347,6 +365,11 @@ function fillRain(node, ctx, value) {
   if (value == null) return;
   setText(node.querySelector("span"), ctx.t("card.pocket.format.percent", { value: number(ctx, value, 0) }));
   node.setAttribute("aria-label", ctx.t("card.pocket.weather.rain", { value: number(ctx, value, 0) }));
+}
+
+function fillWind(node, text) {
+  node.hidden = !text;
+  setText(node, text ?? "");
 }
 
 if (!customElements.get("pocket-forecast")) customElements.define("pocket-forecast", PocketForecast);
@@ -362,12 +385,47 @@ const SHEET_STYLE = `
                             margin-bottom: 8px; }
   .forecast-sheet .dtitle b { font-size: 17px; font-weight: 600; }
   .forecast-sheet .now { margin-bottom: 12px; }
+  .forecast-sheet .alerts { margin: 0 0 14px; padding: 0; list-style: none; border: 1px solid var(--line);
+                            border-radius: 16px; overflow: hidden; }
+  .forecast-sheet .alerts[hidden] { display: none; }
+  .forecast-sheet .alert { display: flex; align-items: center; gap: 12px; min-height: 52px; box-sizing: border-box;
+                           padding: 8px 14px; border-top: 1px solid var(--line); }
+  .forecast-sheet .alert:first-child { border-top: 0; }
+  .forecast-sheet .alert ha-icon { flex: 0 0 auto; --mdc-icon-size: 24px; color: var(--mut); }
+  .forecast-sheet .alert ha-icon.fair { color: var(--warn); }
+  .forecast-sheet .alert ha-icon.orange { color: var(--orange); }
+  .forecast-sheet .alert ha-icon.poor { color: var(--bad); }
+  .forecast-sheet .atext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .forecast-sheet .atitle { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+  .forecast-sheet .adetail { font-size: 12.5px; color: var(--mut); overflow-wrap: break-word; }
+  .forecast-sheet .adetail:empty { display: none; }
 `;
+
+// The warnings list: rebuilt only when its rows change.
+function fillAlerts(list, ctx) {
+  const rows = sheetRows(ctx);
+  const key = JSON.stringify([ctx.lang, rows]);
+  if (key === list._drawn) return;
+  list._drawn = key;
+  list.hidden = rows.length === 0;
+  list.setAttribute("aria-label", ctx.t("card.pocket.warnings.list"));
+  list.replaceChildren(...rows.map((row) => {
+    const item = el("li", "alert", `<ha-icon></ha-icon><span class="atext"><span class="atitle"></span><span class="adetail"></span></span>`);
+    item.dataset.key = row.key;
+    const icon = item.querySelector("ha-icon");
+    icon.setAttribute("icon", row.icon);
+    icon.className = row.tone;
+    setText(item.querySelector(".atitle"), row.title);
+    setText(item.querySelector(".adetail"), row.detail);
+    return item;
+  }));
+}
 
 export const forecastSheet = {
   render(ctx, spec) {
     const root = el("div", "forecast-sheet", `<style>${SHEET_STYLE}</style>
       <div class="dtitle"><b></b></div>
+      <ul class="alerts" hidden></ul>
       <pocket-forecast class="now" mode="row"></pocket-forecast>
       <pocket-forecast class="days" mode="list"></pocket-forecast>`);
     root._spec = spec;
@@ -376,6 +434,7 @@ export const forecastSheet = {
   },
   update(root, ctx) {
     setText(root.querySelector(".dtitle b"), root._spec?.title ?? "");
+    fillAlerts(root.querySelector(".alerts"), ctx);
     for (const widget of root.querySelectorAll("pocket-forecast")) widget.ctx = ctx;
   },
 };

@@ -395,6 +395,57 @@
           "exceptional": "Nietypowo"
         }
       },
+      "wind": {
+        "level": {
+          "calm": "Spokojnie",
+          "breezy": "Wietrznie",
+          "strong": "Silny wiatr",
+          "gale": "Wichura"
+        },
+        "speed": "{value} km/h",
+        "speed_from": "{value} km/h {direction}",
+        "with_gusts": "{text}, porywy {gust}",
+        "gusts_only": "porywy {gust} km/h",
+        "leveled": "{level} · {text}",
+        "chip": "{level} · {text}",
+        "direction": {
+          "N": "N",
+          "NE": "NE",
+          "E": "E",
+          "SE": "SE",
+          "S": "S",
+          "SW": "SW",
+          "W": "W",
+          "NW": "NW"
+        }
+      },
+      "warnings": {
+        "type": {
+          "wind": "Wiatr",
+          "snow_ice": "Śnieg i lód",
+          "thunderstorm": "Burza",
+          "fog": "Mgła",
+          "heat": "Upał",
+          "cold": "Mróz",
+          "coastal": "Zjawisko przybrzeżne",
+          "forest_fire": "Pożar lasu",
+          "avalanche": "Lawiny",
+          "rain": "Deszcz",
+          "flood": "Powódź",
+          "rain_flood": "Deszcz i powódź",
+          "other": "Ostrzeżenie"
+        },
+        "level": {
+          "yellow": "Żółte ostrzeżenie",
+          "orange": "Pomarańczowe ostrzeżenie",
+          "red": "Czerwone ostrzeżenie"
+        },
+        "more": "{text} +{count}",
+        "detail": "{level} · {until}",
+        "until": "do {time}",
+        "until_day": "do {day} {time}",
+        "list": "Ostrzeżenia pogodowe"
+      },
       "sensors": {
         "title": "Wszystkie czujniki",
         "state": {

@@ -59,7 +59,8 @@
     Ranges are the helpers' own (0.3.0's for presence and display; the card's console for music). -#]
 [%- set general = {'near_enabled': ('bool', true), 'off_delay_s': ('number', 300, 10, 1800), 'brightness_min': ('number', 16, 1, 255),
     'brightness_max': ('number', 204, 1, 255), 'near_cm': ('number', 100, 10, 400), 'near_s': ('number', 1, 1, 10),
-    'controls_hold_s': ('number', 5, 1, 600), 'lux_max': ('number', 200, 20, 2000), 'theme_mode': ('choice', 'dark', ['dark', 'light'])} -%]
+    'controls_hold_s': ('number', 5, 1, 600), 'lux_max': ('number', 200, 20, 2000), 'theme_mode': ('choice', 'dark', ['dark', 'light']),
+    'weather_banner': ('choice', 'off', ['off', 'icon', 'hide', 'always']), 'weather_banner_s': ('number', 30, 5, 600)} -%]
 [%- set sd = inputs.settings_defaults | default({}) -%]
 [%- if sd is not mapping -%][[ fail('ramka: settings_defaults must be a mapping') ]][%- endif -%]
 [%- for key in sd if key not in general -%][[ fail("ramka: settings_defaults: unknown key '" ~ key ~ "'") ]][%- endfor -%]
@@ -168,6 +169,10 @@
 [%- set _ = settings.append(('input_boolean', 'ambient_music', '', 'presence_display', true)) -%]
 [%- set _ = settings.append(('input_select', 'theme_mode', 'general', 'pages', d.theme_mode)) -%]
 [%- set _ = settings.append(('input_boolean', 'settings_advanced', 'general', 'pages', false)) -%]
+[#- SPEC-053: the weather banner, a group of its own: seeded whenever its number is untouched, so a
+    home that ran the Ramka before it gets 30 s, not the slider's 5 (and the banner off). -#]
+[%- set _ = settings.append(('input_select', 'weather_banner', 'general', 'weather', d.weather_banner)) -%]
+[%- set _ = settings.append(('input_number', 'weather_banner_s', 'general', 'weather', d.weather_banner_s)) -%]
 [%- set views = ['climate', 'air', 'plants', 'photos', 'status', 'calendar', 'music'] -%]
 [#- A page of the settings dashboard each, and with the visual the Music page's two sub-views: the
     live visualization's (its visual's settings, SPEC-025 amendment 1) and the music sensor's. -#]
@@ -339,6 +344,16 @@ input_select:
     name: [[ named(' theme mode') ]]
     icon: mdi:theme-light-dark
     options:[[ options(d.theme_mode, ['dark', 'light']) ]]
+  # SPEC-053 amendment 1: the weather banner (custom:weather-banner-card) and the Climate page's
+  # warning line: off (none, the default: a home that updates sees nothing new until it turns it
+  # on), or on: after its full text only its icon, nothing, or the text always. The default first,
+  # so a fresh helper has it.
+  [[ p ]]_weather_banner:
+    name: [[ named(' weather banner') ]]
+    icon: mdi:weather-cloudy-alert
+    # Quoted: a bare off is YAML's false.
+    [%- set banner_options = [d.weather_banner] + (['off', 'icon', 'hide', 'always'] | reject('equalto', d.weather_banner) | list) %]
+    options: [[ banner_options | tojson ]]
   [%- if music_visual %]
   # What the now-playing card draws in its wave strip while input_boolean.[[ p ]]_music_live is on
   # (0.4.0, SPEC-025 amendment 1): the room's music as audio-sensor's spectrum or level; with the
@@ -512,6 +527,15 @@ input_number:
     step: 1
     unit_of_measurement: s
     mode: slider
+  # SPEC-053: how long the weather banner says its full text, each time it is about something new.
+  [[ p ]]_weather_banner_s:
+    name: [[ named(' weather banner text') ]]
+    icon: mdi:timer-outline
+    min: 5
+    max: 600
+    step: 5
+    unit_of_measurement: s
+    mode: box
   [[ p ]]_off_delay_s:
     name: [[ named(' off delay (s)') ]]
     icon: mdi:timer-sand
@@ -1904,7 +1928,7 @@ script:
         selector:
           select:
             multiple: true
-            options: ["presence_display", "pages", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate", "climate_slots"]
+            options: ["presence_display", "pages", "weather", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate", "climate_slots"]
     sequence:
       - variables:
           only_page: "{{ page | default('', true) }}"
@@ -2599,6 +2623,8 @@ automation:
   #   until input_boolean.<prefix>_climate_slots_seeded is on, and only while it is the slider's min
   #   (a fresh helper's state; a home that had another number keeps it), or whenever it is unknown.
   #   Its own flag, since 1 is also a home's choice: after the first seed a 1 stays.
+  # - weather (SPEC-053): the banner's seconds untouched (5 s, the minimum); also after the flag is
+  #   on, so a home that ran the Ramka before the banner gets 30 s.
   # Home Assistant's start trigger fires after the restored states are in place.
   - id: [[ p ]]_settings_seed
     alias: [[ named(' settings seed') ]]
@@ -2610,10 +2636,11 @@ automation:
     actions:
       - variables:
           seed_groups: >-
-            {% set untouched = namespace(presence=true, music=true, look=true, profiles=true, photos=true, plants=true, air=true, climate_slots=true) %}
+            {% set untouched = namespace(presence=true, weather=true, music=true, look=true, profiles=true, photos=true, plants=true, air=true, climate_slots=true) %}
 [%- if inputs.climate is defined %]
             {% set untouched_climate = state_attr('sensor.[[ p ]]_climate_rooms', 'rooms') is none %}
 [%- endif %]
+            {% set banner_s = 'input_number.[[ p ]]_weather_banner_s' %}{% set untouched.weather = states(banner_s) in ['unknown', 'unavailable'] or states(banner_s) | float(-1) == state_attr(banner_s, 'min') | float(-2) %}
             {% for e in ['input_number.[[ p ]]_off_delay_s', 'input_number.[[ p ]]_brightness_min', 'input_number.[[ p ]]_brightness_max', 'input_number.[[ p ]]_near_cm', 'input_number.[[ p ]]_near_s', 'input_number.[[ p ]]_controls_hold_s', 'input_number.[[ p ]]_lux_max'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.presence = false %}{% endfor %}
 [%- set photo_numbers = [] if inputs.photo_dir is not defined else ['input_number.' ~ p ~ '_photo_count', 'input_number.' ~ p ~ '_photo_s'] %]
 [%- set plant_numbers = [] if inputs.plants is not defined else ['input_number.' ~ p ~ '_plants_per_page', 'input_number.' ~ p ~ '_plants_page_s'] %]
@@ -2636,7 +2663,7 @@ automation:
             {% for e in [[ profile_numbers | tojson ]] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.profiles = false %}{% endfor %}
 [%- endif %]
             {% set first = not is_state('input_boolean.[[ p ]]_settings_seeded', 'on') %}
-            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if music_visual %] + (['music_visual'] if untouched.music else []) + (['music_look'] if untouched.look else []) + (['music_profiles'] if untouched.profiles else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if plant_numbers %] + (['plants'] if untouched.plants else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else []) + (['climate_slots'] if untouched.climate_slots else [])[% endif %] }}
+            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else []) + (['weather'] if untouched.weather else [])[% if music_visual %] + (['music_visual'] if untouched.music else []) + (['music_look'] if untouched.look else []) + (['music_profiles'] if untouched.profiles else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if plant_numbers %] + (['plants'] if untouched.plants else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else []) + (['climate_slots'] if untouched.climate_slots else [])[% endif %] }}
       - if:
           - condition: template
             value_template: "{{ seed_groups | count > 0 }}"

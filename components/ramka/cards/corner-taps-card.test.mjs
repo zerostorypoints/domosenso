@@ -115,6 +115,27 @@ test("a vertical swipe runs the rule's up or down script; short or horizontal on
   assert.deepEqual(calls, []);
 });
 
+test("a drag that starts on an element scrolling on its own (data-own-swipe) is no swipe", () => {
+  const rule = { conditions: [{ entity: MODE, states: ["controls"] }], up: "script.ramka_up" };
+  const { calls } = makeCard({ swipe: rule }, "controls");
+  const host = document.createElement("div");
+  host.setAttribute("data-own-swipe", "");
+  document.body.appendChild(host);
+  const root = host.attachShadow({ mode: "open" });
+  root.innerHTML = "<ul><li>a warning</li></ul>";
+  const li = root.querySelector("li");
+  const at = (type, y) => {
+    const ev = new window.Event(type, { bubbles: true, composed: true, cancelable: true });
+    ev.changedTouches = [{ clientX: 300, clientY: y }];
+    li.dispatchEvent(ev);
+  };
+  at("touchstart", 400);
+  at("touchend", 260);
+  assert.deepEqual(calls, []);
+  swipe(-120);
+  assert.deepEqual(calls, [["script", "ramka_up", {}]]);
+});
+
 test("a horizontal swipe runs the rule's left or right script; diagonal or rule-less ones nothing", () => {
   const rule = { conditions: [{ entity: MODE, states: ["ambient"] }], up: "script.ramka_up", left: "script.ramka_next", right: "script.ramka_prev" };
   const { calls } = makeCard({ swipe: rule });

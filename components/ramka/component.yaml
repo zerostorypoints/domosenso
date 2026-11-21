@@ -200,7 +200,7 @@ inputs:
     default: null               # amplifier, a starting point) and `fitted` (flat until set), dB per range, each -18...+12; a curve
     example: {fitted: {bass: -6, air: 2}}   # replaces the catalog's whole, absent keys 0. Read only with `music_visual`. Checked at render.
   settings_defaults:            # the General settings' starting values (0.4.0), what the seed and "Reset to defaults"
-    type: "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light}"
+    type: "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light, weather_banner?: off | icon | hide | always, weather_banner_s?}"
     default: null               # write; absent keys keep the catalog's (true, 100 cm, 1 s, 5 s, 300 s, 16, 204,
     example: {off_delay_s: 600} # 200 lx, dark). Checked at render against each helper's range.
   screen:                       # the tablet's CSS viewport, from `domosenso probe` (SPEC-011); absent: 1100 x 720.
@@ -260,6 +260,8 @@ artifacts:
     - cards/status-card.js
     - cards/tap-button-card.js
     - cards/timer-status-card.js
+    - cards/weather-banner-card.js    # custom:weather-banner-card, the weather banner over the ambient pages (SPEC-053)
+    - cards/weather-warnings-card.js  # custom:weather-warnings-card, the controls' weather warnings and their list
   services: []
   shell:                        # -> /config/shell/: the photo loop's picker and the caption index
     - shell/ramka_pick.py       #    (shell_command.<prefix>_pick / _index call them with photo_dir)
@@ -289,6 +291,8 @@ provides:                       # <prefix> from inputs
     - {id: "input_boolean.<prefix>_music_tilt", stability: stable, note: "with music_visual (0.4.0); Custom's tilt"}
     - {id: "input_boolean.<prefix>_music_{behind_speakers,lively,calm,analyser}_tilt", stability: stable, note: "with music_visual; each template's own tilt"}
     - {id: "input_number.<prefix>_{near_cm,near_s,controls_hold_s,off_delay_s,brightness_min,brightness_max,lux_max}", stability: stable}
+    - {id: input_select.<prefix>_weather_banner, stability: stable, options: ["off", icon, hide, always], note: "SPEC-053 amendment 1: off (the default, first) or what the weather banner does after its full text; also the Climate page's warning line"}
+    - {id: input_number.<prefix>_weather_banner_s, stability: stable, note: "SPEC-053: seconds of the weather banner's full text, 5-600"}
     - {id: "input_number.<prefix>_music_{rise_ms,fall_s,line_width_px,spectrum_neutral_db,spectrum_hot_db,level_neutral_db,level_hot_db,fps}", stability: stable, note: "with music_visual (0.4.0); fps (the redraw rate, 30) is on no settings page"}
     - {id: "input_select.<prefix>_music_template", stability: stable, options: [custom, behind_speakers, lively, calm, analyser], note: "with music_visual; the music look, custom first; options additive-only"}
     - {id: "input_select.<prefix>_music_eq", stability: stable, options: ["—", flat, behind_speakers, half_match, wled_big_speakers, wled_big_speakers_ics, wled_pink, bass_light, voices, sparkle, fitted], note: "with music_visual; an EQ preset to load into the selected profile's EQ, its tooltip naming the curve it loads; rests on — (no preset) and returns to it after each load (0.9.0); options additive-only"}
@@ -370,6 +374,14 @@ consumes:                       # with music_visual (0.4.0): audio-sensor's musi
   # With floorplan: the plan on the controls (SPEC-028). The card's resource comes with the component.
   - {component: floorplan, id: "dashboard url path floorplan"}
   - {component: floorplan, element: floorplan-card}
+  # SPEC-053, with weather: the clock line names the wind from breezy; while the warning is on the
+  # controls offer the warnings list and, when turned on, a weather banner and the Climate page's
+  # warning line show; the settings' General page holds the thresholds. Without them (no weather, or
+  # one before SPEC-053) nothing shows: a state condition on a missing entity never holds.
+  - {component: weather, id: sensor.weather_wind_level}
+  - {component: weather, id: binary_sensor.weather_warning}
+  - {component: weather, id: sensor.weather_warnings}
+  - {component: weather, id: "input_number.weather_wind_{breezy,strong,gale}"}
 # Not a component's: the settings dashboard's About page reads sensor.domosenso_components, which the
 # `domosenso` command writes from the home's lock (SPEC-023); without it the page lists the Ramka alone.
 
