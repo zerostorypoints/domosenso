@@ -52,7 +52,7 @@ def test_illuminance_without_dark_below_fails(tmp_path):
 
 def test_manifest_version():
     manifest = yaml.safe_load((REPO / "components/lights/component.yaml").read_text())
-    assert manifest["version"] == "0.5.0"
+    assert manifest["version"] == "0.5.1"
     assert manifest["inputs"]["presence_rooms"]["default"] == []
 
 
@@ -166,13 +166,24 @@ def test_statistics_name_gives_the_provided_entity_id(tmp_path):
         assert re.sub(r"[^a-z0-9]+", "_", s["name"].lower()).strip("_") == s["unique_id"]
 
 
-def test_ambient_follows_only_the_illuminance(tmp_path):
-    # Review I1: a group trigger writes the reading taken while the lamp was still lit the moment
-    # the bulbs report off; the ambient sensor follows the illuminance alone.
+def test_ambient_takes_a_reading_only_once_it_has_settled(tmp_path):
+    # Review I1 and lights 0.5.1: a sensor in the room sees the lamp a few seconds before the bulbs
+    # report on, and still sees it fading as they report off. A reading waits `settle` seconds; a
+    # switch of the group drops the readings still waiting, and the group trigger never writes the
+    # current reading. A reading that holds for `settle` is taken without a further report.
     package = _package(tmp_path, [OFFICE])
     block = next(b for b in package["template"]
                  if any(s.get("unique_id") == "lights_presence_office_ambient" for s in b.get("sensor", [])))
-    assert [t["entity_id"] for t in block["triggers"]] == ["sensor.office_illuminance"]
+    triggers = {t["id"]: t for t in block["triggers"]}
+    assert triggers["reading"] == {"trigger": "state", "entity_id": "sensor.office_illuminance", "id": "reading"}
+    assert triggers["held"]["entity_id"] == "sensor.office_illuminance"
+    assert triggers["held"]["for"] == {"seconds": 10}
+    assert triggers["group"]["entity_id"] == "light.office"
+    sensor = block["sensor"][0]
+    assert "ready" in sensor["state"] and {"pending", "switched"} <= set(sensor["attributes"])
+    # A switch is the group going between on and off, so the start of Home Assistant (bulbs from
+    # unavailable) does not drop a steady sensor's readings.
+    assert "['off', 'on']" in block["actions"][0]["variables"]["switch"]
 
 
 def test_manual_off_needs_presence_for_a_few_seconds(tmp_path):

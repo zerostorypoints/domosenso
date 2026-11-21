@@ -102,24 +102,60 @@ template:
 [%- for room in presence_rooms %]
 [%- set id = room.id | default(room.group.split('.', 1)[1]) %]
 [%- if room.illuminance is defined and room.illuminance is not none %]
-  # Only the illuminance triggers it: on a trigger from the group the moment the bulbs report off,
-  # the sensor would still hold the reading taken with the lamp lit, and a sparse sensor keeps it
-  # in the window for up to two minutes. The first reading after the lamp is dark is the next one.
+  # A reading waits `settle` seconds in `pending` before the sensor takes it: a sensor in the room
+  # sees the lamp a few seconds before the bulbs report on (a radar photodiode under Hue: 3 s), and
+  # still sees it fading as they report off. A reading taken while a bulb is on empties `pending`;
+  # one taken within `settle` after the group switched between on and off is not kept (`switched`;
+  # a start or a restore is not a switch, so a steady sensor still reaches the median after a
+  # restart). The group trigger never writes the current reading (that would be the lit one).
+  # `held` takes a reading that has not changed for `settle`, for a sensor that reports only on
+  # change. The readings waiting are the entity's own attributes, because `this` exists only there.
   - triggers:
       - trigger: state
         entity_id: [[ room.illuminance ]]
+        id: reading
+      - trigger: state
+        entity_id: [[ room.illuminance ]]
+        for: {seconds: 10}
+        id: held
+      - trigger: state
+        entity_id: [[ room.group ]]
+        id: group
+    actions:
+      - variables:
+          settle: 10
+          stamp: "{{ now().timestamp() }}"
+          lit: >-
+            {{ expand(state_attr('[[ room.group ]]', 'entity_id') or [])
+               | selectattr('state', 'eq', 'on') | list | count > 0 }}
+          switch: >-
+            {{ trigger.id == 'group' and trigger.from_state is not none and trigger.to_state is not none
+               and [trigger.from_state.state, trigger.to_state.state] | sort == ['off', 'on'] }}
+          # `held` dates its reading `settle` back, so it is taken at once.
+          fresh: >-
+            {% if trigger.id in ['reading', 'held'] and has_value('[[ room.illuminance ]]') %}
+              {{ [ [stamp - (settle if trigger.id == 'held' else 0), states('[[ room.illuminance ]]')] ] }}
+            {% else %}[]{% endif %}
     sensor:
       [%- set label = room.name ~ ' presence ambient' %]
       - name: [[ label | yaml ]]
         unique_id: lights_presence_[[ id ]]_ambient
         default_entity_id: sensor.lights_presence_[[ id ]]_ambient
         state: >-
-          {% set lit = expand(state_attr('[[ room.group ]]', 'entity_id') or [])
-                       | selectattr('state', 'eq', 'on') | list | count > 0 %}
-          {{ this.state if lit else states('[[ room.illuminance ]]') }}
+          {% set switched = stamp if switch else (this.attributes.get('switched') or 0) | float(0) %}
+          {% set quiet = not lit and switched < stamp - settle %}
+          {% set queue = ((this.attributes.get('pending') or []) + fresh) if quiet else [] %}
+          {% set ready = queue | selectattr(0, 'le', stamp - settle) | list %}
+          {{ ready[-1][1] if ready else this.state }}
         attributes:
           component: lights
           source: [[ room.illuminance ]]
+          switched: "{{ stamp if switch else (this.attributes.get('switched') or 0) | float(0) }}"
+          pending: >-
+            {% set switched = stamp if switch else (this.attributes.get('switched') or 0) | float(0) %}
+            {% set quiet = not lit and switched < stamp - settle %}
+            {% set queue = ((this.attributes.get('pending') or []) + fresh) if quiet else [] %}
+            {{ queue | selectattr(0, 'gt', stamp - settle) | list }}
 [%- endif %]
 [%- if room.distance is defined and room.distance is not none %]
   # The distance the presence sensor last saw someone at, for the switch-off line in the logbook:
