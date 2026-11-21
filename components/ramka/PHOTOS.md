@@ -9,9 +9,11 @@ agent answering an owner's question, and for the owner. Read from the code of th
 
 - **An event is a folder.** The caption's name is the name of the folder the photo lies in,
   exactly as it is written on disk. Nothing else names it: no album, no tag, no EXIF field.
-- **Each time the photos page comes round, one folder is drawn at random, then up to five of its
-  photos in random order, ten seconds each.** Every folder has the same chance, however many photos
-  it holds; the folder shown last time is left out of the next draw.
+- **The albums take turns.** An album is a top-level folder of `photo_dir`. Each time the photos
+  page comes round, the next album of the running cycle shows, then the next event inside it, then
+  up to five of that event's photos not yet shown (the Photos page's count), ten seconds each.
+  Every album comes once per cycle, however many events or photos it holds, and every photo of an
+  event comes before any comes again.
 - **The date comes from the photo** (EXIF "date taken"), and only when it has none from the file's
   modification time.
 
@@ -64,28 +66,41 @@ The name on screen is the last part of the folder's path, as it is: `2026/07/Lak
 ## How the draw works
 
 The ambient rotation runs climate → air → plants → photos → status, each page that the home has.
-On the photos page, the loop calls `shell_command.<prefix>_pick`, which runs `ramka_pick.py`:
+On the photos page, the loop calls `shell_command.<prefix>_pick`, which runs `ramka_pick.py`. It
+lists every event folder (as above) and groups them by album, the top-level folder they lie in
+(`2026/07/Lake trip` is in album `2026`; `Summer 2025/` is an album of one event). With albums
+chosen on the settings dashboard's Photos page, only those count. Then it keeps three cycles:
 
-1. It lists every event folder (as above).
-2. It leaves out the folder drawn last time, remembered in a file `.ramka_last_pick` next to
-   `photo_dir` (for `/config/www/ramka`: `/config/www/.ramka_last_pick`). With one folder only, that
-   one is drawn every time.
-3. It draws one folder with equal chances.
-4. It shuffles that folder's photos and takes up to five different ones.
+1. **Albums.** It takes an album not yet shown in the running cycle, at random among those left.
+   Once every album has had its turn, a new cycle starts, leaving out the album shown last, so no
+   album comes twice in a row (unless it is the only one).
+2. **Events in that album.** The same way: an event of the album not yet shown in the album's own
+   cycle. An album with one event shows that one each time.
+3. **Photos of that event.** Up to the Photos page's count (default 5) of the event's photos not
+   yet shown in its cycle, in random order. When fewer are left, they are shown and the series is
+   topped up from the event's next cycle, so a series holds the full count whenever the event has
+   that many photos, and no photo twice.
 
-The loop then shows them for 10 seconds each, the page cross-fades from one to the next, and the
-rotation moves on. One pass of the whole rotation with all five pages is 130 seconds, so a photo
-series comes about every two minutes while the tablet is in ambient mode; fewer pages (an absent
-input, `status_page: false`) make the pass, and the wait for the next series, shorter.
+The cycles are kept in `.ramka_rotation.json` next to `photo_dir` (for `/config/www/ramka`:
+`/config/www/.ramka_rotation.json`). A folder or photo added mid-cycle joins the running cycle; a
+removed one drops out; deleting the file starts every cycle anew.
+
+The loop then shows the series for 10 seconds per photo, the page cross-fades from one to the
+next, and the rotation moves on. One pass of the whole rotation with all five pages is 130
+seconds, so a photo series comes about every two minutes while the tablet is in ambient mode;
+fewer pages (an absent input, `status_page: false`) make the pass, and the wait for the next
+series, shorter.
 
 What follows from that:
 
-- **A big folder is not shown more often than a small one.** A folder of 300 photos and one of 3
-  have the same chance; from the big one, each pass shows five of the 300.
-- **No memory beyond the last folder.** The same folder can come back after one other; within a
-  series a photo never repeats, across series it can.
-- To show an event more often, split it into several folders; to show it less often, merge it with
-  another or move it out of `photo_dir`.
+- **Every album has the same share of series.** With 90 albums, each comes once in every 90
+  series, so a full album cycle takes 90 photo pages (about three hours of ambient mode at one
+  series every two minutes).
+- **A big event takes several turns to show all its photos.** An event of 100 photos, five per
+  series, is fully shown after 20 of its album's turns; a small one repeats sooner. Album size
+  does not change how often an album comes, only how long its photos last.
+- To show an event more often, make it an album of its own (a top-level folder); to show it less
+  often, move it into another album or out of `photo_dir`.
 - An empty `photo_dir` (no event folder) skips the photos page.
 - Nothing is drawn while the music view is on, the tablet is off or in controls mode: the loop
   only runs in ambient mode.
@@ -121,7 +136,7 @@ in the photo's EXIF ("date taken"); renaming the file does not help.
 
 Copy a folder of JPEGs into `photo_dir` (a NAS share, `scp`, the file browser of the host). Nothing
 to restart: the picker sees the folder on its next draw and indexes it then. Removing works the same
-way. The Ramka's own files (`index.json`, `.ramka_last_pick`) are rewritten by the scripts; do not
+way. The Ramka's own files (`index.json`, `.ramka_rotation.json`) are rewritten by the scripts; do not
 edit them.
 
 ## Who can see the photos
