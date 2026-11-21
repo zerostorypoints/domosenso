@@ -27,8 +27,9 @@ def test_sidecar_add_render_dev_update_and_removal_in_independent_home(tmp_path,
     shutil.copytree(ROOT / 'components' / cid, component)
     git(catalog, 'init', '-q', '-b', 'main')
     git(catalog, 'add', '.'); git(catalog, 'commit', '-qm', 'Test catalog')
+    version = yaml.safe_load((component / 'component.yaml').read_text())['version']
     # Throwaway tags in this test catalog, never release tags in the project.
-    git(catalog, 'tag', f'{cid}/0.4.0')
+    git(catalog, 'tag', f'{cid}/{version}')
     revision = git(catalog, 'rev-parse', 'HEAD')
     root = tmp_path / 'home'
 
@@ -42,13 +43,13 @@ def test_sidecar_add_render_dev_update_and_removal_in_independent_home(tmp_path,
     inputs = json.loads((ROOT / 'tests/fixtures/assistant-actions/inputs.json').read_text())[cid]
     (root / 'domosenso').mkdir()
     (root / f'domosenso/{cid}.inputs.yaml').write_text(yaml.safe_dump(inputs))
-    code, output = cli('add', f'{cid}@0.4.0'); assert code == 0, output
+    code, output = cli('add', f'{cid}@{version}'); assert code == 0, output
     home = HomeConfig.load(root)
     relative = f'home-assistant/domosenso/assistant-actions/{cid}.yaml'
     artifact = root / relative
     original = artifact.read_bytes()
     payload = yaml.safe_load(original)
-    assert payload['component'] == {'id': cid, 'version': '0.4.0', 'commit': revision, 'dev': False}
+    assert payload['component'] == {'id': cid, 'version': version, 'commit': revision, 'dev': False}
     record = Lock.load(root).components[cid].files[relative]
     assert record.layer == 'managed' and record.from_ == 'assistant-actions.yaml'
     assert record.sha256 == hashlib.sha256(original).hexdigest()
@@ -67,10 +68,11 @@ def test_sidecar_add_render_dev_update_and_removal_in_independent_home(tmp_path,
 
     manifest_path = component / 'component.yaml'
     manifest = yaml.safe_load(manifest_path.read_text()); manifest.pop('assistant_actions')
-    manifest['version'] = '0.4.1'; manifest_path.write_text(yaml.safe_dump(manifest))
+    major, minor, patch = version.split('.'); nxt = f'{major}.{minor}.{int(patch) + 1}'
+    manifest['version'] = nxt; manifest_path.write_text(yaml.safe_dump(manifest))
     git(catalog, 'add', '.'); git(catalog, 'commit', '-qm', 'Omit optional actions')
-    git(catalog, 'tag', f'{cid}/0.4.1')
-    code, output = cli('update', cid, '--to', '0.4.1'); assert code == 0, output
+    git(catalog, 'tag', f'{cid}/{nxt}')
+    code, output = cli('update', cid, '--to', nxt); assert code == 0, output
     assert not artifact.exists()
     assert relative not in Lock.load(root).components[cid].files
     assert f'remove {relative}' in output

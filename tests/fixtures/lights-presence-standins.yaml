@@ -1,0 +1,46 @@
+# Stand-ins for tools/lights-presence-check.py: a presence radar, its illuminance and distance, and a
+# two-bulb room group, all driven through helpers so the check can set them over the REST API.
+input_boolean:
+  office_presence_raw:
+  office_lux_unavailable:
+  office_bulb_1_on:
+  office_bulb_2_on:
+  office_bulbs_unavailable:
+
+input_number:
+  office_lux: {min: 0, max: 255, step: 1, initial: 2}
+  office_distance: {min: 0, max: 600, step: 1, initial: 0}
+
+template:
+  - binary_sensor:
+      - name: Office presence
+        default_entity_id: binary_sensor.office_presence
+        state: "{{ is_state('input_boolean.office_presence_raw', 'on') }}"
+  - sensor:
+      - name: Office illuminance
+        default_entity_id: sensor.office_illuminance
+        availability: "{{ is_state('input_boolean.office_lux_unavailable', 'off') }}"
+        state: "{{ states('input_number.office_lux') | int }}"
+      - name: Office presence distance
+        default_entity_id: sensor.office_presence_distance
+        state: "{{ states('input_number.office_distance') | int }}"
+  - light:
+      - name: Office bulb 1
+        default_entity_id: light.office_bulb_1
+        availability: "{{ is_state('input_boolean.office_bulbs_unavailable', 'off') }}"
+        state: "{{ is_state('input_boolean.office_bulb_1_on', 'on') }}"
+        turn_on: {action: input_boolean.turn_on, target: {entity_id: input_boolean.office_bulb_1_on}}
+        turn_off: {action: input_boolean.turn_off, target: {entity_id: input_boolean.office_bulb_1_on}}
+      - name: Office bulb 2
+        default_entity_id: light.office_bulb_2
+        availability: "{{ is_state('input_boolean.office_bulbs_unavailable', 'off') }}"
+        state: "{{ is_state('input_boolean.office_bulb_2_on', 'on') }}"
+        turn_on: {action: input_boolean.turn_on, target: {entity_id: input_boolean.office_bulb_2_on}}
+        turn_off: {action: input_boolean.turn_off, target: {entity_id: input_boolean.office_bulb_2_on}}
+
+# The room group, as the Hue integration's group is: a light with an entity_id attribute.
+light:
+  - platform: group
+    name: Office
+    unique_id: office_group
+    entities: [light.office_bulb_1, light.office_bulb_2]

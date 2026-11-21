@@ -323,6 +323,9 @@ ENTITY_OWNER = {
     "input_text.ramka_photo": "ramka", "image.ramka_photo": "ramka",
     "binary_sensor.dining_ble_proxy_dining_presence": "bermuda-presence",
     "sensor.dining_ble_proxy_dining_detection_distance": "bermuda-presence",
+    # The demo office's radar, read by the lights presence room (0.5.0).
+    "binary_sensor.office_presence": "lights", "sensor.office_illuminance": "lights",
+    "sensor.office_presence_distance": "lights",
     "sensor.dining_tablet_light_sensor": "ramka", "sensor.dining_tablet_battery_level": "ramka",
     "sensor.dining_tablet_app_importance": "ramka", "sensor.dining_tablet_charger_type": "ramka",
     "sensor.dining_tablet_battery_temperature": "ramka", "binary_sensor.dining_tablet_is_charging": "ramka",
