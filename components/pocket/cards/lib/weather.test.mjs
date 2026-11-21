@@ -272,3 +272,108 @@ test("the strip names today and the weekdays in Home Assistant's time zone", () 
     .format(new Date(noonThere.getTime() + 86400000));
   assert.equal(text(shadow(widget).querySelectorAll(".day .dn")[1]), tomorrow);
 });
+
+// --- the wind (SPEC-053) ------------------------------------------------------------------------
+
+const localDate = (offset) => new Intl.DateTimeFormat("en-CA").format(new Date(dayAt(offset).datetime));
+const windStates = ({ level = "breezy", speed = 32, gust = 48.6, direction = "SW", daily = true } = {}) => ({
+  "weather.home": { state: "cloudy", attributes: { temperature: 5, wind_speed: speed, wind_speed_unit: "km/h" } },
+  "sensor.weather_wind_level": { state: level, attributes: { speed, gust, judged: speed, direction } },
+  ...(daily ? { "sensor.weather_wind_gust": { state: String(gust), attributes: { daily: {
+    time: [localDate(0), localDate(1), localDate(2)], wind_gusts_10m_max: [52.3, 71, 40] } } } } : {}),
+});
+
+test("the row with the weather component: the level word, speed, direction and gust", () => {
+  const hass = hassOf({ states: windStates() });
+  const widget = document.createElement("pocket-forecast");
+  widget.setAttribute("mode", "row");
+  document.body.append(widget);
+  widget.ctx = ctxOf(hass);
+  const wind = shadow(widget).querySelector(".wind");
+  assert.equal(wind.hidden, false);
+  assert.equal(text(wind), "Breezy · 32 km/h SW, gusts 49");
+  widget.ctx = ctxOf(hassOf({ connection: hass.connection, states: windStates({ level: "calm", speed: 8, gust: null, direction: "N" }) }));
+  assert.equal(text(shadow(widget).querySelector(".wind")), "8 km/h N", "calm: the speed and direction only");
+  widget.ctx = ctxOf(hassOf({ connection: hass.connection, states: windStates() }), "pl");
+  assert.equal(text(shadow(widget).querySelector(".wind")), "Wietrznie · 32 km/h SW, porywy 49");
+});
+
+test("without the weather component the row and the days have no wind, as before", () => {
+  const hass = hassOf();
+  const row = document.createElement("pocket-forecast");
+  row.setAttribute("mode", "row");
+  const list = document.createElement("pocket-forecast");
+  list.setAttribute("mode", "list");
+  document.body.append(row, list);
+  row.ctx = ctxOf(hass);
+  list.ctx = ctxOf(hass);
+  hass.connection.push([dayAt(0, { wind_speed: 20 }), dayAt(1, { wind_speed: 30 })]);
+  assert.equal(shadow(row).querySelector(".wind").hidden, true);
+  assert.equal(text(shadow(row).querySelector(".wind")), "");
+  for (const day of shadow(list).querySelectorAll(".day")) assert.equal(day.querySelector(".wind").hidden, true);
+});
+
+test("the forecast sheet's days: each day's wind_speed in km/h and its gust maximum by date", () => {
+  const states = windStates();
+  states["weather.home"].attributes.wind_speed_unit = "m/s";
+  const hass = hassOf({ states });
+  const widget = document.createElement("pocket-forecast");
+  widget.setAttribute("mode", "list");
+  document.body.append(widget);
+  widget.ctx = ctxOf(hass);
+  hass.connection.push([dayAt(0, { wind_speed: 5 }), dayAt(1), dayAt(2, { wind_speed: 10 }), dayAt(3, { wind_speed: 2.5 })]);
+  const winds = [...shadow(widget).querySelectorAll(".day .wind")];
+  assert.deepEqual(winds.map(text), ["18 km/h, gusts 52", "gusts 71 km/h", "36 km/h, gusts 40", "9 km/h"]);
+  assert.deepEqual(winds.map((w) => w.hidden), [false, false, false, false]);
+  assert.equal(text(shadow(widget).querySelector(".day .cond")), "Cloudy", "the condition stays");
+  // No speed and no gust for a day: nothing under its condition.
+  widget.ctx = ctxOf(hassOf({ connection: hass.connection, states: windStates({ daily: false }) }));
+  hass.connection.push([dayAt(0)]);
+  assert.equal(shadow(widget).querySelector(".day .wind").hidden, true);
+});
+
+// --- the warnings list at the sheet's top (SPEC-053 amendment 1) --------------------------------
+
+test("the forecast sheet without dangerous weather has no warnings list, as before", () => {
+  for (const states of [{}, windStates()]) {
+    const hass = hassOf({ states });
+    const content = forecastSheet.render(ctxOf(hass), forecastSpec(ctxOf(hass)));
+    assert.equal(content.querySelector(".alerts").hidden, true);
+    assert.equal(content.querySelectorAll(".alerts li").length, 0);
+  }
+});
+
+test("the forecast sheet lists every warning at its top, then the wind line", () => {
+  const expires = new Date(Date.now() + 3600000).toISOString();
+  const states = {
+    ...windStates({ level: "gale", speed: 40, gust: 95 }),
+    "binary_sensor.weather_warning": { state: "on", attributes: {} },
+    "sensor.weather_warnings": { state: "2", attributes: { warnings: [
+      { type: "rain", level: "yellow", severity: 2, event: "Rain", headline: "Heavy rain in the hills", onset: null, expires },
+      { type: "wind", level: "orange", severity: 3, event: "Wind", headline: "Severe gale", onset: null, expires: null },
+    ] } },
+  };
+  const hass = hassOf({ states });
+  const ctx = ctxOf(hass);
+  const content = forecastSheet.render(ctx, forecastSpec(ctx));
+  document.body.append(content);
+  const list = content.querySelector(".alerts");
+  assert.equal(list.hidden, false);
+  assert.equal(list.getAttribute("aria-label"), "Weather warnings");
+  assert.ok(list.compareDocumentPosition(content.querySelector(".now")) & 4, "the list comes before the weather row");
+  const items = [...list.querySelectorAll("li")];
+  assert.deepEqual(items.map((li) => li.querySelector("ha-icon").getAttribute("icon")),
+    ["mdi:weather-windy", "mdi:weather-pouring", "mdi:weather-windy"]);
+  assert.deepEqual(items.map((li) => li.querySelector("ha-icon").className), ["orange", "fair", "poor"]);
+  assert.deepEqual(items.map((li) => text(li.querySelector(".atitle"))),
+    ["Severe gale", "Heavy rain in the hills", "Gale · 40 km/h SW, gusts 95"]);
+  assert.equal(text(items[0].querySelector(".adetail")), "Orange warning");
+  assert.match(text(items[1].querySelector(".adetail")), /^Yellow warning · until \d\d:\d\d$/);
+  assert.equal(text(items[2].querySelector(".adetail")), "");
+  // An update with the same rows keeps the list's nodes; Polish redraws it.
+  forecastSheet.update(content, ctx);
+  assert.equal(list.querySelector("li"), items[0]);
+  forecastSheet.update(content, ctxOf(hass, "pl"));
+  assert.equal(text(list.querySelector(".adetail")), "Pomarańczowe ostrzeżenie");
+  assert.equal(list.getAttribute("aria-label"), "Ostrzeżenia pogodowe");
+});

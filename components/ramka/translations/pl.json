@@ -23,6 +23,24 @@
     },
     "clock": {
       "wind": "wiatr {speed} {unit}",
+      "wind_judged": "{level}, {speed} km/h",
+      "wind_gust": "porywy {gust}",
+      "wind_level": {
+        "calm": "Spokojnie",
+        "breezy": "Wietrznie",
+        "strong": "Silny wiatr",
+        "gale": "Wichura"
+      },
+      "direction": {
+        "N": "N",
+        "NE": "NE",
+        "E": "E",
+        "SE": "SE",
+        "S": "S",
+        "SW": "SW",
+        "W": "W",
+        "NW": "NW"
+      },
       "condition": {
         "clear-night": "Bezchmurna noc",
         "cloudy": "Pochmurno",
@@ -193,6 +211,53 @@
       "dismiss": "Wycisz alarm",
       "sound_enable": "Włącz dźwięk tutaj · tylko na widocznym ekranie, bez alarmu w tle",
       "sound_enabled": "Dźwięk włączony tutaj · tylko na widocznym ekranie, bez alarmu w tle"
+    },
+    "weather": {
+      "level": {
+        "calm": "Spokojnie",
+        "breezy": "Wietrznie",
+        "strong": "Silny wiatr",
+        "gale": "Wichura"
+      },
+      "direction": {
+        "N": "N",
+        "NE": "NE",
+        "E": "E",
+        "SE": "SE",
+        "S": "S",
+        "SW": "SW",
+        "W": "W",
+        "NW": "NW"
+      },
+      "gusts": "porywy {gust} km/h",
+      "until": "do {time}",
+      "until_day": "do {time}, {day}",
+      "warning": {
+        "yellow": "Żółte ostrzeżenie",
+        "orange": "Pomarańczowe ostrzeżenie",
+        "red": "Czerwone ostrzeżenie",
+        "any": "Ostrzeżenie pogodowe"
+      },
+      "type": {
+        "wind": "Wiatr",
+        "snow_ice": "Śnieg i lód",
+        "thunderstorm": "Burza",
+        "fog": "Mgła",
+        "heat": "Upał",
+        "cold": "Mróz",
+        "coastal": "Zjawisko przybrzeżne",
+        "forest_fire": "Pożar lasu",
+        "avalanche": "Lawiny",
+        "rain": "Deszcz",
+        "flood": "Powódź",
+        "rain_flood": "Deszcz i powódź",
+        "other": "Ostrzeżenie"
+      },
+      "more": "+{count}",
+      "button": "Ostrzeżenia pogodowe",
+      "title": "Ostrzeżenia pogodowe",
+      "close": "Zamknij",
+      "none": "Brak obowiązujących oficjalnych ostrzeżeń."
     }
   },
   "ui": {
@@ -340,6 +405,11 @@
       "near_s": "Blisko przez",
       "controls_hold_s": "Kontrolki widoczne przez",
       "lux_max": "Światło dla pełnej jasności",
+      "weather": "Pogoda",
+      "weather_wind_breezy": "Wietrznie od",
+      "weather_wind_strong": "Silny wiatr od",
+      "weather_wind_gale": "Wichura od",
+      "weather_wind_how": "Średni wiatr w km/h (poryw liczy się od 1,5-krotności progu). Od poziomu „wietrznie” zegar podaje wiatr. Od silnego wiatru albo przy oficjalnym ostrzeżeniu dowolnego rodzaju kontrolki pokazują listę ostrzeżeń, a jeśli jest włączony, pojawia się baner pogody (na stronie Klimat w jej linii pogody). To ustawienia komponentu pogody: Pocket pokazuje te same poziomy.",
       "theme_mode": "Motyw",
       "settings_advanced": "Pokaż ustawienia zaawansowane",
       "page_climate": "Klimat w rotacji",
@@ -570,7 +640,13 @@
       "about_discovery_how": "Listy poniżej pochodzą z niego; Odśwież znajduje nowe komponenty, urządzenia i wersje.",
       "music_strip": "Taśma muzyczna",
       "music_strip_palette_sync": "Taśma używa palety Ramki",
-      "music_strip_device": "Wszystkie ustawienia taśmy na stronie urządzenia"
+      "music_strip_device": "Wszystkie ustawienia taśmy na stronie urządzenia",
+      "weather_banner": "Baner pogody",
+      "weather_banner_s": "Tekst baneru pogody przez",
+      "weather_banner_icon": "Nad stronami ambient: pełny tekst przez ustawiony czas, potem tylko ikona, aż zmienią się ostrzeżenia albo wiatr.",
+      "weather_banner_hide": "Nad stronami ambient: pełny tekst przez ustawiony czas, potem nic, aż zmienią się ostrzeżenia albo wiatr.",
+      "weather_banner_always": "Nad stronami ambient: pełny tekst, dopóki baner jest widoczny.",
+      "weather_banner_off": "Bez wskaźnika. Ostrzeżenia pozostają w kontrolkach."
     },
     "exit": {
       "button": "Wyjdź"

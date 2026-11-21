@@ -8,7 +8,10 @@
 //   - attention pills (lib/attention.js), poor first; one green "all good" pill when nothing is
 //     fair or poor; a pill and "all good" open the checks sheet (lib/detail-sheets.js): every
 //     reading that was checked, per area (every area but those the home left out of the checks, as
-//     in the pills), problems first;
+//     in the pills), problems first. Safety's issues come first; then, while the weather
+//     component's binary_sensor.weather_warning is on, the warning chip (lib/weather-warnings.js
+//     warningChip: "Orange warning · Thunderstorm +1", "Strong wind · 45 km/h"), which opens the
+//     forecast sheet and stands in for "all good" (SPEC-053: the owner's choice);
 //   - metric chips: inside and outside (SPEC-038 §3.9: the areas of that type, lib/areas.js typed:
 //     the range of their main temperatures; "No areas assigned" when no area has the type, opening
 //     Settings → Areas; "Main sensor not set" when none of its areas has one), the home's air score
@@ -52,6 +55,7 @@ import { formatDate } from "../lib/i18n.js";
 import { typed, isJudged } from "../lib/areas.js";
 import { trendSpec } from "../lib/trend-sheet.js";
 import { forecastSpec } from "../lib/weather.js";
+import { warningChip, chipText } from "../lib/weather-warnings.js";
 import { homeAir } from "../lib/climate.js";
 import { sectionsOf } from "../lib/sections.js";
 import { todayNow } from "../lib/energy.js";
@@ -80,6 +84,7 @@ const STYLE = `
   .home .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; background: var(--ok); }
   .home .dot.fair { background: var(--warn); }
   .home .dot.poor { background: var(--bad); }
+  .home .dot.orange { background: var(--orange); }
   .home .chip { min-width: 0; padding: 9px 12px; overflow-wrap: anywhere; font-size: 16px; font-weight: 600;
                 background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
   .home button.chip { box-sizing: border-box; min-height: 44px; margin: 0; font-family: inherit; line-height: inherit;
@@ -294,23 +299,31 @@ function updatePills(parts, ctx) {
   // matter before a reading. Each opens the Safety page.
   const safety = issuesOf(ctx.hass, ctx.config).map((issue) => ({ level: "poor", safety: true, target: "#/safety",
     text: ctx.t(`card.pocket.safety.issue.${issue.kind}`, { name: labelOf(ctx.hass, ctx.config, issue.id) }) }));
-  pills.unshift(...safety);
+  // Dangerous weather (SPEC-053): after safety, before the readings; it opens the forecast sheet.
+  // With it nothing is "all good", even when every reading is.
+  const wind = warningChip(ctx.hass);
+  const windPill = wind ? [{ level: wind.tone, wind: true, target: "forecast", text: chipText(ctx, wind) }] : [];
+  pills.unshift(...safety, ...windPill);
   const key = JSON.stringify([ctx.t("card.pocket.home.all_good"), pills.map((p) => [p.level, p.text, p.target])]);
   if (key === parts.pillsKey) return;
   parts.pillsKey = key;
-  const pill = (level, text, safety = false) => {
-    const button = el("button", "pill", `<i class="dot ${level}"></i><span></span>`);
+  const pill = (item) => {
+    const button = el("button", "pill", `<i class="dot ${item.level}"></i><span></span>`);
     button.type = "button";
-    button.lastChild.textContent = text;
-    button.addEventListener("click", () => (safety ? parts.ctx.navigate("#/safety")
-      : parts.ctx.openSheet?.(checksSpec(parts.ctx))));
+    if (item.wind) button.dataset.kind = "wind";
+    button.lastChild.textContent = item.text;
+    button.addEventListener("click", () => {
+      if (item.safety) parts.ctx.navigate("#/safety");
+      else if (item.wind) parts.ctx.openSheet?.(forecastSpec(parts.ctx));
+      else parts.ctx.openSheet?.(checksSpec(parts.ctx));
+    });
     return listItem(button);
   };
   if (pills.length === 0) {
-    parts.att.replaceChildren(pill("good", ctx.t("card.pocket.home.all_good")));
+    parts.att.replaceChildren(pill({ level: "good", text: ctx.t("card.pocket.home.all_good") }));
     return;
   }
-  parts.att.replaceChildren(...pills.map((item) => pill(item.level, item.text, item.safety)));
+  parts.att.replaceChildren(...pills.map(pill));
 }
 
 // A list item around a pill: the button keeps its own role.

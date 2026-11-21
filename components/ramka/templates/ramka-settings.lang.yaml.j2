@@ -345,7 +345,24 @@ views:
         cards:[[ heading('advanced', 'mdi:tune-variant', advanced_on) ]]
           - type: entities
             visibility: [ [[ advanced_on ]] ]
-            entities:[[ rows([('input_number', 'lux_max')]) ]][[ render_time([('inputs.screen', screen.width ~ ' × ' ~ screen.height ~ ' CSS px')]) ]][[ reset(none) ]]
+            entities:[[ rows([('input_number', 'lux_max')]) ]]
+      # SPEC-053: the weather component's wind thresholds, which decide the clock line's level and
+      # the weather warning from the wind. Its helpers, not the Ramka's: neither on the Ramka's
+      # resets nor rendered by an input; the section hides while they are missing, as in a home
+      # without weather.
+      - type: grid
+        visibility: [ {condition: state, entity: input_number.weather_wind_strong, state_not: [unavailable, unknown]} ]
+        cards:[[ heading('weather', 'mdi:weather-windy') ]]
+          - type: entities
+            entities:[[ rows([('input_number', '=input_number.weather_wind_breezy', none, 'weather_wind_breezy'),
+          ('input_number', '=input_number.weather_wind_strong', none, 'weather_wind_strong'),
+          ('input_number', '=input_number.weather_wind_gale', none, 'weather_wind_gale')]) ]]
+          # The weather banner's own settings (the Ramka's helpers, on General's reset), off first.
+          - type: entities
+            entities:[[ rows([('input_select', 'weather_banner', {'off': t('ui.settings.weather_banner_off'), 'icon': t('ui.settings.weather_banner_icon'),
+          'hide': t('ui.settings.weather_banner_hide'), 'always': t('ui.settings.weather_banner_always')}), ('input_number', 'weather_banner_s')]) ]]
+          - type: markdown
+            content: [[ t('ui.settings.weather_wind_how') | yaml ]][[ render_time([('inputs.screen', screen.width ~ ' × ' ~ screen.height ~ ' CSS px')]) ]][[ reset(none) ]]
 [%- for view in ['climate', 'air', 'plants', 'photos', 'status', 'calendar'] %]
 
   # ---- [[ view | capitalize ]]: its switch and its render-time inputs, or "not configured" ----

@@ -18,6 +18,8 @@ def test_native_sidecar_add_render_update_and_removal_in_fresh_home(tmp_path, ca
     catalog = tmp_path / 'catalog'; catalog.mkdir()
     component = catalog / 'components/weather'
     shutil.copytree(ROOT / 'components/weather', component)
+    # The synthetic catalog tags 0.2.0 and 0.2.1 whatever the real component's version is.
+    p = component / 'component.yaml'; manifest = yaml.safe_load(p.read_text()); manifest['version'] = '0.2.0'; p.write_text(yaml.safe_dump(manifest))
     p = component / 'assistant.yaml'; definition = yaml.safe_load(p.read_text())
     cap = definition['capabilities'][0]
     cap['client'] = {'version': 2, 'anchors_key': 'meta.assistant.current.anchors', 'selectors': ['subject'],

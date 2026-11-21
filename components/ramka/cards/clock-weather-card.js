@@ -11,12 +11,22 @@
 //   forecast: 4                              # optional: the next N days (icon, max/min) on the right,
 //                                            # from HA's weather/subscribe_forecast (daily)
 //
+// With the weather component (SPEC-053) the wind part reads sensor.weather_wind_level from breezy up:
+// the level word, speed and direction, and the gust when known.
+//
+//   warnings: input_select.ramka_weather_banner  # optional (the Climate page's): while the weather
+//                                            # component's binary_sensor.weather_warning is on and
+//                                            # this select is not off, the condition line says the
+//                                            # most severe warning in its level's colour (no icon),
+//                                            # and the condition moves to the line below it
+//
 // After a Home Assistant restart an open page reconnects before the weather integration is back:
 // the subscription is refused or answers with no days. The card subscribes again on every
 // reconnect and as soon as the weather entity is there again, and retries until days arrive, so
 // the forecast comes back without a page reload.
 
 import { createT, formatDate, weekdayShort } from "./lib/i18n.js";
+import { warningOn, warningsOf, warningSubject, untilText, colourOf, valueOf, windLevel, WIND_COLOURS } from "./lib/weather-warnings.js";
 import en from "../translations/en.json" with { type: "json" };
 import de from "../translations/de.json" with { type: "json" };
 import pl from "../translations/pl.json" with { type: "json" };
@@ -30,6 +40,9 @@ const ICONS = {
   snowy: "mdi:weather-snowy", "snowy-rainy": "mdi:weather-snowy-rainy", sunny: "mdi:weather-sunny",
   windy: "mdi:weather-windy", "windy-variant": "mdi:weather-windy-variant", exceptional: "mdi:alert-circle-outline",
 };
+// The weather component's wind status (SPEC-053), consumed by the Ramka; the levels that change the line.
+const WIND_LEVEL = "sensor.weather_wind_level";
+const WIND_SHOWN = ["breezy", "strong", "gale"];
 // Seconds to wait for a forecast with days before subscribing again; the last one repeats.
 const RETRY_S = [10, 30, 60, 300];
 
@@ -145,6 +158,7 @@ class ClockWeatherCard extends HTMLElement {
         .cond, .cond2 { font-size: calc(12cqh * var(--k, 1)); color: var(--secondary-text-color); line-height: 1.25;
                         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .cond { margin-top: 2cqh; }
+        .cond.warn { font-weight: 600; }
         .forecast { display: flex; gap: 2cqw; flex: none; height: 100%; align-items: stretch; }
         .forecast:empty { display: none; }
         .day { display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-width: 10cqw; }
@@ -192,6 +206,51 @@ class ClockWeatherCard extends HTMLElement {
     return name === key ? w.state : name;
   }
 
+  // From breezy up, the weather component's judged level (SPEC-053) says more than the raw speed:
+  // "Breezy, 32 km/h SW, gusts 49". Calm, or a home without the weather component's sensor, keeps
+  // the plain speed line, so nothing changes there.
+  _windLevel() {
+    const s = this._hass.states[WIND_LEVEL];
+    if (!s || !WIND_SHOWN.includes(s.state)) return "";
+    const a = s.attributes || {};
+    const num = (v) => (v == null || !Number.isFinite(Number(v)) ? null : Math.round(Number(v)));
+    const speed = num(a.speed);
+    if (speed == null) return "";
+    const hass = this._hass;
+    let text = t(hass, "card.clock.wind_judged", { level: t(hass, `card.clock.wind_level.${s.state}`), speed });
+    if (a.direction) {
+      const key = `card.clock.direction.${a.direction}`;
+      const dir = t(hass, key);
+      text += ` ${dir === key ? a.direction : dir}`;
+    }
+    const gust = num(a.gust);
+    if (gust != null) text += `, ${t(hass, "card.clock.wind_gust", { gust })}`;
+    return text;
+  }
+
+  // The warning (SPEC-053 amendment 1, the Climate page's): {text, colour, about} while the weather
+  // component's warning is on and the indicator's setting (config.warnings) is not off, else null.
+  // An official warning says what and until when in its colour ("Gale force wind · until Sat 12:00",
+  // "+1" for more), no level word: the colour says the level. `about`: the value it concerns (wind,
+  // temp, cond), coloured too. The wind level alone (strong, gale) has no text: its value is coloured.
+  _warning() {
+    const select = this._config.warnings;
+    if (!select) return null;
+    if (!["icon", "hide", "always"].includes(this._hass.states[select]?.state)) return null;
+    if (!warningOn(this._hass)) return null;
+    const list = warningsOf(this._hass);
+    if (list.length) {
+      const top = list[0];
+      let text = warningSubject(this._hass, top);
+      const until = untilText(this._hass, top.expires, new Date(), "short");
+      if (until) text += ` · ${until}`;
+      if (list.length > 1) text += ` · +${list.length - 1}`;
+      return { text, colour: colourOf(top), about: valueOf(top) };
+    }
+    const colour = WIND_COLOURS[windLevel(this._hass)];
+    return colour ? { text: null, colour, about: "wind" } : null;
+  }
+
   _clock() {
     if (!this._built) return;
     const d = new Date();
@@ -208,14 +267,34 @@ class ClockWeatherCard extends HTMLElement {
     const temp = sensor && !isNaN(parseFloat(sensor.state)) ? parseFloat(sensor.state) : w.attributes.temperature;
     this._q(".temp").textContent = temp == null ? "" : `${Math.round(temp)} °C`;
     // The condition on its own line, wind and pressure on the next: a two-line clamp would cut
-    // "Partly cloudy, wind 8 km/h" in the middle.
-    this._q(".cond").textContent = this._conditionName(w);
+    // "Partly cloudy, wind 8 km/h" in the middle. An official warning takes the condition's line,
+    // and the condition leads the line below: the card keeps its height (3 rows on the Climate
+    // page), each line ends in an ellipsis. The value the warning is about takes its colour.
+    const warning = this._warning();
+    const paint = (el, about) => { el.style.color = warning?.about === about ? warning.colour : ""; };
+    paint(this._q(".temp"), "temp");
+    const line = this._q(".cond");
+    line.textContent = warning?.text || this._conditionName(w);
+    line.classList.toggle("warn", !!warning?.text);
+    line.style.color = warning?.text ? warning.colour : "";
+    if (!warning?.text) paint(line, "cond");
     const wind = w.attributes.wind_speed;
     const parts = [];
-    if (wind != null) parts.push(t(this._hass, "card.clock.wind", { speed: Math.round(wind), unit: w.attributes.wind_speed_unit || "km/h" }));
+    if (warning?.text) parts.push([this._conditionName(w), "cond"]);
+    const judged = this._windLevel();
+    if (judged) parts.push([judged, "wind"]);
+    else if (wind != null) parts.push([t(this._hass, "card.clock.wind", { speed: Math.round(wind), unit: w.attributes.wind_speed_unit || "km/h" }), "wind"]);
     const p = this._config.pressure && this._hass.states[this._config.pressure];
-    if (p && !isNaN(parseFloat(p.state))) parts.push(`${Math.round(parseFloat(p.state))} ${p.attributes.unit_of_measurement || "hPa"}`);
-    this._q(".cond2").textContent = parts.join(" · ");
+    if (p && !isNaN(parseFloat(p.state))) parts.push([`${Math.round(parseFloat(p.state))} ${p.attributes.unit_of_measurement || "hPa"}`, ""]);
+    const second = this._q(".cond2");
+    second.replaceChildren();
+    parts.forEach(([text, about], i) => {
+      if (i) second.append(" · ");
+      const span = document.createElement("span");
+      span.textContent = text;
+      if (about) paint(span, about);
+      second.append(span);
+    });
     this._clock();
     this._fit();
   }

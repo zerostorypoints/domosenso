@@ -18,6 +18,8 @@
 //     - type: grid
 //       column_span: 3
 //       cards: [...]
+//   layers:                         # optional: cards that float over the screen and take no place
+//     - type: custom:weather-banner-card  # in its grid (position: fixed, held by the box's transform)
 
 const ROW = 56;
 const GAP = 8;
@@ -187,6 +189,15 @@ class ScreenFrameCard extends HTMLElement {
         grid.appendChild(card);
       }
       screen.appendChild(grid);
+    }
+    // Cards that float over the screen (the weather banner, the controls' warnings): no grid cell;
+    // a fixed layer inside the transformed box sits in the box, as on the tablet in the viewport.
+    for (const config of this._config.layers || []) {
+      const card = helpers.createCardElement(config);
+      card.addEventListener("ll-rebuild", (ev) => { ev.stopPropagation(); this._make(); }, { once: true });
+      if (this._hass) card.hass = this._hass;
+      this._cards.push(card);
+      screen.appendChild(card);
     }
     this._show();
   }

@@ -2,6 +2,25 @@
 
 Newest first. Each entry says what changed and what a home that already runs the pocket has to do.
 
+## Unreleased (SPEC-053 and its amendment 1): the wind and the weather warnings from the weather component
+
+- **The weather row and the forecast sheet** show the wind: now "32 km/h SW", from breezy the level
+  word ("Breezy · 32 km/h SW"), the gust when known (", gusts 49"); each forecast day its wind speed
+  and, with the weather component's Open-Meteo gusts, its gust maximum.
+- **Home's warning chip** while `binary_sensor.weather_warning` is on (strong wind, a gale, or any
+  official warning from yellow up): the most severe official warning, "Orange warning ·
+  Thunderstorm", with "+1" when there are more, in its level's colour; without one the wind level,
+  "Strong wind · 45 km/h", "Gale · gusts 95 km/h". It replaces "All good" and opens the forecast
+  sheet; the other pills stay.
+- **The forecast sheet** starts with a list of every official warning in effect (the type's icon in
+  its level's colour, the warning's headline in the feed's language, the level and until when) and,
+  while the wind is strong or a gale, the wind line.
+- **What a home does:** update `weather` to the version with the wind status and warnings (SPEC-053
+  amendment 1) first and render it; Pocket reads `binary_sensor.weather_warning`,
+  `sensor.weather_warnings`, `sensor.weather_wind_level` and `sensor.weather_wind_gust` when they
+  are there. Without them nothing changes; without weather's `warnings` input only the wind level
+  drives the chip. Gusts need weather's `gusts: open_meteo`.
+
 ## 0.2.0 (2026-11-15): plants in hydroculture (SPEC-048)
 
 The Plants page leaves moisture and fertiliser out for a plant with `domosenso_medium:
