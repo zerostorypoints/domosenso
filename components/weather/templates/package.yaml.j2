@@ -1,0 +1,209 @@
+[#
+  The weather component's Home Assistant package (SPEC-056): one judged wind status every surface
+  reads the same way. Rendered once per home by tools/domosenso_render.py; double square brackets
+  are the renderer's, {{ }} / {% %} stay for Home Assistant. Inputs: component.yaml `inputs:`.
+
+  The level: calm, breezy, strong, gale. The judged speed is the sustained speed, or the gust
+  divided by GUST_FACTOR when that is higher (the thresholds are Beaufort's, for sustained wind; a
+  gust of 1.5 times the threshold counts as reaching it). It rises at once and falls one step only
+  after the judged speed has stayed below that step's threshold minus 10 % for 15 minutes, so a
+  wall does not flicker while the wind hovers at a threshold.
+#]
+[%- set weather = inputs.weather -%]
+[%- set feed = inputs.warnings | default(none) -%]
+[%- if feed is not none and (feed is not mapping or not feed.country or not feed.region) -%][[ fail('weather: warnings needs country and region (the MeteoAlarm feed and area)') ]][%- endif -%]
+[%- if feed is not none -%][%- for value in [feed.country, feed.region, feed.language | default('en')] -%][%- for bad in ['"', '$', '`', '\\'] if bad in (value | string) -%][[ fail('weather: warnings values must not contain quotes, $, backticks or backslashes') ]][%- endfor -%][%- endfor -%][%- endif -%]
+[%- set open_meteo = (inputs.gusts | default('none')) == 'open_meteo' -%]
+[%- set seeds = {'breezy': inputs.wind_breezy | default(29), 'strong': inputs.wind_strong | default(39), 'gale': inputs.wind_gale | default(62)} -%]
+[%- set GUST_FACTOR = 1.5 -%]
+[#- The Home Assistant template that sets `judged` (km/h or none), `speed`, `gust`, `t` (thresholds by
+    index), `pi` (the level so far) and `new` (the level now); state and attributes both need it. -#]
+[%- macro judge() -%]
+{%- set order = ['calm', 'breezy', 'strong', 'gale'] -%}
+{%- set factors = {'km/h': 1, 'm/s': 3.6, 'mph': 1.609344, 'kn': 1.852, 'ft/s': 1.09728} -%}
+{%- set raw = state_attr('[[ weather ]]', 'wind_speed') -%}
+{%- set unit = state_attr('[[ weather ]]', 'wind_speed_unit') or 'km/h' -%}
+{%- set speed = (raw | float * factors.get(unit, 1)) | round(1) if raw is number else none -%}
+{%- set graw = state_attr('[[ weather ]]', 'wind_gust_speed') -%}
+{%- set gust = (graw | float * factors.get(unit, 1)) | round(1) if graw is number else none -%}
+[%- if open_meteo %]
+{%- if gust is none and states('sensor.weather_wind_gust') | is_number -%}{%- set gust = states('sensor.weather_wind_gust') | float | round(1) -%}{%- endif -%}
+[%- endif %]
+{%- set candidates = [speed, (gust / [[ GUST_FACTOR ]]) if gust is not none else none] | reject('none') | list -%}
+{%- set judged = candidates | max if candidates else none -%}
+{%- set t = [0, states('input_number.weather_wind_breezy') | float([[ seeds.breezy ]]), states('input_number.weather_wind_strong') | float([[ seeds.strong ]]), states('input_number.weather_wind_gale') | float([[ seeds.gale ]])] -%}
+{%- set prev = this.state if this is defined and this.state in order else 'calm' -%}
+{%- set pi = order.index(prev) -%}
+{%- set ns = namespace(up = 0) -%}
+{%- for i in range(1, 4) if judged is not none and judged >= t[i] -%}{%- set ns.up = i -%}{%- endfor -%}
+{%- set since = this.attributes.get('below_since') if this is defined else none -%}
+{%- set low = judged is not none and pi > 0 and judged < t[pi] * 0.9 -%}
+{%- set waited = low and since is not none and (now() - as_datetime(since)).total_seconds() >= 900 -%}
+{%- set new = ns.up if ns.up >= pi else (pi - 1 if waited else pi) -%}
+[%- endmacro -%]
+# The wind status and the official warnings, from the Domosenso catalog (component weather, SPEC-056). Edit the inputs and
+# render again rather than editing this file; the thresholds are helpers, tuned in Home Assistant.
+
+input_number:
+  weather_wind_breezy:
+    name: Wind breezy from
+    icon: mdi:weather-windy
+    min: 10
+    max: 120
+    step: 1
+    mode: box
+    unit_of_measurement: km/h
+  weather_wind_strong:
+    name: Wind strong from
+    icon: mdi:weather-windy
+    min: 10
+    max: 120
+    step: 1
+    mode: box
+    unit_of_measurement: km/h
+  weather_wind_gale:
+    name: Wind gale from
+    icon: mdi:weather-windy-variant
+    min: 10
+    max: 120
+    step: 1
+    mode: box
+    unit_of_measurement: km/h
+
+input_boolean:
+  # On once the seed has given the thresholds their defaults: a value a person set stays.
+  weather_wind_seeded:
+    name: Wind thresholds seeded
+    icon: mdi:check-all
+
+automation:
+  - id: weather_wind_thresholds_seed
+    alias: Weather wind thresholds seed
+    description: "Start or automation reload: give the wind thresholds their defaults once; a value a person set stays."
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: event
+        event_type: automation_reloaded
+    conditions:
+      - condition: state
+        entity_id: input_boolean.weather_wind_seeded
+        state: "off"
+    actions:
+[%- for key, value in seeds.items() %]
+      - action: input_number.set_value
+        target: {entity_id: input_number.weather_wind_[[ key ]]}
+        data: {value: [[ value ]]}
+[%- endfor %]
+      - action: input_boolean.turn_on
+        target: {entity_id: input_boolean.weather_wind_seeded}
+
+script:
+  weather_wind_thresholds_reset:
+    alias: Weather wind thresholds reset
+    description: Set the wind thresholds back to their defaults.
+    mode: single
+    sequence:
+[%- for key, value in seeds.items() %]
+      - action: input_number.set_value
+        target: {entity_id: input_number.weather_wind_[[ key ]]}
+        data: {value: [[ value ]]}
+[%- endfor %]
+[%- if open_meteo %]
+
+# Gusts from Open-Meteo (no key; free for non-commercial use): Met.no's integration carries none.
+# The home's coordinates go out rounded to two decimals (about 1 km). Every 15 minutes, 96 calls a day.
+rest:
+  - resource_template: >-
+      https://api.open-meteo.com/v1/forecast?latitude={{ state_attr('zone.home', 'latitude') | round(2) }}&longitude={{ state_attr('zone.home', 'longitude') | round(2) }}&current=wind_gusts_10m&daily=wind_gusts_10m_max&forecast_days=3&timezone=auto&wind_speed_unit=kmh
+    scan_interval: 900
+    timeout: 20
+    sensor:
+      - name: Weather wind gust
+        unique_id: weather_wind_gust
+        icon: mdi:weather-windy-variant
+        # No device_class: Home Assistant would show it in the unit system's unit; km/h it stays.
+        unit_of_measurement: km/h
+        state_class: measurement
+        value_template: "{{ value_json.current.wind_gusts_10m | float(none) }}"
+        json_attributes: [daily]
+[%- endif %]
+
+template:
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: event
+        event_type: event_template_reloaded
+      - trigger: state
+        entity_id:
+          - [[ weather ]]
+          - input_number.weather_wind_breezy
+          - input_number.weather_wind_strong
+          - input_number.weather_wind_gale
+          - input_boolean.weather_wind_seeded
+[%- if open_meteo %]
+          - sensor.weather_wind_gust
+[%- endif %]
+      # The way down waits 15 minutes: a minute's tick checks it.
+      - trigger: time_pattern
+        minutes: "/1"
+    sensor:
+      - name: Weather wind level
+        unique_id: weather_wind_level
+        default_entity_id: sensor.weather_wind_level
+        icon: mdi:weather-windy
+        # Not before the seed: on a first start the helpers sit at their minimum (10 km/h) until the
+        # seed sets them, and a level judged then would be held by the way down for half an hour.
+        availability: "{{ state_attr('[[ weather ]]', 'wind_speed') is number and is_state('input_boolean.weather_wind_seeded', 'on') }}"
+        state: >-
+          [[ judge() | indent(10) ]]
+          {{ ['calm', 'breezy', 'strong', 'gale'][new] }}
+        attributes:
+          speed: >-
+            [[ judge() | indent(12) ]]
+            {{ speed }}
+          gust: >-
+            [[ judge() | indent(12) ]]
+            {{ gust }}
+          judged: >-
+            [[ judge() | indent(12) ]]
+            {{ judged | round(1) if judged is not none else none }}
+          bearing: "{{ state_attr('[[ weather ]]', 'wind_bearing') }}"
+          direction: >-
+            {%- set b = state_attr('[[ weather ]]', 'wind_bearing') -%}
+            {{ ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][((b | float + 22.5) // 45) | int % 8] if b is number else none }}
+          # When the judged speed first fell below the current level's threshold minus 10 %.
+          below_since: >-
+            [[ judge() | indent(12) ]]
+            {{ none if new != pi or not low else (since or now().isoformat()) }}
+  - binary_sensor:
+      # Dangerous weather (amendment 1): strong wind or a gale by the judged level, or any official
+      # warning of level yellow and up in effect.
+      - name: Weather warning
+        unique_id: weather_warning
+        default_entity_id: binary_sensor.weather_warning
+        icon: mdi:alert
+        device_class: safety
+        # A speed or a feed going back and forth does not flicker a wall.
+        delay_off: {minutes: 15}
+        state: >-
+          {{ states('sensor.weather_wind_level') in ['strong', 'gale'][% if feed %] or states('sensor.weather_warnings') | int(0) > 0[% endif %] }}
+[%- if feed %]
+
+# Every official warning in effect for the region, most severe first (shell/weather_warnings.py
+# reads the MeteoAlarm feed: Home Assistant's meteoalarm integration keeps one warning only).
+command_line:
+  - sensor:
+      name: Weather warnings
+      unique_id: weather_warnings
+      icon: mdi:alert-outline
+      # The values in double quotes for the shell; a quote, $, backtick or backslash is refused above.
+      [%- set command = 'python3 /config/shell/weather_warnings.py "' ~ (feed.country | lower) ~ '" "' ~ feed.region ~ '" "' ~ (feed.language | default('en')) ~ '"' %]
+      command: [[ command | yaml ]]
+      command_timeout: 30
+      scan_interval: 900
+      value_template: "{{ value_json.count }}"
+      json_attributes: [warnings]
+[%- endif %]

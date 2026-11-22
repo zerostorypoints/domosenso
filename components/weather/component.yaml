@@ -1,6 +1,6 @@
 # Domosenso component manifest: weather from Met.no.
 id: weather
-version: 0.2.0
+version: 0.3.0
 summary: Current weather and forecast from the Norwegian Meteorological Institute (Met.no)
 description_key: meta.description
 photo: null
@@ -14,11 +14,28 @@ host:
 
 integrations:
   - {name: met, source: core, setup: "the home's location from Home Assistant's own settings; no account or key"}
+  # SPEC-056 amendment 1: official warnings of every type, optional (input warnings): the package's
+  # command_line sensor runs shell/weather_warnings.py on the MeteoAlarm feed; no account or key.
+  - {name: command_line, source: core, optional: true, setup: "none: input warnings names the MeteoAlarm country and region"}
+  # SPEC-056: gusts, optional (gusts: open_meteo): a rest sensor in the package, no account or key.
+  - {name: rest, source: core, optional: true, setup: "none: the package's rest sensor calls api.open-meteo.com with the home's coordinates rounded to two decimals"}
 
 inputs:
   weather:
     type: entity_id
     example: weather.forecast_home
+  # SPEC-056: the wind levels' first values (km/h, Beaufort 5, 6 and 8); afterwards the helpers
+  # input_number.weather_wind_{breezy,strong,gale}, tuned in Home Assistant, decide.
+  wind_breezy: {type: int, default: 29}
+  wind_strong: {type: int, default: 39}
+  wind_gale: {type: int, default: 62}
+  warnings:                     # amendment 1: official warnings of every type from the MeteoAlarm feed
+    type: "{country, region, language?}"   # region: the area as the feed spells it, or its EMMA_ID
+    default: null
+    example: {country: switzerland, region: Basel, language: en}
+  gusts:                        # open_meteo: gusts from Open-Meteo (sends the home's rounded coordinates)
+    type: "none | open_meteo"
+    default: none
 
 assistant:
   version: 1
@@ -28,13 +45,22 @@ assistant:
 artifacts:
   templates:
     - templates/assistant-bindings.yaml.j2
+    - templates/package.yaml.j2   # -> packages/weather.yaml (SPEC-056)
   ha_packages: []
+  shell:                          # -> /config/shell/
+    - shell/weather_warnings.py   # the MeteoAlarm feed's warnings for the region (amendment 1)
   services: []
 
 provides:
   # Legacy entries include integration-owned sources, retained for compatibility.
   entities:
     - {id: "weather.<home>", stability: stable, note: "condition as state; temperature, humidity, pressure, wind_speed as attributes; the forecast through the weather.get_forecasts action"}
+    # SPEC-056: the wind status.
+    - {id: "input_number.weather_wind_{breezy,strong,gale}", stability: stable, note: "km/h, 10-120; seeded once from the inputs"}
+    - {id: sensor.weather_wind_level, stability: stable, note: "calm | breezy | strong | gale; attributes speed, gust, judged (km/h; gust null when unknown), bearing, direction (N..NW)"}
+    - {id: binary_sensor.weather_warning, stability: stable, note: "dangerous weather: on while the wind level is strong or gale or an official warning (yellow and up) is in effect; 15 min off-delay"}
+    - {id: sensor.weather_warnings, stability: stable, note: "with warnings: the number of official warnings in effect (yellow and up); attribute warnings [{type, level, severity, event, headline, onset, expires}], most severe first; type wind | snow_ice | thunderstorm | fog | heat | cold | coastal | forest_fire | avalanche | rain | flood | rain_flood | other"}
+    - {id: sensor.weather_wind_gust, stability: stable, note: "with gusts: open_meteo; km/h; attribute daily {time: [dates], wind_gusts_10m_max: [km/h]}, 3 days"}
 
   upstream:
     - {id: "weather.<home>", owner: integration}
