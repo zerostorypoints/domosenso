@@ -49,6 +49,8 @@ rather than its own acoustics product.
 - Calibrated absolute SPL below the node's verified range, or claims about 20 Hz accuracy before
   calibration shows it.
 - Time synchronization between nodes over the network.
+- Wave-based room simulation (FEM, BEM). The model is geometric: image sources and the box
+  modes.
 
 ## Anti-goals
 
@@ -166,12 +168,8 @@ The live-level path does not pass through the engine.
   assignment per session (a node at its install position or moved to a point for one session), and
   calibrations per node (versioned, with the reference microphone and its calibration file
   identity).
-- *(My call)* The engine's registry owns rooms, points and node positions. Before the app client
-  exists they are entered through the engine's API and CLI. The HA integration may send the room
-  snapshot it already holds from HiFiSync to the local engine; that is a local hand-over between
-  two clients of the same account, not entity state, so SPEC-050's rule holds. Without room
-  dimensions a session still yields frequency response, RT60 and low-frequency peaks; the
-  Schroeder frequency and the mode-to-dimension mapping need them.
+- The engine's registry owns rooms, points and node positions; where they come from, and what
+  each level of room detail enables, is in Room model below.
 - HTTP API, versioned (`/api/v1`), JSON; binary uploads as WAV. Bearer tokens issued by the engine;
   the first token comes from a CLI command or the setup of the HA integration. Discovery over
   zeroconf `_hifisync-acoustics._tcp`.
@@ -179,11 +177,119 @@ The live-level path does not pass through the engine.
   HAOS App. A CLI that analyses local WAV files without the service comes first, so analysis can be
   validated before any node or network exists.
 
+### Room model
+
+Proposal of 2026-11-22, written after reading HiFiSync's native capture (`hifisync` PR #410
+branch: `packages/lib/system/room-capture.ts`, `ScanArchive.swift`, `PlacementRegistration.swift`,
+`docs/superpowers/specs/2026-09-14-room-placement-split-design.md`). Changes to HiFiSync's own
+decisions are its owner's.
+
+**What HiFiSync has today.**
+
+- The phone keeps Apple's full `CapturedRoom` in the room file. That includes:
+  - walls as planar polygons with transforms, sloped tops included, and the floor polygon;
+  - doors, windows and openings, each with its position and size on its wall, which gives sill
+    and head height;
+  - objects as oriented boxes with a category (sofa, storage, table, television and others) and
+    attributes;
+  - sections and per-element confidence.
+
+  There is no mesh and no USDZ. The ARKit world map and one viewpoint photo stay on the phone.
+- Placement is done:
+  - speakers: position, measured top height, toe-in by a phone press;
+  - one to three seats with a 3D head position, and a main seat;
+  - up to two subwoofers.
+
+  All of these are stored in the scan session's frame, together with the registration from that
+  frame to the fitted room.
+- The HiFiSync server receives only the fitted rectangle, the ceiling shape, open edges and a
+  2D placement. The 3D data leaves the phone only in a share zip the user sends.
+- HiFiSync's lib computes axial modes and SBIR on the box. Its decision log notes that treatment
+  modelling needs a 3D room view that does not exist yet.
+
+**Three levels of room data.** The engine accepts three levels of detail. Each analysis states
+which level it needs and withholds its result when that level is missing.
+
+| Level | Source | Content | Enables |
+|---|---|---|---|
+| 0, none | none | none | frequency response, RT60, measured low-frequency peaks, early reflections as peaks in the energy-time curve without a surface |
+| 1, box | HiFiSync room snapshot (from the HA integration or the app), or typed in | width, length, average height, ceiling shape, open edges, 2D speaker and seat placement | Schroeder frequency, modes predicted from dimensions and matched to measured peaks, predicted vs measured SBIR notch, volume for decay |
+| 2, surfaces | HiFiSync app, over the local network | level 1's frame, plus: every wall, floor and ceiling as a polygon; windows, doors and openings as polygons on them; objects as boxes with a category; speakers, seats and nodes in 3D | reflections attributed to a surface (glass, wall, door, ceiling, floor), first-reflection points for treatment, absorption estimated per kind of surface, predictions of a change |
+
+**Rules for the model.**
+
+- *(My call)* **Format.** The model is a HiFiSync room model, for example `hifisync.room-model.v1`:
+  - it uses the fitted room frame: x and y as in HiFiSync, z up from the floor, in metres;
+  - the app converts Apple's `CapturedRoom` and the placement registration into it;
+  - the schema is published in `hifisync-acoustics`, because the engine consumes it, and
+    HiFiSync's lib writes it.
+
+  The engine never parses Apple's own format, which changes with iOS and carries an opaque
+  `coreModel`. It never receives the world map or the photo.
+- **Path.** Phone to engine on the local network only, when the user chooses to send it, with an
+  engine token. Not through the HiFiSync server. This changes a HiFiSync decision: the decision
+  of 2026-09-06 lets only the wall summary leave RoomPlan. The model is parametric geometry, not
+  a mesh or images, and goes to a device the user owns. The change needs a HiFiSync decision
+  entry and is its owner's call.
+- **One scan per room model.** Level 1 is a projection of level 2. The engine stores the scan id,
+  the placement id and the model version. Every result names the model version it was computed
+  from. The engine refuses a level 1 and a level 2 from different scans in the same room.
+- **Node positions.**
+  - *(My call)* In the app, a node is placed like a speaker: a press of the phone on the node.
+    The node shows its identity as a QR code on its OLED, and the app reads it, so the press is
+    bound to that node.
+  - The capsule's offset from the node face is a property of the board in audio-sensor.
+  - Without the app, the user types x, y and z.
+  - The measurement points of a session are the node positions in it. A node moved for one
+    session gets a new press or typed point.
+- **Uncertainty.** HiFiSync's per-edge provenance (`measured`, `inferred`, `stated`, `open`) and
+  RoomPlan's confidence carry into the model. An analysis that depends on an open or
+  low-confidence surface says so instead of naming the surface.
+
+**What the engine computes at level 2.**
+
+- **Reflections.** For each speaker and node, the direct path and image sources up to second
+  order, each with its delay after the direct sound and the surfaces it reflects from.
+  - Matching these against the measured energy-time curve in the first 20 to 30 ms names the
+    surface behind each early reflection and gives its level relative to the direct sound.
+  - Delays are relative to the direct sound, so node clocks need no synchronisation.
+  - The measured direct-path distance cross-checks the geometry. A large mismatch flags a wrong
+    node or speaker position.
+- **First-reflection points** for the main seat on side walls, ceiling and floor, as points on
+  each surface polygon, each marked as falling on glass, a door, an opening or a wall.
+- **Absorption estimate.** The engine inverts the measured RT60 per band, with the volume and
+  surface areas from the model (Eyring), and splits the result across kinds of surface using
+  priors (glass, wall, floor finish from HiFiSync's surface answers, upholstered objects). The
+  result is labelled an estimate.
+- **Modes.** From level 1: axial, tangential and oblique modes, matched to measured peaks. In a
+  room that is not a box, the measured peaks are the result and the prediction is labelled
+  approximate. Wave-based simulation is out of scope.
+- **One source at a time.** Naming the surface needs one source at a time. The session therefore
+  plays the sweep through the left and right channels separately: a stereo WAV with silence on
+  the other channel. The engine records which source each sweep used.
+  - In a 2.1 system the subwoofer plays with each channel and is not isolated. Measuring it
+    alone needs the player's own controls, and only the user changes those.
+- **Speaker data.** Predicting reflection levels needs each speaker's acoustic centre (tweeter
+  height) and directivity. HiFiSync knows the model and the measured top height. Where its
+  catalogue has no tweeter height or directivity, reflections are named by timing only and no
+  level is predicted.
+
+**Ownership of the results.**
+
+- **Engine (public).** The analysis above.
+- **HiFiSync (private).** Recommendations built on it: where to treat, which speaker or seat move
+  helps, and what a rug or curtain would change.
+- **Home Assistant.** Summaries only, for example the strongest early reflection at the main seat
+  as surface, delay and level.
+- **Frame Room screen.** Can draw first-reflection points on the 2D plan, through the same scoped
+  channel as node positions. Geometry never becomes entity state.
+
 ### Measurement session
 
 1. A client (app or HA) creates a session: room snapshot (dimensions, speakers, listening position)
    or a reference to one already stored, measurement points, node assignment, the player to use,
-   sweep parameters (default 20 Hz to 20 kHz, 48 kHz, several seconds, a few repeats).
+   sweep parameters (default 20 Hz to 20 kHz, 48 kHz, several seconds, a few repeats) and the
+   sources to sweep (both channels, or left and right separately; see Room model).
 2. The engine arms every assigned node: record for the sweep length plus margins.
 3. The sweep plays through the home's system (see Sweep playback).
 4. Each node uploads its recording; the engine aligns each recording to the sweep by
@@ -201,6 +307,10 @@ A failed or missing node fails only its point; the session reports which.
 - Command channel: the node keeps an outbound connection to the engine it found over zeroconf or
   was configured with; the engine sends arm commands on it. No Home Assistant in the measurement
   path *(my call; it keeps the engine usable without HA)*.
+- A node's name and room come from Home Assistant when HA is present: the HA integration syncs
+  them one way, HA to engine, and the engine marks them `install_source: home_assistant` and
+  does not let its own API change them (catalog principle 4). Without HA they are set in the
+  engine. Positions, measurement points and calibration stay in the engine.
 - audio-sensor gets an additive per-board input (for example `capture: true`) that adds the
   package. Existing boards, entities and the spectrum stay unchanged.
 
@@ -277,10 +387,13 @@ saying which node and why. The sweep starts with a fade-in and is capped at −1
 2. Engine service: registry, sessions, API, storage; container image.
 3. Capture component and the audio-sensor additive input; a session with one node, sweep played
    manually.
-4. Sweep through HA `media_player`; calibration with the reference microphone.
+4. Sweep through HA `media_player`, per channel; calibration with the reference microphone.
 5. `hifisync` HA config entry type and the `room-acoustics` component.
-6. HiFiSync app client.
-7. Room screen overlay in Frame; engine on the tablet.
+6. Room model schema (levels 1 and 2) and the level-2 analysis: reflections, first-reflection
+   points, absorption estimate. Developed on synthetic rooms with known image sources, then
+   checked on a real room with REW's energy-time curve.
+7. HiFiSync app client: session start, room model export, node placement by press.
+8. Room screen overlay in Frame; engine on the tablet.
 
 Each Domosenso step goes through its own spec (SPEC-051 amendment for capture, a new spec for
 `room-acoustics`), with the website impact named there.
@@ -308,3 +421,8 @@ in the spec of each step. The private HiFiSync repositories are outside the plan
   read from the first calibration.
 - Changing HiFiSync's decision log entry on acoustic measurement belongs to the HiFiSync repository
   and its owner.
+- HiFiSync decision entry allowing the level-2 room model to leave the phone to the user's own
+  engine on the local network (HiFiSync's owner).
+- Whether HiFiSync's catalogue holds tweeter height and directivity for enough speakers to
+  predict reflection levels.
+- The QR code on the node's OLED and its payload (node identity only, no secret).
