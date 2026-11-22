@@ -14,7 +14,8 @@ albums and the draw stay as they were.
   `1`, `2`, `3`, `all`; `1` by default and after the reset): the caption names the photo's folder
   and, from 2 up, the folders above it (`Lisbon › Day 1`).
 - **The album picker shows every folder with photos at some depth as a tree**; a choice is a folder
-  path and includes everything inside it. Choices made before (top-level names) keep working.
+  path and includes everything inside it; any folder inside a ticked one can be left out on its
+  own (its parents then show partly ticked). Choices made before (top-level names) keep working.
 - **The draw takes turns level by level**: the top-level folders, then the folders inside the one
   drawn, and so on (PHOTOS.md). A nested tree's shares change; a flat one draws as before. The
   rotation file `.ramka_rotation.json` takes a new shape: the top-level cycle carries over, the rest

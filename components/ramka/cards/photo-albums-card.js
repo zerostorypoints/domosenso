@@ -19,8 +19,10 @@
 //
 // A folder tree (SPEC-057): `available` holds every folder with photos at some depth as a path
 // ("2025", "2025/Lisbon"); the picker shows them as a tree, siblings sorted within their parent and
-// indented by depth. Ticking a folder chooses it and everything below it: the folders below show
-// ticked and cannot be unticked on their own. The filter matches the path and shows each match with
+// indented by depth. Ticking a folder chooses it and everything below it; unticking a folder inside
+// a ticked one leaves out only that folder (its parents then show partly ticked, "–"), and ticking
+// the last one left out ticks the parent again, as a tree of checkboxes does. A partly ticked folder
+// ticks whole on a click. The filter matches the path and shows each match with
 // its parents; Select all and Deselect all act on the topmost matches. Under All albums the
 // top-level folders are ticked. A flat folder (no "/" in any name) works as before.
 
@@ -315,6 +317,43 @@ class PhotoAlbumsCard extends HTMLElement {
       : this._draft.chosen);
   }
 
+  // Tick or untick one folder in `ticked`, as a tree of checkboxes does (see the top).
+  _mark(ticked, name, on) {
+    for (const t of [...ticked]) if (under(t, name)) ticked.delete(t);
+    if (on) {
+      ticked.add(name);
+      // Every folder of a parent ticked: the parent itself, and so on up.
+      for (let p = parentOf(name); p && this._available.includes(p); p = parentOf(p)) {
+        const kids = this._children(p);
+        if (!kids.length || !kids.every((k) => this._covered(k, ticked))) break;
+        for (const t of [...ticked]) if (under(t, p)) ticked.delete(t);
+        ticked.add(p);
+      }
+      return;
+    }
+    ticked.delete(name);
+    // Inside a ticked folder: that folder gives way to its other folders, down to this one.
+    const top = [...ticked].find((t) => under(name, t));
+    if (!top) return;
+    ticked.delete(top);
+    for (let cur = top; cur !== name;) {
+      const slash = name.indexOf("/", cur.length + 1);
+      const next = slash === -1 ? name : name.slice(0, slash);
+      for (const kid of this._children(cur)) if (kid !== next) ticked.add(kid);
+      cur = next;
+    }
+  }
+
+  // The folders directly inside `path`.
+  _children(path) {
+    return this._available.filter((a) => parentOf(a) === path);
+  }
+
+  // Not ticked, but a folder inside it is.
+  _partly(name, ticked) {
+    return [...ticked].some((t) => under(t, name));
+  }
+
   // Ticked itself or inside a ticked folder.
   _covered(name, ticked) {
     return ticked.has(name) || [...ticked].some((t) => under(name, t));
@@ -353,7 +392,7 @@ class PhotoAlbumsCard extends HTMLElement {
       box.type = "checkbox";
       box.dataset.name = name;
       box.checked = this._covered(name, ticked);
-      box.disabled = !ticked.has(name) && box.checked;
+      box.indeterminate = !box.checked && this._partly(name, ticked);
       const span = document.createElement("span");
       span.textContent = this._isMissing(name) ? `${name} (${this._t("card.photo_albums.missing")})` : nameOf(name);
       if (this._isMissing(name)) span.className = "missing";
@@ -377,7 +416,7 @@ class PhotoAlbumsCard extends HTMLElement {
     const ticked = this._ticked();
     for (const box of this._dialog.querySelectorAll("ul input[type=checkbox]")) {
       box.checked = this._covered(box.dataset.name, ticked);
-      box.disabled = !ticked.has(box.dataset.name) && box.checked;
+      box.indeterminate = !box.checked && this._partly(box.dataset.name, ticked);
     }
     this._status();
   }
@@ -397,8 +436,7 @@ class PhotoAlbumsCard extends HTMLElement {
   // A box ticked or unticked; under All albums that makes the other albums a choice of their own.
   _toggle(name, on) {
     const ticked = this._ticked();
-    if (on) ticked.add(name);
-    else ticked.delete(name);
+    this._mark(ticked, name, on);
     this._draft.all = false;
     this._draft.chosen = topmost(ticked, this._names());
     this._sync();
@@ -410,10 +448,7 @@ class PhotoAlbumsCard extends HTMLElement {
     const ticked = this._ticked();
     this._shown();
     const matches = new Set(this._matches);
-    for (const name of topmost(matches, this._names())) {
-      if (on) ticked.add(name);
-      else for (const t of [...ticked]) if (t === name || under(t, name)) ticked.delete(t);
-    }
+    for (const name of topmost(matches, this._names())) this._mark(ticked, name, on);
     this._draft.all = false;
     this._draft.chosen = topmost(ticked, this._names());
     this._sync();

@@ -192,10 +192,7 @@ test("ticking a folder includes everything below it; Save writes the folder only
   const dialog = open(card);
   tick(box(dialog, "2025/Lisbon/Day 1"));
   tick(box(dialog, "2025/Lisbon"));
-  for (const day of ["2025/Lisbon/Day 1", "2025/Lisbon/Day 2"]) {
-    assert.equal(box(dialog, day).checked, true, day);
-    assert.equal(box(dialog, day).disabled, true, day);
-  }
+  for (const day of ["2025/Lisbon/Day 1", "2025/Lisbon/Day 2"]) assert.equal(box(dialog, day).checked, true, day);
   assert.equal(box(dialog, "2025/Porto").checked, false);
   save(dialog);
   assert.deepEqual(calls, [[...SCRIPT, { chosen: ["2025/Lisbon", "2026"], all_albums: false }]]);
@@ -216,7 +213,6 @@ test("under All albums the top-level folders are ticked; unticking one keeps the
   const { card, calls } = makeCard({ available: TREE, chosen: [], all: true });
   const dialog = open(card);
   assert.equal(box(dialog, "2025/Porto").checked, true);
-  assert.equal(box(dialog, "2025/Porto").disabled, true);
   tick(box(dialog, "2025"));
   save(dialog);
   assert.deepEqual(calls, [[...SCRIPT, { chosen: ["2026"], all_albums: false }]]);
@@ -229,4 +225,58 @@ test("a tree counts its innermost folders, the same in the summary and in the pi
   assert.equal(dialog.querySelector(".count").textContent, "3 of 4 selected");
   const all = makeCard({ available: TREE, chosen: [], all: true }).card;
   assert.equal(text(all, ".summary"), "All albums (4)");
+});
+
+
+test("unticking a folder inside a ticked one leaves out only that folder; the parent shows partly ticked", () => {
+  const { card, calls } = makeCard({ available: TREE, chosen: ["2025", "2026"] });
+  const dialog = open(card);
+  tick(box(dialog, "2025/Lisbon/Day 1"));
+  assert.equal(box(dialog, "2025/Lisbon/Day 1").checked, false);
+  assert.equal(box(dialog, "2025/Lisbon/Day 2").checked, true);
+  assert.equal(box(dialog, "2025/Porto").checked, true);
+  for (const parent of ["2025", "2025/Lisbon"]) {
+    assert.equal(box(dialog, parent).checked, false, parent);
+    assert.equal(box(dialog, parent).indeterminate, true, parent);
+  }
+  save(dialog);
+  assert.deepEqual(calls, [[...SCRIPT, { chosen: ["2025/Lisbon/Day 2", "2025/Porto", "2026"], all_albums: false }]]);
+});
+
+test("ticking the last folder left out ticks its parent again", () => {
+  const { card, calls } = makeCard({ available: TREE, chosen: ["2025/Lisbon/Day 2", "2025/Porto"] });
+  const dialog = open(card);
+  assert.equal(box(dialog, "2025").indeterminate, true);
+  tick(box(dialog, "2025/Lisbon/Day 1"));
+  assert.equal(box(dialog, "2025").checked, true);
+  assert.equal(box(dialog, "2025").indeterminate, false);
+  save(dialog);
+  assert.deepEqual(calls, [[...SCRIPT, { chosen: ["2025"], all_albums: false }]]);
+});
+
+test("unticking a partly ticked folder unticks everything inside it", () => {
+  const { card, calls } = makeCard({ available: TREE, chosen: ["2025/Lisbon/Day 2", "2026"] });
+  const dialog = open(card);
+  tick(box(dialog, "2025"));  // partly ticked: a click ticks it whole, as a tree's checkbox does
+  assert.equal(box(dialog, "2025/Porto").checked, true);
+  tick(box(dialog, "2025"));
+  save(dialog);
+  assert.deepEqual(calls, [[...SCRIPT, { chosen: ["2026"], all_albums: false }]]);
+});
+
+test("under All albums, unticking a folder deep inside keeps everything else", () => {
+  const { card, calls } = makeCard({ available: TREE, chosen: [], all: true });
+  const dialog = open(card);
+  tick(box(dialog, "2025/Lisbon"));
+  save(dialog);
+  assert.deepEqual(calls, [[...SCRIPT, { chosen: ["2025/Porto", "2026"], all_albums: false }]]);
+});
+
+test("Deselect all over a filter inside a ticked folder leaves out only the matches", () => {
+  const { card, calls } = makeCard({ available: TREE, chosen: ["2025"] });
+  const dialog = open(card);
+  filter(dialog, "lisbon");
+  dialog.querySelector("button.deselect-all").click();
+  save(dialog);
+  assert.deepEqual(calls, [[...SCRIPT, { chosen: ["2025/Porto"], all_albums: false }]]);
 });

@@ -23,8 +23,7 @@ The Ramka's photos page reads a folder tree under `photo_dir`:
 2. **Album tree.** The settings page's album picker (today's dialog: filter, show all / chosen /
    unchosen, date sort, Select all, Deselect all, Save) lists every folder that holds photos at
    some depth, as a tree: indented by depth, labelled with the folder's own name. Ticking a folder
-   chooses it and everything below it; folders below a ticked one show as included and cannot be
-   unticked on their own (to leave one out, untick the parent and tick its siblings). "All albums"
+   chooses it and everything below it (amendment 2: any folder can be left out on its own). "All albums"
    and "none chosen is all" stay as they are. Select all and Deselect all act on the top-level
    folders the filter shows; the filter matches the full path and shows each match with its
    parents; the date sort orders siblings within their parent.
@@ -132,3 +131,19 @@ is shown, not left out; a caption longer than the screen ends in "…".
   a filter: the top-level folders), so filtering a trip and selecting all chooses that trip, not its
   year. The counts ("3 of 4 albums", "All albums (4)", the picker's "selected") count the innermost
   folders, so a tree's intermediate folders are not counted twice.
+
+## Amendment 2 (2026-11-22): ticks as in a tree of checkboxes
+
+From the owner's first use on a phone: leaving out one trip of a ticked year meant unticking the
+year and ticking every other trip again. Goal 2 changes to the usual tree behaviour:
+
+- Every folder's box can be ticked or unticked. Unticking a folder inside a ticked one leaves out
+  only that folder: the ticked parent gives way to its other folders, down to the one left out.
+- A folder that is not ticked but has a ticked folder inside it shows partly ticked ("–"); a click on
+  it ticks it whole.
+- Ticking the last folder of a parent that was left out ticks the parent again (and so on up).
+- Under All albums the same holds: unticking any folder keeps everything else as a choice.
+- Select all and Deselect all apply the same rule to each topmost match.
+
+The choice stays a list of paths (the topmost ticked folders), so nothing changes for the sensor,
+the script or the picker script.
