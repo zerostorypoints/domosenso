@@ -20,7 +20,7 @@
 //       state_not: playing
 //     - entity: input_select.ramka_ambient
 //       state: photos
-//   caption_levels_entity: input_select.ramka_photo_caption_levels   # optional (SPEC-056): how
+//   caption_levels_entity: input_select.ramka_photo_caption_levels   # optional (SPEC-057): how
 //                                   # many folders of the photo's path the caption names, from its
 //                                   # own folder up: 1 (default, the event), 2, 3 or all
 //   contained: false                # true (the preview's screen-frame-card): the layer fills the

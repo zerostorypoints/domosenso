@@ -17,7 +17,7 @@
 // it), all is none chosen. A chosen album no longer in the folder stays listed, marked, until it is
 // unticked (its folder may come back).
 //
-// A folder tree (SPEC-056): `available` holds every folder with photos at some depth as a path
+// A folder tree (SPEC-057): `available` holds every folder with photos at some depth as a path
 // ("2025", "2025/Lisbon"); the picker shows them as a tree, siblings sorted within their parent and
 // indented by depth. Ticking a folder chooses it and everything below it: the folders below show
 // ticked and cannot be unticked on their own. The filter matches the path and shows each match with

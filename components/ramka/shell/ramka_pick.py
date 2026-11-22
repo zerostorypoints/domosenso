@@ -51,7 +51,7 @@ LONG_DIR = "@ramka-long"  # stand-ins for longer paths; "@" keeps it out of the 
 
 
 def stand_in(rel):
-    """The short path that stands in for a photo path too long for the photo helper (SPEC-056 amendment 1)."""
+    """The short path that stands in for a photo path too long for the photo helper (SPEC-057 amendment 1)."""
     return f"{LONG_DIR}/{hashlib.sha1(rel.encode('utf-8')).hexdigest()[:16]}.jpg"
 
 

@@ -171,7 +171,7 @@ test("labels per language; an album name is text, not markup", () => {
   assert.equal(text(makeCard({ available: ["a"], chosen: ["a"], all: false, lang: "de" }).card, ".summary"), "1 von 1 Alben");
 });
 
-// SPEC-056: a folder tree.
+// SPEC-057: a folder tree.
 const TREE = ["2025", "2025/Lisbon", "2025/Lisbon/Day 1", "2025/Lisbon/Day 2", "2025/Porto", "2026", "2026/Oslo"];
 const order = (dialog) => [...dialog.querySelectorAll("ul input")].map((b) => b.dataset.name);
 

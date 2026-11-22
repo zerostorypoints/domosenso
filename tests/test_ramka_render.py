@@ -622,7 +622,7 @@ def test_music_visual_absent_renders_as_0_3_0(tmp_path):
 AIR_READINGS = ["score", "co2", "pm2_5", "voc", "nox"]
 AIR_LIMITS = {"score_fair": 80, "score_poor": 60, "co2_raised": 800, "co2_high": 1200, "pm2_5_raised": 15,
               "pm2_5_high": 35, "voc_raised": 150, "voc_high": 250, "nox_raised": 20, "nox_high": 150}
-# SPEC-056: the caption names 1 folder level by default.
+# SPEC-057: the caption names 1 folder level by default.
 PHOTO_DEFAULTS = {"input_number.ramka_photo_count": 5, "input_number.ramka_photo_s": 10,
                   "input_select.ramka_photo_caption_levels": "1"}
 # The Plants page's settings (SPEC-022), with the demo home's plants.
@@ -2867,7 +2867,7 @@ def test_time_per_photo_in_photos_basic(demo):
 
 
 def test_photo_caption_levels_setting_and_frame_card(demo):
-    """SPEC-056: the caption's folder levels, 1 by default, read by the frame card."""
+    """SPEC-057: the caption's folder levels, 1 by default, read by the frame card."""
     package = demo["package.yaml"]
     assert package["input_select"]["ramka_photo_caption_levels"]["options"] == ["1", "2", "3", "all"]
     for lang in LANGS:

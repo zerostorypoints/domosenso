@@ -349,7 +349,7 @@ input_select:
     icon: mdi:theme-light-dark
     options:[[ options(d.theme_mode, ['dark', 'light']) ]]
   [%- if inputs.photo_dir is defined %]
-  # SPEC-056: how many folders of a photo's path the caption names, from its own folder up (1: only
+  # SPEC-057: how many folders of a photo's path the caption names, from its own folder up (1: only
   # its folder, as before; all: the whole path below the photo folder). photo-frame-card reads it.
   [[ p ]]_photo_caption_levels:
     name: [[ named(' caption folder levels') ]]
@@ -810,7 +810,7 @@ shell_command:
   # each album is single-quoted, a quote in its name closed, escaped and reopened.
   [[ p ]]_pick: >-
     python3 /config/shell/ramka_pick.py [[ photo_dir ]] {{ count | default(5) }}{% for a in (albums if albums is defined and albums is not string and albums is iterable else []) %} '{{ a | replace("'", "'\\''") }}'{% endfor %}
-  # The albums to choose from (sensor.[[ p ]]_photo_albums): every folder that holds photos at some depth (SPEC-056).
+  # The albums to choose from (sensor.[[ p ]]_photo_albums): every folder that holds photos at some depth (SPEC-057).
   [[ p ]]_albums: [[ albums_command | yaml ]]
 [%- endif %]
 
@@ -977,7 +977,7 @@ template:
         url: >-
           [[ photo_url ]]/{{ states('input_text.[[ p ]]_photo').split('/') | map('urlencode') | join('/') }}
         availability: "{{ states('input_text.[[ p ]]_photo') not in ['', 'unknown', 'unavailable'] }}"
-  # The photo albums (SPEC-021 amendments 1 and 2, SPEC-056): `available`, every folder with photos at some depth
+  # The photo albums (SPEC-021 amendments 1 and 2, SPEC-057): `available`, every folder with photos at some depth
   # (from the photo index), `chosen`, the ticked ones, and `all`: every album, the ticks kept for
   # later (the settings page's album card; none chosen is all too). The state is how many are
   # chosen. A list of any length, which no helper holds; a trigger-based entity restores its

@@ -350,7 +350,7 @@ lovelace:
   General says so. A live switch waits for the spike (SPEC-021, "language, a spike first"), which
   has not run on the tested tablet yet.
 - **Photos**: photos per series (5), the time per photo (10 s), the folder levels in the caption
-  (1, 2, 3 or all; 1 shows the photo's folder only, SPEC-056) and, in Advanced, the albums (their
+  (1, 2, 3 or all; 1 shows the photo's folder only, SPEC-057) and, in Advanced, the albums (their
   own section, in the right column next to Basic; the render-time inputs and Reset below): a
   summary of the choice and Choose albums, which opens the album picker, a dialog listing every
   folder of `photo_dir` that holds photos at some depth, as a tree (ticking a folder chooses

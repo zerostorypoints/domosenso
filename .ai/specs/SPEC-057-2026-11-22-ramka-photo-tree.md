@@ -1,4 +1,4 @@
-# SPEC-056: The Ramka reads a photo folder tree
+# SPEC-057: The Ramka reads a photo folder tree
 
 - **Status:** approved 2026-11-22
 - **Source:** a home owner whose photo source mirrors a library's album tree on disk (sets per

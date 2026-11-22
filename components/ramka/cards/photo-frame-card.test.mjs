@@ -134,7 +134,7 @@ function treeCard(path, levels) {
   return card;
 }
 
-test("caption levels name the photo's folders from its own folder up (SPEC-056)", async () => {
+test("caption levels name the photo's folders from its own folder up (SPEC-057)", async () => {
   const cases = { 1: "Day 1", 2: "Lisbon › Day 1", 3: "2025 › Lisbon › Day 1", all: "2025 › Lisbon › Day 1" };
   for (const [levels, folders] of Object.entries(cases)) {
     const card = treeCard("2025/Lisbon/Day 1/a.jpg", levels);
@@ -161,7 +161,7 @@ test("a change of the levels redraws the caption of the photo on screen", async 
   assert.equal(caption(card).querySelector(".c1").textContent, "Lisbon › Day 1 · 8 July 2025");
 });
 
-test("a caption longer than the screen ends in an ellipsis (SPEC-056 amendment 1)", async () => {
+test("a caption longer than the screen ends in an ellipsis (SPEC-057 amendment 1)", async () => {
   const card = treeCard("2025/Lisbon/Day 1/a.jpg", "all");
   await card._loadIndex();
   for (const line of [".c1", ".c2"]) {

@@ -113,7 +113,7 @@ def main(folder):
             when, size, info = taken(os.path.join(dirpath, name))
             if when is None:
                 continue
-            # A path too long for the photo helper is listed under its stand-in (SPEC-056 amendment 1).
+            # A path too long for the photo helper is listed under its stand-in (SPEC-057 amendment 1).
             photos.append({"path": shown_path(folder, f"{rel}/{name}"), "event": os.path.basename(rel), "folder": rel,
                            "date": when, "width": size[0], "height": size[1], **info})
     prune_stand_ins(folder, {p["path"] for p in photos})
