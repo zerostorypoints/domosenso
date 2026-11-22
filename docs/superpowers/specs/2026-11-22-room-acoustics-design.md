@@ -172,7 +172,7 @@ The live-level path does not pass through the engine.
   each level of room detail enables, is in Room model below.
 - HTTP API, versioned (`/api/v1`), JSON; binary uploads as WAV. Bearer tokens issued by the engine;
   the first token comes from a CLI command or the setup of the HA integration. Discovery over
-  zeroconf `_hifisync-acoustics._tcp`.
+  zeroconf `_hfs-acoustics._tcp` (mDNS allows at most 15 bytes in a service name).
 - Deployment targets in order: Docker container (NAS); a process in the tablet's Linux guest; an
   HAOS App. A CLI that analyses local WAV files without the service comes first, so analysis can be
   validated before any node or network exists.

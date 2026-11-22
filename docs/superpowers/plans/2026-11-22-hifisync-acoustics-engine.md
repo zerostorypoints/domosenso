@@ -302,7 +302,7 @@ def test_sweep_convolved_with_inverse_is_impulse():
     - `auth.issue(store, name) -> str` returns a 32-byte urlsafe token that is shown once; only its digest is stored.
     - `auth.verify(store, token) -> bool` uses a constant-time comparison.
     - A token in a query string gets 400 `token_in_url`.
-  - `discovery.advertise(port: int) -> AsyncZeroconf` publishes `_hifisync-acoustics._tcp.local.` with TXT `api=1`, `version=<__version__>`.
+  - `discovery.advertise(port: int) -> AsyncZeroconf` publishes `_hfs-acoustics._tcp.local.` with TXT `api=1`, `version=<__version__>`.
   - `hifisync-acoustics serve --data DIR --host 0.0.0.0 --port 8765 [--no-zeroconf]` calls `recover_interrupted` at startup.
 
 - [ ] **Step 1: Write the failing tests**
