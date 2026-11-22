@@ -152,14 +152,14 @@ def _tree(root):
     for day in ("Day 1", "Day 2"):
         photo(root / "2025" / "Lisbon" / day / "a.jpg")
     photo(root / "2025" / "Porto" / "a.jpg")
-    photo(root / "2026" / "Bern" / "a.jpg")
+    photo(root / "2026" / "Oslo" / "a.jpg")
 
 
 def test_pick_takes_turns_level_by_level(tmp_path):
     root = tmp_path / "www" / "ramka"
     _tree(root)
     picks = [json.loads(run("ramka_pick.py", root, 1).stdout)["folder"] for _ in range(12)]
-    assert picks.count("2026/Bern") == 6  # the two years share the series
+    assert picks.count("2026/Oslo") == 6  # the two years share the series
     assert picks.count("2025/Porto") == 3  # the two trips share 2025's
     lisbon = [p for p in picks if "Lisbon" in p]
     assert len(lisbon) == 3 and set(lisbon) == {"2025/Lisbon/Day 1", "2025/Lisbon/Day 2"}
@@ -180,7 +180,7 @@ def test_pick_from_a_branch_at_depth_two(tmp_path):
     picks = {json.loads(run("ramka_pick.py", root, 1, "2025/Lisbon").stdout)["folder"] for _ in range(6)}
     assert picks == {"2025/Lisbon/Day 1", "2025/Lisbon/Day 2"}
     picks = {json.loads(run("ramka_pick.py", root, 1, "2025/Lisbon/Day 2", "2026").stdout)["folder"] for _ in range(6)}
-    assert picks == {"2025/Lisbon/Day 2", "2026/Bern"}
+    assert picks == {"2025/Lisbon/Day 2", "2026/Oslo"}
 
 
 def test_an_old_rotation_file_is_read(tmp_path):
@@ -189,17 +189,37 @@ def test_an_old_rotation_file_is_read(tmp_path):
     (tmp_path / "www" / ".ramka_rotation.json").write_text(json.dumps({
         "albums": ["2025"], "last_album": "2025", "events": {"2025": ["2025/Porto"]},
         "last_event": {"2025": "2025/Porto"}, "photos": {"2025/Porto": ["a.jpg"]}}))
-    assert json.loads(run("ramka_pick.py", root, 1).stdout)["folder"] == "2026/Bern"  # 2025 had its turn
+    assert json.loads(run("ramka_pick.py", root, 1).stdout)["folder"] == "2026/Oslo"  # 2025 had its turn
     rotation = json.loads((tmp_path / "www" / ".ramka_rotation.json").read_text(encoding="utf-8"))
     assert set(rotation) == {"cycles", "last", "photos"} and rotation["photos"]["2025/Porto"] == ["a.jpg"]
 
 
-def test_a_path_too_long_for_the_photo_helper_is_left_out(tmp_path):
-    root = tmp_path / "www" / "ramka"
+def _long(root):
     deep = root / "trip" / ("x" * 130) / ("y" * 130)  # 272 characters with the file
     photo(deep / "a.jpg")
     photo(root / "garden" / "b.jpg")
-    for _ in range(3):
-        result = run("ramka_pick.py", root, 1)
-        assert json.loads(result.stdout)["photos"] == ["garden/b.jpg"]
-    assert "longer than 255 characters" in result.stderr
+    return deep
+
+
+def test_a_path_too_long_for_the_photo_helper_is_shown_through_a_short_name(tmp_path):
+    root = tmp_path / "www" / "ramka"
+    deep = _long(root)
+    shown = {p for _ in range(4) for p in json.loads(run("ramka_pick.py", root, 1).stdout)["photos"]}
+    [stand_in] = [p for p in shown if p != "garden/b.jpg"]
+    assert stand_in.startswith("@ramka-long/") and len(stand_in) <= 255
+    assert (root / stand_in).read_bytes() == (deep / "a.jpg").read_bytes()
+    index = {e["path"]: e for e in json.loads((root / "index.json").read_text(encoding="utf-8"))["photos"]}
+    assert index[stand_in]["folder"] == str((deep).relative_to(root)) and index[stand_in]["event"] == "y" * 130
+    # The stand-in folder is no album and no event.
+    assert json.loads(run("ramka_pick.py", root, "--albums").stdout)["albums"] == [
+        "garden", "trip", "trip/" + "x" * 130, "trip/" + "x" * 130 + "/" + "y" * 130]
+
+
+def test_a_stand_in_no_photo_needs_goes(tmp_path):
+    root = tmp_path / "www" / "ramka"
+    deep = _long(root)
+    run("ramka_index.py", root)
+    assert len(list((root / "@ramka-long").iterdir())) == 1
+    (deep / "a.jpg").unlink()
+    run("ramka_index.py", root)
+    assert list((root / "@ramka-long").iterdir()) == []

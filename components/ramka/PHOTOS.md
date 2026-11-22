@@ -63,9 +63,10 @@ trip`. So:
 - Two folders with the same name in different places (`2025/07/Summer`, `2026/07/Summer`) are two
   events with the same caption.
 - Renaming a folder renames the event from the next index rebuild (below) on.
-- The whole path of a photo, `<folders>/<file>`, must stay within 255 characters (the length of the
-  helper that holds it). A longer one is left out of the draw, and the picker says how many on its
-  error output (the Home Assistant log of `shell_command.<prefix>_pick`).
+- The whole path of a photo, `<folders>/<file>`, is held in a helper of 255 characters. A longer one
+  is shown through a short stand-in, a hard link (or a copy) at `@ramka-long/<hash>.jpg` in the photo
+  folder, which the picker and the index make and the index removes once no photo needs it; the
+  caption still names its real folders. A caption wider than the screen ends in "…".
 
 ## How the draw works
 

@@ -128,3 +128,7 @@ is shown, not left out; a caption longer than the screen ends in "…".
   folder of photos. The index removes stand-ins no photo needs any more.
 - The caption's lines already end in "…" where they pass the screen's width (CSS ellipsis); kept,
   and tested with a long folder path.
+- From the review: Select all and Deselect all act on the topmost folders the filter matches (without
+  a filter: the top-level folders), so filtering a trip and selecting all chooses that trip, not its
+  year. The counts ("3 of 4 albums", "All albums (4)", the picker's "selected") count the innermost
+  folders, so a tree's intermediate folders are not counted twice.

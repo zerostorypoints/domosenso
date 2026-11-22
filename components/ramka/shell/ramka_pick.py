@@ -38,13 +38,46 @@ index automation's shell_command.<prefix>_albums):
 
     python3 /config/shell/ramka_pick.py /config/www/ramka --albums  ->  {"albums": ["2025", "2025/Lisbon", ...]}
 """
+import hashlib
 import json
+import shutil
 import os
 import random
 import sys
 
 STATE_NAME = ".ramka_rotation.json"
-MAX_PATH = 255  # input_text.<prefix>_photo holds "<folder path>/<file>"; a longer one cannot be shown
+MAX_PATH = 255  # input_text.<prefix>_photo holds "<folder path>/<file>"
+LONG_DIR = "@ramka-long"  # stand-ins for longer paths; "@" keeps it out of the draw and the index walk
+
+
+def stand_in(rel):
+    """The short path that stands in for a photo path too long for the photo helper (SPEC-056 amendment 1)."""
+    return f"{LONG_DIR}/{hashlib.sha1(rel.encode('utf-8')).hexdigest()[:16]}.jpg"
+
+
+def shown_path(root, rel):
+    """The path the loop shows a photo under: its own, or a stand-in (a hard link, else a copy) when
+    "<folders>/<file>" is longer than the photo helper holds."""
+    if len(rel) <= MAX_PATH:
+        return rel
+    short = stand_in(rel)
+    src, dst = os.path.join(root, rel), os.path.join(root, short)
+    try:
+        if os.path.exists(dst) and (os.path.samefile(src, dst) or (
+                os.path.getsize(dst) == os.path.getsize(src) and os.path.getmtime(dst) >= os.path.getmtime(src))):
+            return short
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        tmp = dst + ".tmp"
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        try:
+            os.link(src, tmp)
+        except OSError:  # no hard links here: a copy
+            shutil.copy2(src, tmp)
+        os.replace(tmp, dst)
+    except OSError as e:  # the series still plays; this photo may not show
+        print(f"stand-in for a long path not made: {e}", file=sys.stderr)
+    return short
 
 
 def leaf_folders(root):
@@ -151,22 +184,8 @@ def fresh_state(state, children, folders, all_folders):
     }
 
 
-def showable(folders):
-    """The folders' photos whose "<folder>/<file>" fits the photo helper; the rest is said on stderr."""
-    out, left_out = {}, 0
-    for folder, photos in folders.items():
-        rel = folder.replace(os.sep, "/")
-        keep = [p for p in photos if len(f"{rel}/{p}") <= MAX_PATH]
-        left_out += len(photos) - len(keep)
-        if keep:
-            out[folder] = keep
-    if left_out:
-        print(f"{left_out} photos left out: their path is longer than {MAX_PATH} characters", file=sys.stderr)
-    return out
-
-
 def main(root, count, chosen=()):
-    folders = showable(leaf_folders(root))
+    folders = leaf_folders(root)
     all_folders = folders
     chosen = [os.path.normpath(a.replace("/", os.sep)) for a in chosen if a]
     known = nodes(folders)
@@ -206,7 +225,7 @@ def main(root, count, chosen=()):
         pass
 
     rel = folder.replace(os.sep, "/")
-    picked = [f"{rel}/{p}" for p in names]
+    picked = [shown_path(root, f"{rel}/{p}") for p in names]
     refresh_index_if_stale(root, picked)
     print(json.dumps({"event": os.path.basename(folder), "folder": rel, "photos": picked}, ensure_ascii=False))
 

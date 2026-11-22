@@ -172,7 +172,7 @@ test("labels per language; an album name is text, not markup", () => {
 });
 
 // SPEC-056: a folder tree.
-const TREE = ["2025", "2025/Lisbon", "2025/Lisbon/Day 1", "2025/Lisbon/Day 2", "2025/Porto", "2026", "2026/Bern"];
+const TREE = ["2025", "2025/Lisbon", "2025/Lisbon/Day 1", "2025/Lisbon/Day 2", "2025/Porto", "2026", "2026/Oslo"];
 const order = (dialog) => [...dialog.querySelectorAll("ul input")].map((b) => b.dataset.name);
 
 test("the albums show as a tree: siblings sorted within their parent, indented by depth", () => {
@@ -180,11 +180,11 @@ test("the albums show as a tree: siblings sorted within their parent, indented b
   const dialog = open(card);
   choose(dialog, "sort", "az");
   assert.deepEqual(order(dialog), TREE);
-  assert.deepEqual(rows(dialog).map(([label]) => label), ["2025", "Lisbon", "Day 1", "Day 2", "Porto", "2026", "Bern"]);
+  assert.deepEqual(rows(dialog).map(([label]) => label), ["2025", "Lisbon", "Day 1", "Day 2", "Porto", "2026", "Oslo"]);
   const depth = (name) => box(dialog, name).closest("li").dataset.depth;
   assert.deepEqual(["2025", "2025/Lisbon", "2025/Lisbon/Day 1"].map(depth), ["0", "1", "2"]);
   choose(dialog, "sort", "newest");
-  assert.deepEqual(order(dialog).slice(0, 2), ["2026", "2026/Bern"]);
+  assert.deepEqual(order(dialog).slice(0, 2), ["2026", "2026/Oslo"]);
 });
 
 test("ticking a folder includes everything below it; Save writes the folder only", () => {
@@ -220,4 +220,13 @@ test("under All albums the top-level folders are ticked; unticking one keeps the
   tick(box(dialog, "2025"));
   save(dialog);
   assert.deepEqual(calls, [[...SCRIPT, { chosen: ["2026"], all_albums: false }]]);
+});
+
+test("a tree counts its innermost folders, the same in the summary and in the picker", () => {
+  const { card } = makeCard({ available: TREE, chosen: ["2025"] });
+  assert.equal(text(card, ".summary"), "3 of 4 albums");
+  const dialog = open(card);
+  assert.equal(dialog.querySelector(".count").textContent, "3 of 4 selected");
+  const all = makeCard({ available: TREE, chosen: [], all: true }).card;
+  assert.equal(text(all, ".summary"), "All albums (4)");
 });

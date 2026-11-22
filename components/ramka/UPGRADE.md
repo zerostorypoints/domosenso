@@ -19,8 +19,9 @@ albums and the draw stay as they were.
   drawn, and so on (PHOTOS.md). A nested tree's shares change; a flat one draws as before. The
   rotation file `.ramka_rotation.json` takes a new shape: the top-level cycle carries over, the rest
   starts anew once.
-- Photos whose path is longer than 255 characters are left out of the draw (they could not be
-  shown) and counted in the picker's log.
+- Photos whose path is longer than the 255 characters of `input_text.<prefix>_photo` are shown
+  through a short stand-in in `<photo_dir>/@ramka-long/` (a hard link, else a copy), made and
+  cleaned up by the picker and the index.
 
 ## 0.22.1
 

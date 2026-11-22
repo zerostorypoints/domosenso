@@ -160,3 +160,14 @@ test("a change of the levels redraws the caption of the photo on screen", async 
   card.hass = { ...card._hass, states: { ...card._hass.states, "input_select.levels": { state: "2", attributes: {} } } };
   assert.equal(caption(card).querySelector(".c1").textContent, "Lisbon › Day 1 · 8 July 2025");
 });
+
+test("a caption longer than the screen ends in an ellipsis (SPEC-056 amendment 1)", async () => {
+  const card = treeCard("2025/Lisbon/Day 1/a.jpg", "all");
+  await card._loadIndex();
+  for (const line of [".c1", ".c2"]) {
+    const style = caption(card).querySelector(line).style;
+    assert.equal(style.textOverflow, "ellipsis", line);
+    assert.equal(style.whiteSpace, "nowrap", line);
+    assert.equal(style.overflow, "hidden", line);
+  }
+});

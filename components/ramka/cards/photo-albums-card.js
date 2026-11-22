@@ -88,6 +88,10 @@ export function treeOrder(paths, sort, lang = "en") {
   return out;
 }
 
+// The innermost folders: what the counts count, so a tree's intermediate folders are not counted
+// twice (a flat folder: every album).
+const innermost = (paths) => paths.filter((p) => !paths.some((q) => under(q, p)));
+
 // Only the chosen folders not inside another chosen one, in `order`.
 const topmost = (chosen, order) => order.filter((n) => chosen.has(n) && ![...chosen].some((c) => under(n, c)));
 
@@ -175,14 +179,17 @@ class PhotoAlbumsCard extends HTMLElement {
     const root = this.shadowRoot || this.attachShadow({ mode: "open" });
     root.innerHTML = `<style>${STYLE}</style><ha-card><p class="summary"></p><p class="names"></p><p class="warn"></p>
       <button type="button" class="choose"></button></ha-card>`;
-    const total = this._available.length;
+    const inner = innermost(this._available);
+    const total = inner.length;
     const ticked = this._chosen.filter((a) => this._available.includes(a));
     const missing = this._chosen.filter((a) => !this._available.includes(a));
+    const chosenSet = new Set(this._chosen);
+    const n = inner.filter((a) => this._covered(a, chosenSet)).length;
     root.querySelector(".summary").textContent = !total && !this._chosen.length
       ? this._t("card.photo_albums.none")
       : this._all
         ? this._t("card.photo_albums.summary_all", { total })
-        : this._t("card.photo_albums.summary_some", { n: ticked.length, total });
+        : this._t("card.photo_albums.summary_some", { n, total });
     if (!this._all) {
       const names = sortAlbums(ticked, "newest", language(this._hass)).map((n) => n.split("/").join(" › "));
       const more = names.length - SUMMARY_NAMES;
@@ -379,8 +386,9 @@ class PhotoAlbumsCard extends HTMLElement {
     const q = (sel) => this._dialog.querySelector(sel);
     q("input[name=all]").checked = this._draft.all;
     const ticked = this._ticked();
-    const n = this._draft.all ? this._available.length : this._available.filter((a) => this._covered(a, ticked)).length;
-    q(".count").textContent = this._t("card.photo_albums.count", { n, total: this._available.length });
+    const inner = innermost(this._available);
+    const n = this._draft.all ? inner.length : inner.filter((a) => this._covered(a, ticked)).length;
+    q(".count").textContent = this._t("card.photo_albums.count", { n, total: inner.length });
     const empty = !this._draft.all && !this._draft.chosen.length;
     q(".hint").textContent = empty ? this._t("card.photo_albums.pick_one") : "";
     q("button.save").disabled = empty;
