@@ -1,6 +1,6 @@
 # SPEC-056: The Ramka reads a photo folder tree
 
-- **Status:** draft 2026-11-22
+- **Status:** approved 2026-11-22
 - **Source:** a home owner whose photo source mirrors a library's album tree on disk (sets per
   year, a set per trip inside it, an album per day inside that). The Ramka finds photos at any
   depth, but it names an event after its last folder only ("Day 1", without the trip), offers only
