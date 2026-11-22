@@ -25,18 +25,19 @@
       "preview": "/previews/controls.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "3fe3ed7ce0521bfb720b8f4ba2fe0f7af7309247",
+      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
   "setup": [
     "Set up the Hue Bridge and room groups, then connect its Home Assistant integration.",
     "Map the room light entities in your home inputs.",
-    "Verify group state and brightness; configure Ramka lights inputs for tablet controls."
+    "Verify group state and brightness; configure Ramka lights inputs for tablet controls.",
+    "Optional, from 0.5.0: list presence rooms (an occupancy sensor per room, optionally a darkness and a distance sensor) so the room's Hue group switches on when someone comes in while it is dark and off a set time after the room is empty; run it on one Home Assistant per Hue group and remove any local automation on the same group."
   ],
   "id": "lights",
-  "version": "0.4.0",
-  "sourceCommit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
+  "version": "0.5.1",
+  "sourceCommit": "4a4c04ca3a286a51df07b70eb29cebcb4bd14c25",
   "evidencePaths": [
     "components/lights/component.yaml"
   ],
