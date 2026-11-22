@@ -119,3 +119,44 @@ test("contained (the preview's frame): the layer fills the card's box, not the p
   assert.equal(page._layer.parentNode, document.body, "the Ramka's own card still takes the page");
   assert.equal(page._layer.style.position, "fixed");
 });
+
+const TREE = { photos: [
+  { path: "2025/Lisbon/Day 1/a.jpg", event: "Day 1", folder: "2025/Lisbon/Day 1", date: "2025-07-08T12:00:00" },
+  { path: "Garden/b.jpg", event: "Garden", folder: "Garden", date: "2025-07-08T12:00:00" },
+] };
+
+function treeCard(path, levels) {
+  const config = levels === undefined ? {} : { caption_levels_entity: "input_select.levels" };
+  const card = makeCard({ path, index: TREE, config });
+  if (levels !== undefined) {
+    card.hass = { ...card._hass, states: { ...card._hass.states, "input_select.levels": { state: levels, attributes: {} } } };
+  }
+  return card;
+}
+
+test("caption levels name the photo's folders from its own folder up (SPEC-056)", async () => {
+  const cases = { 1: "Day 1", 2: "Lisbon › Day 1", 3: "2025 › Lisbon › Day 1", all: "2025 › Lisbon › Day 1" };
+  for (const [levels, folders] of Object.entries(cases)) {
+    const card = treeCard("2025/Lisbon/Day 1/a.jpg", levels);
+    await card._loadIndex();
+    assert.equal(caption(card).querySelector(".c1").textContent, `${folders} · 8 July 2025`, levels);
+  }
+  for (const levels of ["1", "3", "all"]) {
+    const card = treeCard("Garden/b.jpg", levels);
+    await card._loadIndex();
+    assert.equal(caption(card).querySelector(".c1").textContent, "Garden · 8 July 2025", levels);
+  }
+});
+
+test("without caption_levels_entity the caption is the event, as before", async () => {
+  const card = treeCard("2025/Lisbon/Day 1/a.jpg");
+  await card._loadIndex();
+  assert.equal(caption(card).querySelector(".c1").textContent, "Day 1 · 8 July 2025");
+});
+
+test("a change of the levels redraws the caption of the photo on screen", async () => {
+  const card = treeCard("2025/Lisbon/Day 1/a.jpg", "1");
+  await card._loadIndex();
+  card.hass = { ...card._hass, states: { ...card._hass.states, "input_select.levels": { state: "2", attributes: {} } } };
+  assert.equal(caption(card).querySelector(".c1").textContent, "Lisbon › Day 1 · 8 July 2025");
+});

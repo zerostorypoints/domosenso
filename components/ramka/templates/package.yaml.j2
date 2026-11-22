@@ -236,6 +236,7 @@
 [%- endif -%]
 [%- if inputs.photo_dir is defined -%]
 [%- set _ = settings.append(('event', 'photo_albums', 'photos', 'photos', {'all': true})) -%]
+[%- set _ = settings.append(('input_select', 'photo_caption_levels', 'photos', 'photos', '1')) -%]
 [%- for key, value in photo_defaults.items() -%][%- set _ = settings.append(('input_number', key, 'photos', 'photos', value)) -%][%- endfor -%]
 [%- endif -%]
 [#- The Ramka's named colours (cards/lib/colours.js, COLOURS: the ids in the dropdowns' order, each a
@@ -347,6 +348,14 @@ input_select:
     name: [[ named(' theme mode') ]]
     icon: mdi:theme-light-dark
     options:[[ options(d.theme_mode, ['dark', 'light']) ]]
+  [%- if inputs.photo_dir is defined %]
+  # SPEC-056: how many folders of a photo's path the caption names, from its own folder up (1: only
+  # its folder, as before; all: the whole path below the photo folder). photo-frame-card reads it.
+  [[ p ]]_photo_caption_levels:
+    name: [[ named(' caption folder levels') ]]
+    icon: mdi:file-tree
+    options: ["1", "2", "3", "all"]
+  [%- endif %]
   [%- if mp %]
   # SPEC-054: how the now-playing card shares ambient while the player plays. takeover (the
   # default, as before): it stays on the wall (input_boolean.[[ p ]]_ambient_music, the swipes);

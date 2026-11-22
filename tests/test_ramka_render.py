@@ -622,7 +622,9 @@ def test_music_visual_absent_renders_as_0_3_0(tmp_path):
 AIR_READINGS = ["score", "co2", "pm2_5", "voc", "nox"]
 AIR_LIMITS = {"score_fair": 80, "score_poor": 60, "co2_raised": 800, "co2_high": 1200, "pm2_5_raised": 15,
               "pm2_5_high": 35, "voc_raised": 150, "voc_high": 250, "nox_raised": 20, "nox_high": 150}
-PHOTO_DEFAULTS = {"input_number.ramka_photo_count": 5, "input_number.ramka_photo_s": 10}
+# SPEC-056: the caption names 1 folder level by default.
+PHOTO_DEFAULTS = {"input_number.ramka_photo_count": 5, "input_number.ramka_photo_s": 10,
+                  "input_select.ramka_photo_caption_levels": "1"}
 # The Plants page's settings (SPEC-022), with the demo home's plants.
 PLANT_SETTINGS = {"input_number.ramka_plants_per_page": 6, "input_number.ramka_plants_page_s": 10}
 # The albums are no helper: the reset sends event ramka_photo_albums with all albums, the ticks kept.
@@ -2857,8 +2859,20 @@ def test_time_per_photo_in_photos_basic(demo):
         [entities] = [c for c in basic["cards"] if c["type"] == "entities"]
         assert [r["entity"] for r in rows(entities)] == [
             "input_boolean.ramka_page_photos", "input_number.ramka_photo_count", "input_number.ramka_photo_s",
-            "input_boolean.ramka_settings_advanced"], lang
+            "input_select.ramka_photo_caption_levels", "input_boolean.ramka_settings_advanced"], lang
+        [levels] = [r for r in rows(entities) if r["entity"] == "input_select.ramka_photo_caption_levels"]
+        assert levels["type"] == "custom:ramka-info-select-row" and set(levels["descriptions"]) == {"1", "2", "3", "all"}, lang
+        assert levels["name"] == t["ui.settings.photo_caption_levels"], lang
         assert t["ui.settings.advanced"] not in [heading_of(s) for s in photos["sections"]], lang
+
+
+def test_photo_caption_levels_setting_and_frame_card(demo):
+    """SPEC-056: the caption's folder levels, 1 by default, read by the frame card."""
+    package = demo["package.yaml"]
+    assert package["input_select"]["ramka_photo_caption_levels"]["options"] == ["1", "2", "3", "all"]
+    for lang in LANGS:
+        board = yaml.safe_dump(demo[f"dashboard.{lang}.yaml"])
+        assert "caption_levels_entity: input_select.ramka_photo_caption_levels" in board, lang
 
 
 def test_no_photo_helpers_without_photo_dir(tmp_path):

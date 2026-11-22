@@ -20,11 +20,22 @@
 //       state_not: playing
 //     - entity: input_select.ramka_ambient
 //       state: photos
+//   caption_levels_entity: input_select.ramka_photo_caption_levels   # optional (SPEC-056): how
+//                                   # many folders of the photo's path the caption names, from its
+//                                   # own folder up: 1 (default, the event), 2, 3 or all
 //   contained: false                # true (the preview's screen-frame-card): the layer fills the
 //                                   # nearest positioned box instead of the page, the card stays
 //                                   # in the grid, and it does not take the page's one layer
 
 import { formatDate } from "./lib/i18n.js";
+
+// The last `levels` folders of a photo's folder path, outermost first, joined with " › "; "all"
+// is the whole path, anything else not a number is 1 (the folder itself).
+export function captionFolders(folder, levels) {
+  const parts = String(folder || "").split("/").filter(Boolean);
+  const n = levels === "all" ? parts.length : Math.max(1, parseInt(levels, 10) || 1);
+  return parts.slice(-n).join(" › ");
+}
 
 class PhotoFrameCard extends HTMLElement {
   setConfig(config) {
@@ -176,7 +187,10 @@ class PhotoFrameCard extends HTMLElement {
     }
     const d = ph.date ? new Date(ph.date) : null;
     const when = d && !isNaN(d) ? formatDate(this._hass, d, { day: "numeric", month: "long", year: "numeric" }) : "";
-    cap.querySelector(".c1").textContent = [ph.event, when].filter(Boolean).join(" · ");
+    const levelsState = this._config.caption_levels_entity && this._hass.states[this._config.caption_levels_entity];
+    const levels = levelsState ? levelsState.state : "1";
+    const title = ph.folder && levels !== "1" ? captionFolders(ph.folder, levels) : ph.event;
+    cap.querySelector(".c1").textContent = [title, when].filter(Boolean).join(" · ");
     cap.querySelector(".c2").textContent = [ph.camera, ph.lens, ph.focal, ph.aperture, ph.exposure, ph.iso].filter(Boolean).join(" · ");
     cap.style.display = "block";
   }

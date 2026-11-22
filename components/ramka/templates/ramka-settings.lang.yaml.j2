@@ -132,7 +132,7 @@
 [[ pad ]]name: [[ t('ui.settings.' ~ label) | yaml ]]
 [[ pad ]]descriptions:
 [%- for option, text in h[2].items() %]
-[[ pad ]]  [[ option ]]: [[ text | tojson ]]
+[[ pad ]]  [[ option | string | tojson ]]: [[ text | tojson ]]
 [%- endfor %]
 [%- else %]
 [[ lead ]]entity: [[ h[1][1:] if h[1].startswith('=') else h[0] ~ '.' ~ p ~ '_' ~ h[1] ]]
@@ -359,7 +359,10 @@ views:
       # Left out by the render: its switch would change nothing.
       - type: grid
         cards:[[ not_configured(adds[view]) ]]
-[%- elif view == 'photos' %][[ switch_section('photos', [('input_number', 'photo_count'), ('input_number', 'photo_s'), ('input_boolean', 'settings_advanced')]) ]]
+[%- elif view == 'photos' %][[ switch_section('photos', [('input_number', 'photo_count'), ('input_number', 'photo_s'),
+    ('input_select', 'photo_caption_levels', {'1': t('ui.settings.photo_caption_levels_1'), '2': t('ui.settings.photo_caption_levels_2'),
+     '3': t('ui.settings.photo_caption_levels_3'), 'all': t('ui.settings.photo_caption_levels_all')}),
+    ('input_boolean', 'settings_advanced')]) ]]
       # The albums: a summary and the album picker, a dialog that filters, sorts and saves once
       # (photo-albums-card). Its own section, the second: the right column next to Basic
       # (max_columns 2); the rest below.
