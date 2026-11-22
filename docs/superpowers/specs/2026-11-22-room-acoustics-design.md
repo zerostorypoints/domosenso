@@ -218,19 +218,37 @@ which level it needs and withholds its result when that level is missing.
 
 **Rules for the model.**
 
-- *(My call)* **Format.** The model is a HiFiSync room model, for example `hifisync.room-model.v1`:
-  - it uses the fitted room frame: x and y as in HiFiSync, z up from the floor, in metres;
-  - the app converts Apple's `CapturedRoom` and the placement registration into it;
-  - the schema is published in `hifisync-acoustics`, because the engine consumes it, and
-    HiFiSync's lib writes it.
+- **A simplified model, decided by the maintainer on 2026-11-22.** The 3D data that leaves the
+  phone is a simplified room model, `hifisync.room-model.v1`, made for visualisation and
+  acoustics. It is not Apple's scan. The app derives it from `CapturedRoom` and the placement
+  registration.
 
-  The engine never parses Apple's own format, which changes with iOS and carries an opaque
-  `coreModel`. It never receives the world map or the photo.
-- **Path.** Phone to engine on the local network only, when the user chooses to send it, with an
-  engine token. Not through the HiFiSync server. This changes a HiFiSync decision: the decision
-  of 2026-09-06 lets only the wall summary leave RoomPlan. The model is parametric geometry, not
-  a mesh or images, and goes to a device the user owns. The change needs a HiFiSync decision
-  entry and is its owner's call.
+  It contains:
+  - **The frame.** The fitted room frame: x and y as in HiFiSync, z up from the floor, metres
+    rounded to 1 cm.
+  - **Boundary surfaces.** Walls, floor and ceiling as planar polygons, each with its kind and
+    the per-edge provenance. A curved wall becomes straight segments.
+  - **Openings.** Windows, doors and openings as rectangles on their host wall: offset along the
+    wall, sill height, width and height.
+  - **Large objects.** Only objects that matter to sound or are needed to read the drawing, as
+    boxes with a coarse kind: sofa, bed, storage, table, television. Small items and chairs are
+    left out.
+  - **Placement.** Speakers (acoustic centre if known, top, aim), seats with head position and
+    the main seat, subwoofers and measurement nodes.
+  - **Provenance.** One coarse confidence per surface and the scan and placement ids.
+
+  It leaves out:
+  - Apple's element identifiers, attributes and opaque `coreModel`;
+  - sections outside the room and other stories;
+  - the world map, the photo, any mesh or image.
+
+  The same model drives the engine's analysis, HiFiSync's 3D or plan views and Frame's Room
+  screen. The schema is published in `hifisync-acoustics`, because a public engine consumes it;
+  HiFiSync's lib writes it.
+- **Path, decided on 2026-11-22.** The model goes from the phone to the user's own engine on the
+  local network only, when the user chooses to send it, with an engine token. It does not go
+  through the HiFiSync server. This amends HiFiSync's decision of 2026-09-06, which lets only the
+  wall summary leave RoomPlan. The amendment is recorded in HiFiSync's decision log.
 - **One scan per room model.** Level 1 is a projection of level 2. The engine stores the scan id,
   the placement id and the model version. Every result names the model version it was computed
   from. The engine refuses a level 1 and a level 2 from different scans in the same room.
@@ -421,8 +439,8 @@ in the spec of each step. The private HiFiSync repositories are outside the plan
   read from the first calibration.
 - Changing HiFiSync's decision log entry on acoustic measurement belongs to the HiFiSync repository
   and its owner.
-- HiFiSync decision entry allowing the level-2 room model to leave the phone to the user's own
-  engine on the local network (HiFiSync's owner).
+- The HiFiSync decision-log entry for the simplified room model (approved 2026-11-22) still has to
+  be written in the `hifisync` repository.
 - Whether HiFiSync's catalogue holds tweeter height and directivity for enough speakers to
   predict reflection levels.
 - The QR code on the node's OLED and its payload (node identity only, no secret).
