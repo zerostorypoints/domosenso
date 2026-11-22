@@ -24,5 +24,13 @@
         ]
       }
     }
+  },
+  "wind": {
+    "level": {
+      "calm": "Ruhig",
+      "breezy": "Frischer Wind",
+      "strong": "Starker Wind",
+      "gale": "Sturm"
+    }
   }
 }

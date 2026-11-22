@@ -23,6 +23,24 @@
     },
     "clock": {
       "wind": "Wind {speed} {unit}",
+      "wind_judged": "{level}, {speed} km/h",
+      "wind_gust": "Böen {gust}",
+      "wind_level": {
+        "calm": "Ruhig",
+        "breezy": "Frischer Wind",
+        "strong": "Starker Wind",
+        "gale": "Sturm"
+      },
+      "direction": {
+        "N": "N",
+        "NE": "NO",
+        "E": "O",
+        "SE": "SO",
+        "S": "S",
+        "SW": "SW",
+        "W": "W",
+        "NW": "NW"
+      },
       "condition": {
         "clear-night": "Klare Nacht",
         "cloudy": "Bewölkt",
@@ -220,6 +238,53 @@
       "dismiss": "Alarm quittieren",
       "sound_enable": "Ton hier aktivieren · nur im Vordergrund, kein Hintergrundalarm",
       "sound_enabled": "Ton hier aktiviert · nur im Vordergrund, kein Hintergrundalarm"
+    },
+    "weather": {
+      "level": {
+        "calm": "Ruhig",
+        "breezy": "Frischer Wind",
+        "strong": "Starker Wind",
+        "gale": "Sturm"
+      },
+      "direction": {
+        "N": "N",
+        "NE": "NO",
+        "E": "O",
+        "SE": "SO",
+        "S": "S",
+        "SW": "SW",
+        "W": "W",
+        "NW": "NW"
+      },
+      "gusts": "Böen {gust} km/h",
+      "until": "bis {time}",
+      "until_day": "bis {day} {time}",
+      "warning": {
+        "yellow": "Gelbe Warnung",
+        "orange": "Orange Warnung",
+        "red": "Rote Warnung",
+        "any": "Wetterwarnung"
+      },
+      "type": {
+        "wind": "Wind",
+        "snow_ice": "Schnee und Eis",
+        "thunderstorm": "Gewitter",
+        "fog": "Nebel",
+        "heat": "Hitze",
+        "cold": "Kälte",
+        "coastal": "Küstenereignis",
+        "forest_fire": "Waldbrand",
+        "avalanche": "Lawinen",
+        "rain": "Regen",
+        "flood": "Hochwasser",
+        "rain_flood": "Regen und Hochwasser",
+        "other": "Warnung"
+      },
+      "more": "+{count}",
+      "button": "Wetterwarnungen",
+      "title": "Wetterwarnungen",
+      "close": "Schliessen",
+      "none": "Keine amtlichen Warnungen in Kraft."
     }
   },
   "ui": {
@@ -367,6 +432,11 @@
       "near_s": "Nah während",
       "controls_hold_s": "Bedienung bleibt während",
       "lux_max": "Licht für volle Helligkeit",
+      "weather": "Wetter",
+      "weather_wind_breezy": "Frischer Wind ab",
+      "weather_wind_strong": "Starker Wind ab",
+      "weather_wind_gale": "Sturm ab",
+      "weather_wind_how": "Mittlerer Wind in km/h (eine Böe zählt ab dem 1,5-Fachen einer Schwelle). Ab frischem Wind nennt die Uhr den Wind. Ab starkem Wind oder bei einer amtlichen Warnung jeder Art bietet die Bedienung die Liste der Warnungen, und wenn eingeschaltet, erscheint das Wetterbanner (auf der Klima-Seite in seiner Wetterzeile). Einstellungen der Wetter-Komponente: Pocket zeigt dieselben Stufen.",
       "theme_mode": "Design",
       "settings_advanced": "Erweiterte Einstellungen zeigen",
       "page_climate": "Klima in der Rotation",
@@ -606,7 +676,13 @@
       "music_mode": "Wiedergabe an der Wand",
       "music_mode_takeover": "Während Musik läuft, bleibt die Wiedergabe an der Wand; ein Wischen auf der Bedienung zeigt die Rotation.",
       "music_mode_rotation": "Während Musik läuft, geht die Rotation weiter, und die Wiedergabe ist eine weitere Ansicht darin, einmal pro Durchgang.",
-      "music_turn_s": "Now-Playing-Dauer"
+      "music_turn_s": "Now-Playing-Dauer",
+      "weather_banner": "Wetterbanner",
+      "weather_banner_s": "Wetterbanner-Text für",
+      "weather_banner_icon": "Über den Ambient-Seiten: der ganze Text für die eingestellte Zeit, dann nur sein Symbol, bis sich die Warnungen oder der Wind ändern.",
+      "weather_banner_hide": "Über den Ambient-Seiten: der ganze Text für die eingestellte Zeit, dann nichts, bis sich die Warnungen oder der Wind ändern.",
+      "weather_banner_always": "Über den Ambient-Seiten: der ganze Text, solange das Banner zu sehen ist.",
+      "weather_banner_off": "Keine Anzeige. Die Warnungen bleiben auf der Bedienung."
     },
     "exit": {
       "button": "Verlassen"

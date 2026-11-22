@@ -395,6 +395,57 @@
           "exceptional": "Exceptional"
         }
       },
+      "wind": {
+        "level": {
+          "calm": "Calm",
+          "breezy": "Breezy",
+          "strong": "Strong wind",
+          "gale": "Gale"
+        },
+        "speed": "{value} km/h",
+        "speed_from": "{value} km/h {direction}",
+        "with_gusts": "{text}, gusts {gust}",
+        "gusts_only": "gusts {gust} km/h",
+        "leveled": "{level} · {text}",
+        "chip": "{level} · {text}",
+        "direction": {
+          "N": "N",
+          "NE": "NE",
+          "E": "E",
+          "SE": "SE",
+          "S": "S",
+          "SW": "SW",
+          "W": "W",
+          "NW": "NW"
+        }
+      },
+      "warnings": {
+        "type": {
+          "wind": "Wind",
+          "snow_ice": "Snow and ice",
+          "thunderstorm": "Thunderstorm",
+          "fog": "Fog",
+          "heat": "Heat",
+          "cold": "Cold",
+          "coastal": "Coastal event",
+          "forest_fire": "Forest fire",
+          "avalanche": "Avalanche",
+          "rain": "Rain",
+          "flood": "Flood",
+          "rain_flood": "Rain and flood",
+          "other": "Warning"
+        },
+        "level": {
+          "yellow": "Yellow warning",
+          "orange": "Orange warning",
+          "red": "Red warning"
+        },
+        "more": "{text} +{count}",
+        "detail": "{level} · {until}",
+        "until": "until {time}",
+        "until_day": "until {day} {time}",
+        "list": "Weather warnings"
+      },
       "sensors": {
         "title": "All sensors",
         "state": {

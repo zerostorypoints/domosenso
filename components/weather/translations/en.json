@@ -24,5 +24,13 @@
         ]
       }
     }
+  },
+  "wind": {
+    "level": {
+      "calm": "Calm",
+      "breezy": "Breezy",
+      "strong": "Strong wind",
+      "gale": "Gale"
+    }
   }
 }

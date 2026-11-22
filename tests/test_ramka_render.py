@@ -186,6 +186,136 @@ def test_no_wind_sensor_no_banner(tmp_path):
         assert not wind_banners(rendered[f"dashboard.{lang}.yaml"], text)
 
 
+# ---- SPEC-056: the weather component's banner, the controls' warnings, the Climate line ---------
+def cards_of(node, kind):
+    return [c for c in walk(node) if isinstance(c, dict) and c.get("type") == f"custom:{kind}"]
+
+
+CLIMATE_ON_SCREEN = [{"entity": "input_select.ramka_ambient", "state": "climate"},
+                     {"entity": "binary_sensor.ramka_music_view", "state": "off"}]
+
+
+def test_weather_banner_floats_over_the_ambient_pages_but_climate(demo):
+    """One floating card per dashboard, in the gestures section: no row of its own, so no screen
+    loses height (every screen is calc(100dvh - fixed px)); over the ambient pages only, hidden
+    while the Climate page is on screen (the climate section's own conditions, mode ambient being
+    the card's); the awnings' sensor, when the home has one, is passed so their banner wins. Its
+    texts: weather-banner-card.test.mjs."""
+    awnings = demo_inputs()["wind_sensor"]
+    for lang in LANGS:
+        dashboard = demo[f"dashboard.{lang}.yaml"]
+        [card] = cards_of(dashboard, "weather-banner-card")
+        assert card == {"type": "custom:weather-banner-card", "mode": "input_select.ramka_mode",
+                        "modes": ["ambient"], "hide_when": CLIMATE_ON_SCREEN, "awnings": awnings,
+                        "style": "input_select.ramka_weather_banner", "seconds": "input_number.ramka_weather_banner_s"}, lang
+        [climate] = [s for s in sections(dashboard) if cards_of(s, "clock-weather-card") and
+                     any(c.get("entity") == "input_select.ramka_ambient" for c in s.get("visibility", []))]
+        assert [{"entity": c["entity"], "state": c["state"]} for c in climate["visibility"]] == \
+            [{"entity": "input_select.ramka_mode", "state": "ambient"}, *reversed(CLIMATE_ON_SCREEN)], lang
+        assert not cards_of(dashboard, "wind-banner-card"), lang
+
+
+def test_weather_banner_without_climate_or_wind_sensor(tmp_path):
+    inputs = demo_inputs()
+    del inputs["wind_sensor"]
+    del inputs["climate"]
+    rendered = render(tmp_path, inputs)
+    for lang in LANGS:
+        [card] = cards_of(rendered[f"dashboard.{lang}.yaml"], "weather-banner-card")
+        assert "awnings" not in card and "hide_when" not in card, lang
+
+
+def test_controls_weather_warnings_button(demo, tmp_path):
+    """The controls' warnings: a floating card in the gestures section (no row: the controls get no
+    taller), on the controls only, keeping them up through show_controls; with the floor plan it
+    hides while the plan is up."""
+    for lang in LANGS:
+        [card] = cards_of(demo[f"dashboard.{lang}.yaml"], "weather-warnings-card")
+        assert card == {"type": "custom:weather-warnings-card", "mode": "input_select.ramka_mode",
+                        "modes": ["controls"], "keep": "script.ramka_show_controls"}, lang
+    [card] = cards_of(render(tmp_path, with_floorplan())["dashboard.en.yaml"], "weather-warnings-card")
+    assert card["hide_when"] == [{"entity": "input_boolean.ramka_controls_plan", "state": "on"}]
+
+
+def test_climate_weather_widget_carries_the_warning_line(demo):
+    """The Climate page's clock-weather-card names the banner's select (the line follows its off);
+    the now-playing screen's keeps today's line."""
+    for lang in LANGS:
+        clocks = cards_of(demo[f"dashboard.{lang}.yaml"], "clock-weather-card")
+        assert [c.get("warnings") for c in clocks if c.get("forecast")] == ["input_select.ramka_weather_banner"], lang
+        assert [c for c in clocks if not c.get("forecast") and "warnings" in c] == [], lang
+        assert {c["grid_options"]["rows"] for c in clocks if c.get("forecast")} == {3}, lang
+
+
+def test_preview_frames_layers(demo):
+    """The banner floats over the ambient screens' frames but the Climate page's, and over the
+    now-playing frame, without the mode condition; not over the controls or the calendar. The
+    controls frame floats the warnings button; the Climate frame's widget has the warning line."""
+    for lang in LANGS:
+        preview = demo[f"ramka-preview.{lang}.yaml"]
+        frames = {v["path"]: [c for c in walk(v) if isinstance(c, dict) and c.get("type") == "custom:screen-frame-card"]
+                  for v in preview["views"]}
+        assert {"climate", "air", "calendar", "controls", "music"} <= {p for p, f in frames.items() if f}, lang
+        for path, found in frames.items():
+            for frame in found:
+                layers = frame.get("layers", [])
+                if path in ("calendar", "climate"):
+                    assert not layers, (lang, path)
+                elif path == "controls":
+                    assert layers == [{"type": "custom:weather-warnings-card"}], lang
+                else:
+                    [layer] = layers
+                    assert layer["type"] == "custom:weather-banner-card" and "mode" not in layer, (lang, path)
+                    assert layer["style"] == "input_select.ramka_weather_banner"
+                if path == "climate":
+                    [clock] = cards_of(frame, "clock-weather-card")
+                    assert clock["warnings"] == "input_select.ramka_weather_banner", lang
+
+
+def test_weather_banner_settings_helpers_and_rows(demo):
+    pkg = demo["package.yaml"]
+    # Off first: a fresh helper takes it, so a home that updates sees nothing new.
+    assert pkg["input_select"]["ramka_weather_banner"]["options"] == ["off", "icon", "hide", "always"]
+    assert "ramka_wind_banner" not in pkg["input_select"] and "ramka_wind_banner_s" not in pkg["input_number"]
+    number = pkg["input_number"]["ramka_weather_banner_s"]
+    assert (number["min"], number["max"]) == (5, 600)
+    for lang in LANGS:
+        general = settings_views(demo[f"ramka-settings.{lang}.yaml"])["general"]
+        rows = [r for c in walk(general) if isinstance(c, dict) and c.get("type") == "entities" for r in c["entities"]]
+        [select] = [r for r in rows if r.get("entity") == "input_select.ramka_weather_banner"]
+        assert "input_number.ramka_weather_banner_s" in [r.get("entity") for r in rows], lang
+        assert translations(lang)["ui.settings.weather_banner_off"] in str(select), lang
+
+
+def test_weather_banner_text_default_is_settable(tmp_path):
+    inputs = demo_inputs()
+    inputs["settings_defaults"] = {"weather_banner": "icon"}
+    pkg = render(tmp_path, inputs)["package.yaml"]
+    assert pkg["input_select"]["ramka_weather_banner"]["options"] == ["icon", "off", "hide", "always"]
+
+
+def test_off_description_in_every_language():
+    assert translations("en")["ui.settings.weather_banner_off"] == "No indicator. The warnings stay on the controls."
+    for lang in LANGS:
+        t = translations(lang)
+        assert not [k for k in t if k.startswith("ui.settings.wind_banner") or k.startswith("card.wind.")], lang
+        assert {k.split(".")[-1] for k in t if k.startswith("card.weather.type.")} == {
+            "wind", "snow_ice", "thunderstorm", "fog", "heat", "cold", "coastal", "forest_fire", "avalanche",
+            "rain", "flood", "rain_flood", "other"}, lang
+
+
+def test_settings_general_page_shows_the_wind_thresholds_while_they_exist(demo):
+    for lang in LANGS:
+        general = settings_views(demo[f"ramka-settings.{lang}.yaml"])["general"]
+        [weather] = [s for s in general["sections"]
+                     if "input_number.weather_wind_strong" in {c.get("entity") for c in s.get("visibility", [])}]
+        assert weather["visibility"] == [{"condition": "state", "entity": "input_number.weather_wind_strong",
+                                          "state_not": ["unavailable", "unknown"]}]
+        rows = [r["entity"] for c in weather["cards"] if c["type"] == "entities" for r in c["entities"]]
+        assert rows == [f"input_number.weather_wind_{k}" for k in ("breezy", "strong", "gale")] + \
+            ["input_select.ramka_weather_banner", "input_number.ramka_weather_banner_s"], lang
+
+
 def skip_buttons(dashboard, lang):
     labels = {translations(lang)[f"ui.media.{k}"] for k in ("previous", "next")}
     return [n for n in walk(dashboard) if n.get("type") == "custom:tap-button-card" and n.get("name") in labels]
@@ -762,6 +892,8 @@ def test_music_visual_bad_input_fails(tmp_path, inputs, message):
 # SPEC-054: how the now-playing card shares ambient, the Music page's, a seed group of its own;
 # takeover (today's behaviour) by default. Every fixture here has a media player.
 MUSIC_TURN_DEFAULTS = {"input_select.ramka_music_mode": "takeover", "input_number.ramka_music_turn_s": 30}
+# SPEC-056: the weather banner's settings, General's, a seed group of their own; off by default.
+WEATHER_DEFAULTS = {"input_select.ramka_weather_banner": "off", "input_number.ramka_weather_banner_s": 30}
 PRESENCE_NUMBERS = ["off_delay_s", "brightness_min", "brightness_max", "near_cm", "near_s", "controls_hold_s", "lux_max"]
 MUSIC_DB = ["music_spectrum_neutral_db", "music_spectrum_hot_db", "music_level_neutral_db", "music_level_hot_db"]
 # The catalog's defaults (SPEC-021, Provides): what the reset writes in a home without
@@ -775,6 +907,7 @@ DEFAULTS = {
     **{f"input_boolean.ramka_page_{v}": "on" for v in PAGE_VIEWS},
     **PHOTO_DEFAULTS, **PLANT_SETTINGS, **AIR_DEFAULTS, **CLIMATE_THRESHOLDS, **CLIMATE_NEUTRAL, **CLIMATE_SLOTS,
     **MUSIC_TURN_DEFAULTS,
+    **WEATHER_DEFAULTS,
 }
 EQ_KEYS = ["sub", "bass", "low_mid", "mid", "presence", "air"]
 # Custom's look (spec 5): its own group, so an upgraded home whose music window is tuned still gets
@@ -833,6 +966,7 @@ GROUP_OF = {
     **{e: "presence_display" for e in DEFAULTS},
     "input_select.ramka_theme_mode": "pages", "input_boolean.ramka_settings_advanced": "pages",
     **{e: "music_turn" for e in MUSIC_TURN_DEFAULTS},
+    **{e: "weather" for e in WEATHER_DEFAULTS},
     **{f"input_boolean.ramka_page_{v}": "pages" for v in PAGE_VIEWS},
     **{e: "music_visual" for e in MUSIC_DEFAULTS}, **{e: "music_look" for e in LOOK_DEFAULTS},
     **{e: "music_profiles" for e in PROFILE_DEFAULTS},
@@ -1054,9 +1188,9 @@ def test_seed_rule_keeps_tuned_values(demo, plain):
     package = demo["package.yaml"]
     fresh = at_minimum(package)
     music = ["music_visual", "music_look", "music_profiles"]
-    assert seed_groups(package, fresh) == ["pages", "presence_display", "music_turn", *music, "photos", "plants", "air", "climate", "climate_slots"]
+    assert seed_groups(package, fresh) == ["pages", "presence_display", "music_turn", "weather", *music, "photos", "plants", "air", "climate", "climate_slots"]
     upgraded = {**fresh, "input_number.ramka_off_delay_s": 600.0}
-    assert seed_groups(package, upgraded) == ["pages", "music_turn", *music, "photos", "plants", "air", "climate", "climate_slots"]
+    assert seed_groups(package, upgraded) == ["pages", "music_turn", "weather", *music, "photos", "plants", "air", "climate", "climate_slots"]
     on_purpose = {**tuned(package), "input_number.ramka_near_s": 1.0}
     assert seed_groups(package, on_purpose, rooms=[]) == ["pages", *music]
     seeded = {**tuned(package), "input_boolean.ramka_settings_seeded": "on"}
@@ -1078,13 +1212,13 @@ def test_seed_rule_keeps_tuned_values(demo, plain):
                                                                      if e.startswith("input_number.")}}, rooms=[])
     # unknown and unavailable count as untouched.
     unknown = {**fresh, "input_number.ramka_lux_max": "unknown", "input_number.ramka_near_cm": "unavailable"}
-    assert seed_groups(package, unknown) == ["pages", "presence_display", "music_turn", *music, "photos", "plants", "air", "climate", "climate_slots"]
+    assert seed_groups(package, unknown) == ["pages", "presence_display", "music_turn", "weather", *music, "photos", "plants", "air", "climate", "climate_slots"]
     # Without music_visual there is no music group at all.
-    assert seed_groups(plain["package.yaml"], at_minimum(plain["package.yaml"])) == ["pages", "presence_display", "music_turn", "photos", "plants", "air", "climate", "climate_slots"]
+    assert seed_groups(plain["package.yaml"], at_minimum(plain["package.yaml"])) == ["pages", "presence_display", "music_turn", "weather", "photos", "plants", "air", "climate", "climate_slots"]
     # Photos and air are seeded while untouched after the flag too: a home that ran 0.4.0 before
     # amendment 1 gets them at its next start (unknown), one that tuned them keeps them.
     assert seed_groups(plain["package.yaml"], {**at_minimum(plain["package.yaml"]),
-                                               "input_boolean.ramka_settings_seeded": "on"}, rooms=[]) == ["music_turn", "photos", "plants", "air", "climate_slots"]
+                                               "input_boolean.ramka_settings_seeded": "on"}, rooms=[]) == ["music_turn", "weather", "photos", "plants", "air", "climate_slots"]
     one_tuned = {**music_tuned, "input_number.ramka_photo_count": "unknown", "input_number.ramka_photo_s": "unknown",
                  **{f"input_number.ramka_air_{k}": "unknown" for k in AIR_LIMITS}, "input_number.ramka_air_co2_high": 1500.0}
     assert seed_groups(package, one_tuned, rooms=[]) == ["photos"]
@@ -1121,7 +1255,7 @@ def test_reset_page_and_groups(demo):
     assert run_reset(package) == everything
     for page in ["general"] + PAGE_VIEWS + ["controls", "music_live"]:
         assert set(run_reset(package, page=page)) == {e for e in everything if PAGE_OF[e] == page}, page
-    for group in ("presence_display", "pages", "music_turn", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate",
+    for group in ("presence_display", "pages", "music_turn", "weather", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate",
                   "climate_slots"):
         assert set(run_reset(package, groups=[group])) == {e for e in everything if GROUP_OF[e] == group}, group
     assert set(run_reset(package, groups="pages")) == {e for e in everything if GROUP_OF[e] == "pages"}
@@ -1140,7 +1274,7 @@ def test_reset_page_and_groups(demo):
     fields = reset_script(package)["fields"]
     assert set(fields) == {"page", "groups"}
     assert fields["page"]["selector"]["select"]["options"] == ["general"] + PAGE_VIEWS + ["controls", "music_live", "music_sensor"]
-    assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_turn", "music_visual", "music_look", "music_profiles",
+    assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_turn", "weather", "music_visual", "music_look", "music_profiles",
                                                                  "photos", "plants", "air", "climate", "climate_slots"]
 
 

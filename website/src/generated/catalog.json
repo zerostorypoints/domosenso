@@ -659,9 +659,9 @@
     },
     {
       "id": "lights",
-      "version": "0.4.0",
-      "sourceTag": "lights/0.4.0",
-      "sourceCommit": "61f07374ef99bdc2522346a181fbd955b9f9c28b",
+      "version": "0.5.1",
+      "sourceTag": "lights/0.5.1",
+      "sourceCommit": "4a4c04ca3a286a51df07b70eb29cebcb4bd14c25",
       "summary": "Philips Hue lights per room, from the bridge's room groups",
       "requirements": [
         {
@@ -680,6 +680,22 @@
         },
         {
           "name": "template",
+          "source": "core"
+        },
+        {
+          "name": "statistics",
+          "source": "core"
+        },
+        {
+          "name": "input_boolean",
+          "source": "core"
+        },
+        {
+          "name": "automation",
+          "source": "core"
+        },
+        {
+          "name": "logbook",
           "source": "core"
         }
       ],
@@ -721,10 +737,15 @@
           "name": "battery_sensors",
           "type": "list[entity_id]",
           "required": false
+        },
+        {
+          "name": "presence_rooms",
+          "type": "list[{group, name, presence, illuminance?, dark_below?, off_after?, distance?, id?}]",
+          "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/61f07374ef99bdc2522346a181fbd955b9f9c28b/components/lights",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/61f07374ef99bdc2522346a181fbd955b9f9c28b/components/lights/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/4a4c04ca3a286a51df07b70eb29cebcb4bd14c25/components/lights",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/4a4c04ca3a286a51df07b70eb29cebcb4bd14c25/components/lights/UPGRADE.md"
     },
     {
       "id": "media",
@@ -902,9 +923,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.21.1",
-      "sourceTag": "ramka/0.21.1",
-      "sourceCommit": "3fe3ed7ce0521bfb720b8f4ba2fe0f7af7309247",
+      "version": "0.22.1",
+      "sourceTag": "ramka/0.22.1",
+      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -1235,7 +1256,7 @@
         },
         {
           "name": "settings_defaults",
-          "type": "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light}",
+          "type": "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light, music_mode?: takeover | rotation, music_turn_s?}",
           "required": false
         },
         {
@@ -1244,8 +1265,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/3fe3ed7ce0521bfb720b8f4ba2fe0f7af7309247/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/3fe3ed7ce0521bfb720b8f4ba2fe0f7af7309247/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/61c970d831c969671e570db81dc2735897c5b500/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/61c970d831c969671e570db81dc2735897c5b500/components/ramka/UPGRADE.md"
     },
     {
       "id": "timers",

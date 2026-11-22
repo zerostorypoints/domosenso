@@ -23,6 +23,24 @@
     },
     "clock": {
       "wind": "wind {speed} {unit}",
+      "wind_judged": "{level}, {speed} km/h",
+      "wind_gust": "gusts {gust}",
+      "wind_level": {
+        "calm": "Calm",
+        "breezy": "Breezy",
+        "strong": "Strong wind",
+        "gale": "Gale"
+      },
+      "direction": {
+        "N": "N",
+        "NE": "NE",
+        "E": "E",
+        "SE": "SE",
+        "S": "S",
+        "SW": "SW",
+        "W": "W",
+        "NW": "NW"
+      },
       "condition": {
         "clear-night": "Clear night",
         "cloudy": "Cloudy",
@@ -220,6 +238,53 @@
       "dismiss": "Dismiss alarm",
       "sound_enable": "Enable sound here · foreground only, no background alarm",
       "sound_enabled": "Sound enabled here · foreground only, no background alarm"
+    },
+    "weather": {
+      "level": {
+        "calm": "Calm",
+        "breezy": "Breezy",
+        "strong": "Strong wind",
+        "gale": "Gale"
+      },
+      "direction": {
+        "N": "N",
+        "NE": "NE",
+        "E": "E",
+        "SE": "SE",
+        "S": "S",
+        "SW": "SW",
+        "W": "W",
+        "NW": "NW"
+      },
+      "gusts": "gusts {gust} km/h",
+      "until": "until {time}",
+      "until_day": "until {day} {time}",
+      "warning": {
+        "yellow": "Yellow warning",
+        "orange": "Orange warning",
+        "red": "Red warning",
+        "any": "Weather warning"
+      },
+      "type": {
+        "wind": "Wind",
+        "snow_ice": "Snow and ice",
+        "thunderstorm": "Thunderstorm",
+        "fog": "Fog",
+        "heat": "Heat",
+        "cold": "Cold",
+        "coastal": "Coastal event",
+        "forest_fire": "Forest fire",
+        "avalanche": "Avalanche",
+        "rain": "Rain",
+        "flood": "Flood",
+        "rain_flood": "Rain and flood",
+        "other": "Warning"
+      },
+      "more": "+{count}",
+      "button": "Weather warnings",
+      "title": "Weather warnings",
+      "close": "Close",
+      "none": "No official warnings in effect."
     }
   },
   "ui": {
@@ -367,6 +432,11 @@
       "near_s": "Near for",
       "controls_hold_s": "Controls stay up for",
       "lux_max": "Light for full brightness",
+      "weather": "Weather",
+      "weather_wind_breezy": "Breezy from",
+      "weather_wind_strong": "Strong wind from",
+      "weather_wind_gale": "Gale from",
+      "weather_wind_how": "Sustained wind in km/h (a gust counts at 1.5 times a threshold). From breezy the clock names the wind. From strong, or with an official warning of any kind, the controls offer the warnings list and, when it is on, the weather banner shows (on the Climate page in its weather line). The weather component's settings: Pocket shows the same levels.",
       "theme_mode": "Theme",
       "settings_advanced": "Show advanced settings",
       "page_climate": "Climate in the rotation",
@@ -606,7 +676,13 @@
       "music_mode": "Now playing on the wall",
       "music_mode_takeover": "While the music plays, Now playing stays on the wall; a swipe on the controls shows the rotation.",
       "music_mode_rotation": "While the music plays, the rotation keeps running and Now playing is one more view of it, once per pass.",
-      "music_turn_s": "Now playing time"
+      "music_turn_s": "Now playing time",
+      "weather_banner": "Weather banner",
+      "weather_banner_s": "Weather banner text for",
+      "weather_banner_icon": "Over the ambient pages: its full text for the set time, then only its icon, until the warnings or the wind change.",
+      "weather_banner_hide": "Over the ambient pages: its full text for the set time, then nothing, until the warnings or the wind change.",
+      "weather_banner_always": "Over the ambient pages: its full text for as long as it shows.",
+      "weather_banner_off": "No indicator. The warnings stay on the controls."
     },
     "exit": {
       "button": "Exit"
