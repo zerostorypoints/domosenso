@@ -106,8 +106,6 @@ settings dashboard: this one adds the caption setting there.
 
 - How a photo source lays out its tree (the integration that mirrors a library is its own project).
 - Weighting the draw by photo count, or hiding a year folder from captions by itself.
-- A tree for the folders whose path is longer than the 255 characters `input_text.<prefix>_photo`
-  holds: such photos are left out of the draw and named in the log (PHOTOS.md says so).
 
 ## Open questions
 
@@ -115,3 +113,18 @@ settings dashboard: this one adds the caption setting there.
   recorded attributes (the state stays, the recorder skips it and logs a warning). Inference: a
   library of about 150 albums in three levels gives roughly 120 paths, about 6 KB. A smaller form
   (branch points only) is possible if real homes pass the limit.
+
+## Amendment 1 (2026-11-22): long paths are shown
+
+The owner: a photo whose path is longer than the 255 characters `input_text.<prefix>_photo` holds
+is shown, not left out; a caption longer than the screen ends in "…".
+
+- The picker and the index give such a photo a short stand-in: a hard link (a copy where the file
+  system has none) at `<photo_dir>/@ramka-long/<first 16 hex of the path's SHA-1>.jpg`. The draw
+  takes turns over the real folders as before; only the path it hands to the loop is the stand-in.
+  The index lists the photo under the stand-in's path with its real `event` and `folder`, so the
+  caption and the caption levels read as for any photo.
+- `@ramka-long` starts with `@`, so neither the draw, the album list nor the index counts it as a
+  folder of photos. The index removes stand-ins no photo needs any more.
+- The caption's lines already end in "…" where they pass the screen's width (CSS ellipsis); kept,
+  and tested with a long folder path.
