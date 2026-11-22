@@ -192,3 +192,14 @@ def test_an_old_rotation_file_is_read(tmp_path):
     assert json.loads(run("ramka_pick.py", root, 1).stdout)["folder"] == "2026/Bern"  # 2025 had its turn
     rotation = json.loads((tmp_path / "www" / ".ramka_rotation.json").read_text(encoding="utf-8"))
     assert set(rotation) == {"cycles", "last", "photos"} and rotation["photos"]["2025/Porto"] == ["a.jpg"]
+
+
+def test_a_path_too_long_for_the_photo_helper_is_left_out(tmp_path):
+    root = tmp_path / "www" / "ramka"
+    deep = root / "trip" / ("x" * 130) / ("y" * 130)  # 272 characters with the file
+    photo(deep / "a.jpg")
+    photo(root / "garden" / "b.jpg")
+    for _ in range(3):
+        result = run("ramka_pick.py", root, 1)
+        assert json.loads(result.stdout)["photos"] == ["garden/b.jpg"]
+    assert "longer than 255 characters" in result.stderr

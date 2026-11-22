@@ -504,7 +504,7 @@
       "calendar_by_url": "Kalendarz z adresu URL",
       "calendar_by_url_how": "Bez logowania do konta: [link ICS](/config/integrations/dashboard/add?domain=remote_calendar) (Remote calendar, odświeżany raz dziennie) albo [konto CalDAV](/config/integrations/dashboard/add?domain=caldav) (adres serwera, użytkownik i hasło aplikacji, odświeżane co 15 minut). Potem wpisz nową encję `calendar.*` w `calendar` w `domosenso/ramka.inputs.yaml`, uruchom `domosenso render ramka` i wdróż.",
       "photo_albums": "Albumy",
-      "photo_albums_how": "Serie zdjęć pochodzą z wybranych albumów, czyli folderów najwyższego poziomu w folderze zdjęć. Wybierz albumy otwiera listę: przefiltruj ją po nazwie, posortuj po dacie w nazwie, zaznacz lub odznacz to, co pokazuje, i Zapisz. Wszystkie albumy obejmuje także albumy dodane później. Lista nadąża za folderem w ciągu 15 minut.",
+      "photo_albums_how": "Serie zdjęć pochodzą z wybranych albumów: folderów w folderze zdjęć, pokazanych jako drzewo. Zaznaczenie folderu wybiera wszystko, co w nim jest. Wybierz albumy otwiera listę: przefiltruj ją po ścieżce folderu, posortuj po dacie w nazwie (w obrębie każdego folderu), zaznacz lub odznacz to, co pokazuje, i Zapisz. Wszystkie albumy obejmuje także albumy dodane później. Lista nadąża za folderem w ciągu 15 minut.",
       "photo_count": "Zdjęć w serii",
       "photo_s": "Czas na zdjęcie",
       "photo_caption_levels": "Poziomy folderów w podpisie",

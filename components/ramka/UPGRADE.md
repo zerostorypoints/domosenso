@@ -3,6 +3,25 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
+## Unreleased (SPEC-056)
+
+### A photo folder tree
+
+The photos page reads a folder tree under `photo_dir`. Nothing to do for a flat folder: captions,
+albums and the draw stay as they were.
+
+- **Folder levels in the caption**, a new setting on the Photos page (`input_select.<prefix>_photo_caption_levels`:
+  `1`, `2`, `3`, `all`; `1` by default and after the reset): the caption names the photo's folder
+  and, from 2 up, the folders above it (`Lisbon › Day 1`).
+- **The album picker shows every folder with photos at some depth as a tree**; a choice is a folder
+  path and includes everything inside it. Choices made before (top-level names) keep working.
+- **The draw takes turns level by level**: the top-level folders, then the folders inside the one
+  drawn, and so on (PHOTOS.md). A nested tree's shares change; a flat one draws as before. The
+  rotation file `.ramka_rotation.json` takes a new shape: the top-level cycle carries over, the rest
+  starts anew once.
+- Photos whose path is longer than 255 characters are left out of the draw (they could not be
+  shown) and counted in the picker's log.
+
 ## 0.22.1
 
 ### The only transport button fills its row

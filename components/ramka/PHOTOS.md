@@ -7,13 +7,14 @@ agent answering an owner's question, and for the owner. Read from the code of th
 
 ## In short
 
-- **An event is a folder.** The caption's name is the name of the folder the photo lies in,
-  exactly as it is written on disk. Nothing else names it: no album, no tag, no EXIF field.
-- **The albums take turns.** An album is a top-level folder of `photo_dir`. Each time the photos
-  page comes round, the next album of the running cycle shows, then the next event inside it, then
-  up to five of that event's photos not yet shown (the Photos page's count), ten seconds each.
-  Every album comes once per cycle, however many events or photos it holds, and every photo of an
-  event comes before any comes again.
+- **An event is a folder.** The caption names the folder the photo lies in, exactly as it is
+  written on disk, and with the setting "Folder levels in the caption" also the folders above it
+  (`Lisbon › Day 1`). Nothing else names it: no album, no tag, no EXIF field.
+- **The folders take turns, level by level.** Each time the photos page comes round, the next
+  top-level folder of the running cycle shows, then the next folder inside it, and so on down to a
+  folder's own photos, then up to five of them not yet shown (the Photos page's count), ten seconds
+  each. Every folder comes once per cycle of its parent, however many folders or photos it holds,
+  and every photo of an event comes before any comes again.
 - **The date comes from the photo** (EXIF "date taken"), and only when it has none from the file's
   modification time.
 
@@ -49,33 +50,38 @@ holds only other folders (`2026/`, `07/` above) is no event and never shown by i
 ## Event names come from the file system
 
 The name on screen is the last part of the folder's path, as it is: `2026/07/Lake trip` shows
-`Lake trip`. So:
+`Lake trip`. The Photos page's **Folder levels in the caption** (1, the default, 2, 3 or all) adds
+the folders above it, outermost first: with 2 it shows `07 › Lake trip`, with all `2026 › 07 › Lake
+trip`. So:
 
 - **Name the folder the way it should read**, with spaces, capitals and diacritics (`Urodziny
   babci`, `Wakacje w Grecji`). `lake-trip` shows `lake-trip`: hyphens and underscores are not
   turned into spaces, and nothing is translated.
-- The parent folders only sort the files. A year or a date in the folder name is not needed for
-  the caption: the date is shown anyway, from the photo.
+- With 1 level the parent folders only sort the files; with more they read in the caption too, so
+  name them the way they should read. A year or a date in the folder name is not needed for the
+  caption: the date is shown anyway, from the photo.
 - Two folders with the same name in different places (`2025/07/Summer`, `2026/07/Summer`) are two
   events with the same caption.
 - Renaming a folder renames the event from the next index rebuild (below) on.
 - The whole path of a photo, `<folders>/<file>`, must stay within 255 characters (the length of the
-  helper that holds it). For a longer one Home Assistant logs `Invalid value` and the photo before
-  it stays on screen for those 10 seconds.
+  helper that holds it). A longer one is left out of the draw, and the picker says how many on its
+  error output (the Home Assistant log of `shell_command.<prefix>_pick`).
 
 ## How the draw works
 
 The ambient rotation runs climate → air → plants → photos → status, each page that the home has.
 On the photos page, the loop calls `shell_command.<prefix>_pick`, which runs `ramka_pick.py`. It
-lists every event folder (as above) and groups them by album, the top-level folder they lie in
-(`2026/07/Lake trip` is in album `2026`; `Summer 2025/` is an album of one event). With albums
-chosen on the settings dashboard's Photos page, only those count. Then it keeps three cycles:
+lists every event folder (as above) and the folders above them: the photo tree. With albums chosen
+on the settings dashboard's Photos page (folder paths, `2026` or `2026/07`), only the folders inside
+them count. Then it walks down the tree, keeping a cycle at every folder:
 
-1. **Albums.** It takes an album not yet shown in the running cycle, at random among those left.
-   Once every album has had its turn, a new cycle starts, leaving out the album shown last, so no
-   album comes twice in a row (unless it is the only one).
-2. **Events in that album.** The same way: an event of the album not yet shown in the album's own
-   cycle. An album with one event shows that one each time.
+1. **At the top**, the top-level folders take turns: one not yet shown in the running cycle, at
+   random among those left. Once every one has had its turn, a new cycle starts, leaving out the
+   one shown last, so none comes twice in a row (unless it is the only one).
+2. **Inside the folder drawn**, its folders take turns the same way, in that folder's own cycle; a
+   folder that holds photos itself counts them as one more turn. The walk goes on down until a
+   folder's own photos are drawn: that folder is the event. `Summer 2025/` with photos and no
+   folders is an event of its own; `2026/07/Lake trip` comes after `2026`, then `07`.
 3. **Photos of that event.** Up to the Photos page's count (default 5) of the event's photos not
    yet shown in its cycle, in random order. When fewer are left, they are shown and the series is
    topped up from the event's next cycle, so a series holds the full count whenever the event has
@@ -93,14 +99,17 @@ series, shorter.
 
 What follows from that:
 
-- **Every album has the same share of series.** With 90 albums, each comes once in every 90
-  series, so a full album cycle takes 90 photo pages (about three hours of ambient mode at one
-  series every two minutes).
+- **Every top-level folder has the same share of series**, every folder inside it the same share of
+  its parent's, and so on: with folders per year, per trip and per day, each year comes as often,
+  each trip of a year as often, each day of a trip as often. A flat `photo_dir` (albums of photos,
+  or of event folders) draws as an album, then an event, then photos. With 90 top-level albums,
+  each comes once in every 90 series (about three hours of ambient mode at one series every two
+  minutes).
 - **A big event takes several turns to show all its photos.** An event of 100 photos, five per
   series, is fully shown after 20 of its album's turns; a small one repeats sooner. Album size
   does not change how often an album comes, only how long its photos last.
-- To show an event more often, make it an album of its own (a top-level folder); to show it less
-  often, move it into another album or out of `photo_dir`.
+- To show an event more often, move it up the tree (a top-level folder comes most often); to show
+  it less often, move it deeper or out of `photo_dir`.
 - An empty `photo_dir` (no event folder) skips the photos page.
 - Nothing is drawn while the music view is on, the tablet is off or in controls mode: the loop
   only runs in ambient mode.
@@ -109,13 +118,13 @@ What follows from that:
 
 The bottom-left corner shows two lines:
 
-1. `<event> · <date>`, the date in the language of the Home Assistant user the tablet is signed in
+1. `<event> · <date>` (with more folder levels set: `<folders› …› event> · <date>`), the date in the language of the Home Assistant user the tablet is signed in
    as (en, de, pl);
 2. camera, lens, focal length, aperture, exposure time and ISO, each only when the photo's EXIF
    has it.
 
 They come from `<photo_dir>/index.json`, which `ramka_index.py` writes (inside the Home Assistant
-container, with its Pillow): one entry per photo with `event` (the folder's name), `date` (EXIF
+container, with its Pillow): one entry per photo with `event` (the folder's name), `folder` (its path, for the caption levels), `date` (EXIF
 DateTimeOriginal, else DateTime, else the file's modification time), size and the camera fields.
 
 The index is rebuilt:

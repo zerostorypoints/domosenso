@@ -16,6 +16,13 @@
 // ticks saved before it. A choice saves only with an album ticked. Without `all` (a sensor from before
 // it), all is none chosen. A chosen album no longer in the folder stays listed, marked, until it is
 // unticked (its folder may come back).
+//
+// A folder tree (SPEC-056): `available` holds every folder with photos at some depth as a path
+// ("2025", "2025/Lisbon"); the picker shows them as a tree, siblings sorted within their parent and
+// indented by depth. Ticking a folder chooses it and everything below it: the folders below show
+// ticked and cannot be unticked on their own. The filter matches the path and shows each match with
+// its parents; Select all and Deselect all act on the topmost matches. Under All albums the
+// top-level folders are ticked. A flat folder (no "/" in any name) works as before.
 
 import { createT, language } from "./lib/i18n.js";
 import en from "../translations/en.json" with { type: "json" };
@@ -50,6 +57,39 @@ export function sortAlbums(names, sort, lang = "en") {
   const cmp = { az: (a, b) => byName(a[0], b[0]), za: (a, b) => byName(b[0], a[0]), newest: byDate(-1), oldest: byDate(1) }[sort];
   return names.map((name) => [name, albumDate(name)]).sort(cmp).map(([name]) => name);
 }
+
+const parentOf = (path) => (path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
+const nameOf = (path) => path.slice(path.lastIndexOf("/") + 1);
+const depthOf = (path) => path.split("/").length - 1;
+const under = (path, top) => path.startsWith(`${top}/`);
+
+// The paths as a tree: each folder followed by the folders inside it, siblings in `sort`'s order by
+// their own name; a path whose parent is not listed starts a branch of its own.
+export function treeOrder(paths, sort, lang = "en") {
+  const set = new Set(paths);
+  const children = new Map();
+  for (const path of paths) {
+    const parent = set.has(parentOf(path)) ? parentOf(path) : "";
+    if (!children.has(parent)) children.set(parent, []);
+    children.get(parent).push(path);
+  }
+  const out = [];
+  const walk = (parent) => {
+    const kids = children.get(parent) || [];
+    const byName = new Map(kids.map((k) => [nameOf(k), k]));
+    const sorted = byName.size === kids.length ? sortAlbums([...byName.keys()], sort, lang).map((n) => byName.get(n))
+      : sortAlbums(kids, sort, lang);
+    for (const kid of sorted) {
+      out.push(kid);
+      if (kid !== "") walk(kid);
+    }
+  };
+  walk("");
+  return out;
+}
+
+// Only the chosen folders not inside another chosen one, in `order`.
+const topmost = (chosen, order) => order.filter((n) => chosen.has(n) && ![...chosen].some((c) => under(n, c)));
 
 const STYLE = `
   ha-card { padding: 12px 16px; display: grid; gap: 10px; }
@@ -144,7 +184,7 @@ class PhotoAlbumsCard extends HTMLElement {
         ? this._t("card.photo_albums.summary_all", { total })
         : this._t("card.photo_albums.summary_some", { n: ticked.length, total });
     if (!this._all) {
-      const names = sortAlbums(ticked, "newest", language(this._hass));
+      const names = sortAlbums(ticked, "newest", language(this._hass)).map((n) => n.split("/").join(" › "));
       const more = names.length - SUMMARY_NAMES;
       root.querySelector(".names").textContent = names.slice(0, SUMMARY_NAMES).join(", ")
         + (more > 0 ? ` ${this._t("card.photo_albums.more", { n: more })}` : "");
@@ -262,17 +302,31 @@ class PhotoAlbumsCard extends HTMLElement {
     return !this._available.includes(name);
   }
 
-  // What shows ticked: under All albums every album in the folder too.
+  // The folders ticked on their own: under All albums every top-level folder too.
   _ticked() {
-    return new Set(this._draft.all ? [...this._available, ...this._draft.chosen] : this._draft.chosen);
+    return new Set(this._draft.all ? [...this._available.filter((n) => !n.includes("/")), ...this._draft.chosen]
+      : this._draft.chosen);
   }
 
+  // Ticked itself or inside a ticked folder.
+  _covered(name, ticked) {
+    return ticked.has(name) || [...ticked].some((t) => under(name, t));
+  }
+
+  // The rows: the folders the filter and the show match, each with its parents, as a tree. The
+  // matches themselves are kept for Select all and Deselect all.
   _shown() {
     const needle = this._filter.trim().toLocaleLowerCase();
     const ticked = this._ticked();
-    const names = this._names().filter((n) => (!needle || n.toLocaleLowerCase().includes(needle))
-      && (this._show === "all" || (this._show === "chosen") === ticked.has(n)));
-    return sortAlbums(names, this._sort, language(this._hass));
+    const names = this._names();
+    const matches = names.filter((n) => (!needle || n.toLocaleLowerCase().includes(needle))
+      && (this._show === "all" || (this._show === "chosen") === this._covered(n, ticked)));
+    const shown = new Set(matches);
+    for (const m of matches) {
+      for (let p = parentOf(m); p; p = parentOf(p)) if (names.includes(p)) shown.add(p);
+    }
+    this._matches = matches;
+    return treeOrder([...shown], this._sort, language(this._hass));
   }
 
   // The rows, drawn again for a new filter, show or sort only, from the top.
@@ -286,12 +340,15 @@ class PhotoAlbumsCard extends HTMLElement {
       const li = document.createElement("li");
       const label = document.createElement("label");
       label.className = "row";
+      li.dataset.depth = String(depthOf(name));
+      label.style.paddingLeft = `${depthOf(name) * 20}px`;
       const box = document.createElement("input");
       box.type = "checkbox";
       box.dataset.name = name;
-      box.checked = ticked.has(name);
+      box.checked = this._covered(name, ticked);
+      box.disabled = !ticked.has(name) && box.checked;
       const span = document.createElement("span");
-      span.textContent = this._isMissing(name) ? `${name} (${this._t("card.photo_albums.missing")})` : name;
+      span.textContent = this._isMissing(name) ? `${name} (${this._t("card.photo_albums.missing")})` : nameOf(name);
       if (this._isMissing(name)) span.className = "missing";
       label.append(box, span);
       li.append(label);
@@ -311,14 +368,18 @@ class PhotoAlbumsCard extends HTMLElement {
   // ticked or unticked a changed row stays until the next filter, show or sort.
   _sync() {
     const ticked = this._ticked();
-    for (const box of this._dialog.querySelectorAll("ul input[type=checkbox]")) box.checked = ticked.has(box.dataset.name);
+    for (const box of this._dialog.querySelectorAll("ul input[type=checkbox]")) {
+      box.checked = this._covered(box.dataset.name, ticked);
+      box.disabled = !ticked.has(box.dataset.name) && box.checked;
+    }
     this._status();
   }
 
   _status() {
     const q = (sel) => this._dialog.querySelector(sel);
     q("input[name=all]").checked = this._draft.all;
-    const n = this._draft.all ? this._available.length : this._draft.chosen.filter((a) => !this._isMissing(a)).length;
+    const ticked = this._ticked();
+    const n = this._draft.all ? this._available.length : this._available.filter((a) => this._covered(a, ticked)).length;
     q(".count").textContent = this._t("card.photo_albums.count", { n, total: this._available.length });
     const empty = !this._draft.all && !this._draft.chosen.length;
     q(".hint").textContent = empty ? this._t("card.photo_albums.pick_one") : "";
@@ -331,7 +392,7 @@ class PhotoAlbumsCard extends HTMLElement {
     if (on) ticked.add(name);
     else ticked.delete(name);
     this._draft.all = false;
-    this._draft.chosen = this._names().filter((n) => ticked.has(n));
+    this._draft.chosen = topmost(ticked, this._names());
     this._sync();
   }
 
@@ -339,12 +400,14 @@ class PhotoAlbumsCard extends HTMLElement {
   _bulk(on) {
     if (on && this._draft.all) return;
     const ticked = this._ticked();
-    for (const name of this._shown()) {
+    this._shown();
+    const matches = new Set(this._matches);
+    for (const name of topmost(matches, this._names())) {
       if (on) ticked.add(name);
-      else ticked.delete(name);
+      else for (const t of [...ticked]) if (t === name || under(t, name)) ticked.delete(t);
     }
     this._draft.all = false;
-    this._draft.chosen = this._names().filter((n) => ticked.has(n));
+    this._draft.chosen = topmost(ticked, this._names());
     this._sync();
   }
 }

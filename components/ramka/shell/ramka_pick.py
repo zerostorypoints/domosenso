@@ -44,6 +44,7 @@ import random
 import sys
 
 STATE_NAME = ".ramka_rotation.json"
+MAX_PATH = 255  # input_text.<prefix>_photo holds "<folder path>/<file>"; a longer one cannot be shown
 
 
 def leaf_folders(root):
@@ -150,8 +151,22 @@ def fresh_state(state, children, folders, all_folders):
     }
 
 
+def showable(folders):
+    """The folders' photos whose "<folder>/<file>" fits the photo helper; the rest is said on stderr."""
+    out, left_out = {}, 0
+    for folder, photos in folders.items():
+        rel = folder.replace(os.sep, "/")
+        keep = [p for p in photos if len(f"{rel}/{p}") <= MAX_PATH]
+        left_out += len(photos) - len(keep)
+        if keep:
+            out[folder] = keep
+    if left_out:
+        print(f"{left_out} photos left out: their path is longer than {MAX_PATH} characters", file=sys.stderr)
+    return out
+
+
 def main(root, count, chosen=()):
-    folders = leaf_folders(root)
+    folders = showable(leaf_folders(root))
     all_folders = folders
     chosen = [os.path.normpath(a.replace("/", os.sep)) for a in chosen if a]
     known = nodes(folders)

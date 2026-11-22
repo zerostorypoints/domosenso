@@ -170,3 +170,54 @@ test("labels per language; an album name is text, not markup", () => {
   assert.equal(card.shadowRoot.querySelectorAll("b").length, 0);
   assert.equal(text(makeCard({ available: ["a"], chosen: ["a"], all: false, lang: "de" }).card, ".summary"), "1 von 1 Alben");
 });
+
+// SPEC-056: a folder tree.
+const TREE = ["2025", "2025/Lisbon", "2025/Lisbon/Day 1", "2025/Lisbon/Day 2", "2025/Porto", "2026", "2026/Bern"];
+const order = (dialog) => [...dialog.querySelectorAll("ul input")].map((b) => b.dataset.name);
+
+test("the albums show as a tree: siblings sorted within their parent, indented by depth", () => {
+  const { card } = makeCard({ available: TREE, chosen: ["2025"] });
+  const dialog = open(card);
+  choose(dialog, "sort", "az");
+  assert.deepEqual(order(dialog), TREE);
+  assert.deepEqual(rows(dialog).map(([label]) => label), ["2025", "Lisbon", "Day 1", "Day 2", "Porto", "2026", "Bern"]);
+  const depth = (name) => box(dialog, name).closest("li").dataset.depth;
+  assert.deepEqual(["2025", "2025/Lisbon", "2025/Lisbon/Day 1"].map(depth), ["0", "1", "2"]);
+  choose(dialog, "sort", "newest");
+  assert.deepEqual(order(dialog).slice(0, 2), ["2026", "2026/Bern"]);
+});
+
+test("ticking a folder includes everything below it; Save writes the folder only", () => {
+  const { card, calls } = makeCard({ available: TREE, chosen: ["2026"] });
+  const dialog = open(card);
+  tick(box(dialog, "2025/Lisbon/Day 1"));
+  tick(box(dialog, "2025/Lisbon"));
+  for (const day of ["2025/Lisbon/Day 1", "2025/Lisbon/Day 2"]) {
+    assert.equal(box(dialog, day).checked, true, day);
+    assert.equal(box(dialog, day).disabled, true, day);
+  }
+  assert.equal(box(dialog, "2025/Porto").checked, false);
+  save(dialog);
+  assert.deepEqual(calls, [[...SCRIPT, { chosen: ["2025/Lisbon", "2026"], all_albums: false }]]);
+});
+
+test("the filter matches the path and shows the matches with their parents; Select all takes the topmost matches", () => {
+  const { card, calls } = makeCard({ available: TREE, chosen: ["2026"] });
+  const dialog = open(card);
+  choose(dialog, "sort", "az");
+  filter(dialog, "lisbon");
+  assert.deepEqual(order(dialog), ["2025", "2025/Lisbon", "2025/Lisbon/Day 1", "2025/Lisbon/Day 2"]);
+  dialog.querySelector("button.select-all").click();
+  save(dialog);
+  assert.deepEqual(calls, [[...SCRIPT, { chosen: ["2025/Lisbon", "2026"], all_albums: false }]]);
+});
+
+test("under All albums the top-level folders are ticked; unticking one keeps the others", () => {
+  const { card, calls } = makeCard({ available: TREE, chosen: [], all: true });
+  const dialog = open(card);
+  assert.equal(box(dialog, "2025/Porto").checked, true);
+  assert.equal(box(dialog, "2025/Porto").disabled, true);
+  tick(box(dialog, "2025"));
+  save(dialog);
+  assert.deepEqual(calls, [[...SCRIPT, { chosen: ["2026"], all_albums: false }]]);
+});
