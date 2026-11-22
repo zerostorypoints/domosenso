@@ -88,6 +88,22 @@ views:
           link:
             label: [[ t('ui.preview.settings_link') | yaml ]]
             path: [[ settings_page | yaml ]]
+[%- if view not in ['calendar', 'controls', 'climate'] %]
+          # SPEC-056 amendment 1: the weather banner floating over the screen, as on the tablet: over
+          # the ambient screens but the Climate page (its weather widget says it) and the now-playing
+          # screen; here whatever the tablet's mode, to be looked at on every screen.
+          layers:
+            - type: custom:weather-banner-card
+              style: input_select.[[ p ]]_weather_banner
+              seconds: input_number.[[ p ]]_weather_banner_s
+            [%- if inputs.wind_sensor is defined %]
+              awnings: [[ inputs.wind_sensor ]]
+            [%- endif %]
+[%- elif view == 'controls' %]
+          # The controls' weather warnings button and its list, as on the tablet.
+          layers:
+            - type: custom:weather-warnings-card
+[%- endif %]
           sections:
 [%- if view == 'climate' %][[ self.climate() | indent(4) ]]
 [%- elif view == 'air' %][[ self.air() | indent(4) ]]

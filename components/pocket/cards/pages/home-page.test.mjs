@@ -128,6 +128,81 @@ test("All good is a button: it opens the checks sheet", () => {
   assert.deepEqual(ctx.sheets, [{ kind: "checks", title: "What was checked" }]);
 });
 
+// The weather component's wind status (SPEC-056).
+const windStates = ({ level = "strong", speed = 45, gust = null, on = true, warnings } = {}) => ({
+  "sensor.weather_wind_level": st(level, { speed, gust, judged: speed, direction: "SW" }),
+  "binary_sensor.weather_warning": st(on ? "on" : "off"),
+  ...(warnings ? { "sensor.weather_warnings": st(String(warnings.length), { warnings }) } : {}),
+});
+const official = (type, level, headline = `${level} ${type}`) => ({ type, level, severity: { yellow: 2, orange: 3, red: 4 }[level],
+  event: headline, headline, onset: "2026-11-18T06:00:00+00:00", expires: "2026-11-18T18:00:00+00:00" });
+
+test("wind: no chip without the weather component, nor while the warning is off; All good stays", () => {
+  for (const extra of [{}, windStates({ level: "breezy", speed: 32, on: false })]) {
+    const el = mount(ctxOf({ hass: hassOf({ ...baseStates(), ...extra }) }));
+    assert.deepEqual(texts(el, ".att .pill"), ["All good"]);
+    assert.equal(el.querySelector('.att .pill[data-kind="wind"]'), null);
+  }
+});
+
+test("wind: the chip replaces All good and opens the forecast sheet", () => {
+  const ctx = ctxOf({ hass: hassOf({ ...baseStates(), ...windStates() }) });
+  const el = mount(ctx);
+  assert.deepEqual(texts(el, ".att .pill"), ["Strong wind · 45 km/h"]);
+  const chip = el.querySelector('.att .pill[data-kind="wind"]');
+  assert.ok(chip.querySelector(".dot.fair"));
+  chip.click();
+  assert.deepEqual(ctx.sheets, [{ kind: "forecast", title: "Weather" }]);
+  assert.deepEqual(ctx.routes, []);
+});
+
+test("wind: gale by its gust in the poor colour; an official warning in its level's colour", () => {
+  const gale = mount(ctxOf({ hass: hassOf({ ...baseStates(), ...windStates({ level: "gale", speed: 40, gust: 95 }) }) }));
+  assert.deepEqual(texts(gale, ".att .pill"), ["Gale · gusts 95 km/h"]);
+  assert.ok(gale.querySelector('.att .pill[data-kind="wind"] .dot.poor'));
+  for (const [lvl, tone] of [["yellow", "fair"], ["orange", "orange"], ["red", "poor"]]) {
+    const el = mount(ctxOf({ hass: hassOf({ ...baseStates(), ...windStates({ level: "breezy", speed: 30,
+      warnings: [official("thunderstorm", lvl)] }) }) }));
+    const word = lvl[0].toUpperCase() + lvl.slice(1);
+    assert.deepEqual(texts(el, ".att .pill"), [`${word} warning · Thunderstorm`]);
+    assert.ok(el.querySelector(`.att .pill[data-kind="wind"] .dot.${tone}`), lvl);
+  }
+});
+
+test("warnings: the most severe with +n, whatever the wind; it opens the forecast sheet", () => {
+  const ctx = ctxOf({ hass: hassOf({ ...baseStates(), ...windStates({ level: "gale", speed: 80,
+    warnings: [official("snow_ice", "red"), official("wind", "orange"), official("fog", "yellow")] }) }) });
+  const el = mount(ctx);
+  assert.deepEqual(texts(el, ".att .pill"), ["Red warning · Snow and ice +2"]);
+  assert.ok(el.querySelector('.att .pill[data-kind="wind"] .dot.poor'));
+  el.querySelector('.att .pill[data-kind="wind"]').click();
+  assert.deepEqual(ctx.sheets, [{ kind: "forecast", title: "Weather" }]);
+  // A feed with nothing in effect: the wind level drives the chip, as without warnings configured.
+  const calm = mount(ctxOf({ hass: hassOf({ ...baseStates(), ...windStates({ warnings: [] }) }) }));
+  assert.deepEqual(texts(calm, ".att .pill"), ["Strong wind · 45 km/h"]);
+});
+
+test("wind: other pills stay beside the chip, after safety and before the readings", () => {
+  const states = { ...baseStates(), ...windStates(), "sensor.living_room_co2": st(1250),
+    "binary_sensor.kitchen_smoke": st("on", { device_class: "smoke", friendly_name: "Kitchen smoke" }) };
+  // The weather warning's own device class (safety) is no alarm of the Safety page.
+  states["binary_sensor.weather_warning"].attributes.device_class = "safety";
+  const ctx = ctxOf({ hass: hassOf(states) });
+  const el = mount(ctx);
+  const pills = texts(el, ".att .pill");
+  assert.equal(pills.length, 3);
+  assert.match(pills[0], /Kitchen smoke/);
+  assert.deepEqual(pills.slice(1), ["Strong wind · 45 km/h", "Living room: CO₂ high"]);
+  el.querySelectorAll(".att .pill")[2].click();
+  assert.deepEqual(ctx.sheets, [{ kind: "checks", title: "What was checked" }], "a reading's pill still opens the checks");
+});
+
+test("wind: the chip in German and Polish", () => {
+  const states = { ...baseStates(), ...windStates({ level: "gale", speed: 70 }) };
+  assert.deepEqual(texts(mount(ctxOf({ hass: hassOf(states), lang: "de" })), ".att .pill"), ["Sturm · 70 km/h"]);
+  assert.deepEqual(texts(mount(ctxOf({ hass: hassOf(states), lang: "pl" })), ".att .pill"), ["Wichura · 70 km/h"]);
+});
+
 test("pills in Polish and German come from the translations", () => {
   const states = { ...baseStates(), "sensor.living_room_co2": st(1250), "sensor.bedroom_humidity": st(20) };
   for (const lang of ["pl", "de"]) {

@@ -11,7 +11,8 @@
 // contrast: var(--primary-background-color, <the pocket's value>) and so on. HA's variables carry
 // only the theme it shows now (hass.themes.darkMode), so a variant forced against it takes the
 // pocket's own values for all its tokens. The level colours (--ok, --warn, --bad, --cold, --warm),
-// --lamp and --on-warn are always the pocket's own.
+// --orange (an official orange weather warning, between --warn and --bad), --lamp and --on-warn are
+// always the pocket's own.
 
 export const BASE = {
   "--bg": "--primary-background-color",
@@ -29,12 +30,12 @@ export const TOKENS = {
   light: {
     "--bg": "#f6f7f9", "--card": "#fff", "--fg": "#1c1f24", "--mut": "#6b7280", "--line": "#eceef1",
     "--acc": "#2f7cf6", "--warn": "#f59e0b", "--bad": "#ef4444", "--ok": "#10b981", "--chip": "#eef1f5",
-    "--lamp": "#fbbf24", "--on-warn": "#1c1f24", "--cold": "#2563eb", "--warm": "#e5484d",
+    "--lamp": "#fbbf24", "--on-warn": "#1c1f24", "--cold": "#2563eb", "--warm": "#e5484d", "--orange": "#ea580c",
   },
   dark: {
     "--bg": "#0f1115", "--card": "#191c22", "--fg": "#eef0f3", "--mut": "#9aa1ab", "--line": "#262a31",
     "--acc": "#5b9bff", "--warn": "#fbbf24", "--bad": "#f87171", "--ok": "#34d399", "--chip": "#22262d",
-    "--lamp": "#f5b83d", "--on-warn": "#0f1115", "--cold": "#60a5fa", "--warm": "#ff6b5c",
+    "--lamp": "#f5b83d", "--on-warn": "#0f1115", "--cold": "#60a5fa", "--warm": "#ff6b5c", "--orange": "#fb923c",
   },
 };
 

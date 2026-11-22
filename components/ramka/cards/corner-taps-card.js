@@ -259,7 +259,9 @@ class CornerTapsCard extends HTMLElement {
   _swipeBegin(x, y, event) {
     const path = event.composedPath?.() || [];
     this._swipeStart = { x, y, t: Date.now(),
-      overlay: path.some(node => node.hasAttribute?.('data-ramka-hifisync')),
+      // The HiFiSync music overlay, and an element that scrolls on its own (data-own-swipe: the
+      // weather warnings list): a drag on them is no swipe.
+      overlay: path.some(node => node.hasAttribute?.('data-ramka-hifisync') || node.hasAttribute?.('data-own-swipe')),
       interactive: path.some(node => node.matches?.('button,input,select,textarea,label,a[href],[role="button"],[data-own-gesture],[data-own-tap]')),
     };
   }

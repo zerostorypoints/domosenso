@@ -154,6 +154,54 @@ when the row has a level. A row that opens something is a `button`.
   is information, not a dash.
 - Issues are also Home's first pills (red), each opening Safety; they come before readings.
 
+### 4.6b Weather, the wind and the warning chip (SPEC-056, amendment 1)
+
+Dangerous weather is the `weather` component's judgement (`binary_sensor.weather_warning`,
+`sensor.weather_warnings`, `sensor.weather_wind_level`, `sensor.weather_wind_gust`, read by
+`lib/weather-warnings.js`); Pocket judges no raw speed and no hazard itself. A home without these
+entities sees no wind and no warnings anywhere, as before; a home without weather's `warnings` input
+(no `sensor.weather_warnings`) gets the wind only.
+
+- **The weather row** (Home, and the forecast sheet): under the condition and today's high / low,
+  one muted line with the wind now, always while the level sensor has a speed: "32 km/h SW"; from
+  `breezy` the level word first, "Breezy · 32 km/h SW"; the gust when known, ", gusts 49".
+- **The forecast sheet's days**: under each day's condition, the day's wind in the same muted style,
+  its `wind_speed` (converted from the weather entity's `wind_speed_unit` to km/h) and its gust maximum
+  from the gust sensor's `daily` on that date: "18 km/h, gusts 52", "gusts 71 km/h", "9 km/h". A
+  value the forecast does not give is left out; a day with neither has no line.
+- **The warning chip** is one of Home's pills (both views), while `binary_sensor.weather_warning`
+  is on. It comes after Safety's issues and before the readings, and opens the forecast sheet.
+  While it shows, Home has no "All good" (the owner's decision: a gale outside is not all good); the
+  other pills stay beside it. Pills carry a dot, no icon: the chip's colour is its dot.
+
+| case | text | dot |
+|---|---|---|
+| an official warning, yellow | "Yellow warning · Thunderstorm" (its level, its type's name) | `--warn` (fair) |
+| orange | "Orange warning · Snow and ice" | `--orange` |
+| red | "Red warning · Wind" | `--bad` (poor) |
+| several warnings | the most severe, then " +n" for the others: "Orange warning · Thunderstorm +1" | the most severe's |
+| a type the feed does not name (`other`) | the level alone: "Yellow warning" | its level's |
+| no official warning, Met.no `strong` | "Strong wind · 45 km/h" (the speed) | `--warn` |
+| Met.no `gale` | "Gale · 70 km/h" | `--bad` |
+| the gust judged the level (gust ÷ 1.5 above the speed, as the weather package judges) | "Gale · gusts 95 km/h" | as its level |
+| the level fell, the warning still on (its 15 min off-delay) | as `strong` | `--warn` |
+
+An official warning wins over Met.no's level. Type names: Wind, Snow and ice, Thunderstorm, Fog,
+Heat, Cold, Coastal event, Forest fire, Avalanche, Rain, Flood, Rain and flood (`card.pocket.warnings.type`).
+
+- **The forecast sheet's warnings list**: at the sheet's top, above the weather row, while an
+  official warning is in effect or the wind is strong or a gale (or the chip says the wind, in the
+  off-delay); hidden otherwise. One bordered group of rows (4.5: 52 px, no button, nothing opens):
+  every official warning, most severe first, then the wind line.
+
+| row | icon (in the level's colour) | line 1 | line 2 (muted) |
+|---|---|---|---|
+| a warning | its type's: wind `mdi:weather-windy`, snow and ice `mdi:snowflake-alert`, thunderstorm `mdi:weather-lightning`, fog `mdi:weather-fog`, heat `mdi:thermometer-high`, cold `mdi:snowflake-thermometer`, coastal `mdi:waves`, forest fire `mdi:fire-alert`, avalanche `mdi:image-filter-hdr`, rain `mdi:weather-pouring`, flood and rain-flood `mdi:home-flood`, other `mdi:alert` | the feed's headline, else its event, else the type's name | "Orange warning · until 18:00" today, "· until Thu 06:30" another day (Home Assistant's time zone, the card's language); the level alone without an end |
+| the wind | `mdi:weather-windy`, `--warn` strong, `--bad` gale | as the weather row: "Gale · 40 km/h SW, gusts 95" | none |
+
+The headline and event are the warning service's own text, in the language the home chose for its
+feed; Pocket does not translate them.
+
 ### 4.7 Controls (elements)
 
 - Light tile (`<pocket-light-tile>`): tap toggles, drag sets brightness; a group counts its members.
@@ -208,6 +256,8 @@ The level keys and their boundaries are the shared contract
 - Vocabulary from the Ramka: **good / fair / poor**; a comfort range adds the sides **cold** (below)
   and **warm** (above).
 - Tokens (`lib/theme.js`): `--ok` good, `--warn` fair, `--bad` poor, `--cold` blue, `--warm` red;
+  `--orange` an official orange weather warning only (between fair and poor; yellow is `--warn`,
+  red `--bad`, so Meteoalarm's three levels read as Pocket's own scale);
   `--acc` accent and on-states; `--mut` secondary text; `--card`, `--chip`, `--line`, `--bg`, `--fg`.
   Never a literal colour in a page.
 - The worst level wins a summary (poor before fair before good, the home's order within).
@@ -331,6 +381,7 @@ it, or it does not go in.
 | now playing: what plays anywhere, else the first area's player | `lib/media.js` | Media's player pick (Media only) |
 | a backup is fair after 8 days, poor after 30 | `lib/system.js` | open |
 | a plant's battery is low under 15 % | `lib/plants.js` | open |
+| while the weather warning is on without an official warning but the level has fallen below strong (its off-delay), the chip says strong wind and the sheet shows the wind line | `lib/weather-warnings.js` | the weather component's thresholds |
 | a plant in hydroculture (`domosenso_medium`, SPEC-048) shows no moisture or fertiliser and is judged on light and warmth; its fine row says it is watered by the gauge | `lib/plants.js` | the plants component's `medium` |
 
 ### 4.8 Wi-Fi survey (SPEC-045)
@@ -405,6 +456,9 @@ it, or it does not go in.
 | Risky acts confirm in place with a second tap, not a dialog | one hand, no modal to dismiss; the safe direction (lock, stop) acts at once |
 | A component's own flag is never an alarm | climate-air's "bathroom humidity high" carries the moisture class of a leak sensor |
 | A kiosk's account is no one at home (`person_role: kiosk`, set by the Ramka) | HA makes a person for every user, the wall tablet's login too; the component that owns the kiosk marks it |
+| The warning chip stands in for "All good" while the weather warning is on; it opens the forecast sheet (SPEC-056) | the owner's choice: a gale outside is not all good; the forecast says how long it lasts |
+| The chip names the most severe official warning by its level and type ("Orange warning · Thunderstorm +1"), not by its headline; the forecast sheet lists every warning with its headline and until when (SPEC-056 amendment 1) | a headline is long and in the feed's language; the type fits a pill in every language, and the sheet holds the rest |
+| An official warning's colour follows its level (yellow `--warn`, orange `--orange`, red `--bad`); Met.no's strong and gale use fair and poor | the warning services' scale is known to people; Pocket's own levels stay one vocabulary |
 | A page is registered once (`TABS`); every list of pages is derived, and contract tests check the rest | Safety shipped without its back arrow: the shell kept its own copy of the Systems pages, the router another, the audit a third (review 2026-11-05) |
 
 ## 12. Phones: sizes, platforms and the audit

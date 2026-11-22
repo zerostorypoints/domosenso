@@ -207,3 +207,121 @@ test("the weather entity appearing after a restart subscribes again at once, no 
   mock.timers.tick(3_600_000);
   assert.equal(connection.subs.length, 2);
 });
+
+// SPEC-056: the weather component's judged wind level on the wind part of the line.
+const level = (state, attributes = {}) => ({
+  "sensor.weather_wind_level": { state, attributes: { speed: 31.7, gust: null, direction: "SW", ...attributes } },
+});
+
+test("from breezy the wind part reads the level, speed and direction, per language", () => {
+  const line = (lang, state, attributes) => q(makeCard({ lang, states: level(state, attributes) }), ".cond2").textContent;
+  assert.equal(line("en", "breezy"), "Breezy, 32 km/h SW");
+  assert.equal(line("en", "strong", { speed: 45 }), "Strong wind, 45 km/h SW");
+  assert.equal(line("en", "gale", { speed: 64.4, direction: "NW" }), "Gale, 64 km/h NW");
+  assert.equal(line("de", "breezy", { direction: "NE" }), "Frischer Wind, 32 km/h NO");
+  assert.equal(line("de", "gale"), "Sturm, 32 km/h SW");
+  assert.equal(line("pl", "breezy"), "Wietrznie, 32 km/h SW");
+  assert.equal(line("pl", "strong"), "Silny wiatr, 32 km/h SW");
+});
+
+test("a known gust follows the speed; an unknown direction is left out", () => {
+  const line = (lang, attributes) => q(makeCard({ lang, states: level("breezy", attributes) }), ".cond2").textContent;
+  assert.equal(line("en", { gust: 48.6 }), "Breezy, 32 km/h SW, gusts 49");
+  assert.equal(line("de", { gust: 48.6 }), "Frischer Wind, 32 km/h SW, Böen 49");
+  assert.equal(line("pl", { gust: 48.6 }), "Wietrznie, 32 km/h SW, porywy 49");
+  assert.equal(line("en", { direction: null }), "Breezy, 32 km/h");
+});
+
+test("calm, an unavailable level, a level without speed or no sensor keep today's text", () => {
+  for (const states of [level("calm"), level("unavailable"), level("breezy", { speed: null }), {}]) {
+    for (const [lang, text] of [["en", "wind 8 km/h"], ["de", "Wind 8 km/h"], ["pl", "wiatr 8 km/h"]]) {
+      assert.equal(q(makeCard({ lang, states }), ".cond2").textContent, text, `${lang} ${JSON.stringify(states)}`);
+    }
+  }
+});
+
+test("the judged wind keeps the pressure after it", () => {
+  const card = makeCard({
+    lang: "en", config: { pressure: "sensor.air_pressure" },
+    states: { ...level("strong", { speed: 45 }), "sensor.air_pressure": { state: "978.4", attributes: { unit_of_measurement: "hPa" } } },
+  });
+  assert.equal(q(card, ".cond2").textContent, "Strong wind, 45 km/h SW · 978 hPa");
+});
+
+test("every wind level and direction has its word in en, de and pl", () => {
+  for (const lang of ["de", "pl"]) {
+    assert.deepEqual(Object.keys(dict(lang).card.clock.wind_level), Object.keys(dict("en").card.clock.wind_level), lang);
+    assert.deepEqual(Object.keys(dict(lang).card.clock.direction), Object.keys(dict("en").card.clock.direction), lang);
+  }
+  assert.deepEqual(Object.keys(dict("en").card.clock.wind_level), ["calm", "breezy", "strong", "gale"]);
+});
+
+// SPEC-056 amendment 1: the Climate page's warning line (option `warnings`, the banner's select).
+const BANNER = "input_select.ramka_weather_banner";
+const STORM = { type: "thunderstorm", level: "orange", severity: 3, event: "Thunderstorm", headline: "Thunderstorms",
+  onset: "2026-10-24T08:00:00Z", expires: "2026-10-24T20:00:00Z" };
+const FOG = { type: "fog", level: "yellow", severity: 2, event: "Fog", headline: "Fog", onset: null, expires: null };
+const warned = ({ on = "on", banner = "icon", warnings, wind = level("strong", { speed: 45 }) } = {}) => ({
+  ...wind,
+  "binary_sensor.weather_warning": { state: on, attributes: {} },
+  [BANNER]: { state: banner, attributes: {} },
+  ...(warnings ? { "sensor.weather_warnings": { state: String(warnings.length), attributes: { warnings } } } : {}),
+});
+const lines = (card) => [q(card, ".cond").textContent, q(card, ".cond2").textContent, q(card, ".cond").style.color];
+
+const spans = (card) => [...q(card, ".cond2").querySelectorAll("span")].map((el) => [el.textContent, el.style.color]);
+const GALE = { type: "wind", level: "yellow", severity: 2, event: "Gale force wind", headline: "Gale force wind",
+  onset: "2026-10-24T06:00:00Z", expires: "2026-10-24T20:00:00Z" };
+const HEAT = { type: "heat", level: "red", severity: 4, event: "Heat wave", headline: "Heat wave", onset: null, expires: null };
+
+test("an official warning: what and until when in its colour, no level word; the condition leads the line below", () => {
+  const card = makeCard({ lang: "en", config: { warnings: BANNER }, states: warned({ warnings: [STORM, FOG] }) });
+  assert.deepEqual(lines(card), ["Thunderstorm · until 22:00 · +1", "Partly cloudy · Strong wind, 45 km/h SW", "#ffa94d"]);
+  assert.equal(q(card, ".cond").classList.contains("warn"), true);
+  // A thunderstorm is about the condition: that value takes the colour, the wind does not.
+  assert.deepEqual(spans(card), [["Partly cloudy", "#ffa94d"], ["Strong wind, 45 km/h SW", ""]]);
+  assert.equal(card.shadowRoot.querySelectorAll(".wx ha-icon").length, 1, "no icon of its own");
+});
+
+test("a wind warning colours the wind; a heat warning the temperature", () => {
+  const windy = makeCard({ lang: "en", config: { warnings: BANNER }, states: warned({ warnings: [GALE] }) });
+  assert.equal(q(windy, ".cond").textContent, "Gale force wind · until 22:00");
+  assert.deepEqual(spans(windy), [["Partly cloudy", ""], ["Strong wind, 45 km/h SW", "#f5c542"]]);
+  assert.equal(q(windy, ".temp").style.color, "");
+  const hot = makeCard({ lang: "en", config: { warnings: BANNER }, states: warned({ warnings: [HEAT] }) });
+  assert.equal(q(hot, ".temp").style.color, "#ff7a5c");
+});
+
+test("the wind level alone: the condition stays, the wind value takes the level's colour", () => {
+  const card = makeCard({ lang: "en", config: { warnings: BANNER, pressure: "sensor.air_pressure" },
+    states: { ...warned({ wind: level("gale", { speed: 64, gust: 80 }) }), "sensor.air_pressure": { state: "978.4", attributes: { unit_of_measurement: "hPa" } } } });
+  assert.deepEqual(lines(card), ["Partly cloudy", "Gale, 64 km/h SW, gusts 80 · 978 hPa", ""]);
+  assert.deepEqual(spans(card), [["Gale, 64 km/h SW, gusts 80", "#ff7a5c"], ["978 hPa", ""]]);
+});
+
+test("no warning line with the banner off (the default), the warning off, or without the option", () => {
+  const today = ["Partly cloudy", "Strong wind, 45 km/h SW", ""];
+  for (const [config, states] of [
+    [{ warnings: BANNER }, warned({ banner: "off", warnings: [STORM] })],
+    [{ warnings: BANNER }, warned({ banner: "unknown", warnings: [STORM] })],
+    [{ warnings: BANNER }, warned({ on: "off", warnings: [STORM] })],
+    [{}, warned({ warnings: [STORM] })],
+  ]) {
+    const card = makeCard({ lang: "en", config, states });
+    assert.deepEqual(lines(card), today, JSON.stringify(config));
+    assert.equal(q(card, ".cond").classList.contains("warn"), false);
+  }
+});
+
+test("the line goes back to the condition when the warning ends", () => {
+  const card = makeCard({ lang: "de", config: { warnings: BANNER }, states: warned({ warnings: [FOG] }) });
+  assert.equal(q(card, ".cond").textContent, "Fog");
+  card.hass = { locale: { language: "de" }, states: { "weather.forecast_home": weather(), ...warned({ on: "off" }) } };
+  assert.deepEqual(lines(card), ["Teilweise bewölkt", "Starker Wind, 45 km/h SW", ""]);
+  assert.deepEqual(spans(card), [["Starker Wind, 45 km/h SW", ""]]);
+});
+
+test("the warning line is one line with an ellipsis, as the condition's", () => {
+  const css = card => card.shadowRoot.querySelector("style").textContent;
+  assert.match(css(makeCard({ lang: "en" })), /\.cond, \.cond2 \{[^}]*white-space: nowrap; overflow: hidden; text-overflow: ellipsis;/);
+});

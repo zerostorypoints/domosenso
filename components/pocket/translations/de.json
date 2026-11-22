@@ -395,6 +395,57 @@
           "exceptional": "Aussergewöhnlich"
         }
       },
+      "wind": {
+        "level": {
+          "calm": "Ruhig",
+          "breezy": "Frischer Wind",
+          "strong": "Starker Wind",
+          "gale": "Sturm"
+        },
+        "speed": "{value} km/h",
+        "speed_from": "{value} km/h {direction}",
+        "with_gusts": "{text}, Böen {gust}",
+        "gusts_only": "Böen {gust} km/h",
+        "leveled": "{level} · {text}",
+        "chip": "{level} · {text}",
+        "direction": {
+          "N": "N",
+          "NE": "NO",
+          "E": "O",
+          "SE": "SO",
+          "S": "S",
+          "SW": "SW",
+          "W": "W",
+          "NW": "NW"
+        }
+      },
+      "warnings": {
+        "type": {
+          "wind": "Wind",
+          "snow_ice": "Schnee und Eis",
+          "thunderstorm": "Gewitter",
+          "fog": "Nebel",
+          "heat": "Hitze",
+          "cold": "Kälte",
+          "coastal": "Küstenereignis",
+          "forest_fire": "Waldbrand",
+          "avalanche": "Lawinen",
+          "rain": "Regen",
+          "flood": "Hochwasser",
+          "rain_flood": "Regen und Hochwasser",
+          "other": "Warnung"
+        },
+        "level": {
+          "yellow": "Gelbe Warnung",
+          "orange": "Orange Warnung",
+          "red": "Rote Warnung"
+        },
+        "more": "{text} +{count}",
+        "detail": "{level} · {until}",
+        "until": "bis {time}",
+        "until_day": "bis {day} {time}",
+        "list": "Wetterwarnungen"
+      },
       "sensors": {
         "title": "Alle Sensoren",
         "state": {
