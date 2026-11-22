@@ -82,7 +82,7 @@ settings dashboard: this one adds the caption setting there.
   home that wants today's top-level shares keeps its tree one level deep.
 - The settings reset sets the caption levels to `1`.
 - `UPGRADE.md` notes the new setting and the level-by-level draw; nothing to do for a flat folder.
-- The version is the maintainer's call at release (no bump in the change itself).
+- Version: 0.24.0, raised in this change by the owner's decision (2026-11-22), so its merge is the go-ahead for the tag.
 
 ## Tests
 

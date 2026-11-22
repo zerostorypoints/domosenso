@@ -3,7 +3,7 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
-## Unreleased (SPEC-057)
+## 0.24.0 (2026-11-22): a photo folder tree (SPEC-057)
 
 ### A photo folder tree
 
