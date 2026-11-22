@@ -3,7 +3,16 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
-## Unreleased
+## 0.22.1
+
+### The only transport button fills its row
+
+With `media_service_sensor` set, the music view hides Previous and Next while the source has no
+skip (`media_service_no_skip`, default `Spotify`). The Pause or Play button left on its own now
+takes the whole row above the volume instead of a third of it, and keeps its third when the skip
+buttons are shown. Nothing to do: `update` renders the new dashboard.
+
+## 0.22.0
 
 ### Photos in rotation cycles
 
@@ -17,7 +26,6 @@ photo of a big album comes round.
 The picker keeps its cycles in `.ramka_rotation.json` next to `photo_dir` and removes the old
 `.ramka_last_pick` on its first draw. Nothing to do: the first series after the update starts the
 first cycle.
-## 0.22.0
 
 ### Now playing in the rotation
 

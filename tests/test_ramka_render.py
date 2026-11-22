@@ -202,6 +202,20 @@ def test_media_service_sensor_is_optional(demo, tmp_path):
         assert {"condition": "state", "entity": "sensor.speaker_streaming_service", "state_not": "Spotify"} in button["visibility"]
 
 
+@pytest.mark.parametrize("player_state, transport", [("playing", "media_pause"), ("paused", "media_play")])
+@pytest.mark.parametrize("service, columns", [("Spotify", [12]), ("Other", [4, 4, 4])])
+def test_transport_fills_its_row_before_volume(tmp_path, player_state, transport, service, columns):
+    inputs = demo_inputs()
+    inputs["media_service_sensor"] = "sensor.speaker_streaming_service"
+    cards = [card for card in walk(render(tmp_path, inputs)["dashboard.pl.yaml"])
+             if card.get("action") in {f"media_player.{action}" for action in
+                                      ("media_play", "media_pause", "media_previous_track", "media_next_track")}]
+    states = {inputs["media_player"]: player_state, inputs["media_service_sensor"]: service}
+    shown = [card for card in cards if visible(card.get("visibility"), states)]
+    assert [card["columns"] for card in shown] == columns
+    assert sum(card["action"] == f"media_player.{transport}" for card in shown) == 1
+
+
 def test_prefix_names_every_helper(tmp_path):
     inputs = demo_inputs()
     inputs["prefix"] = "hall_frame"

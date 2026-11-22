@@ -840,13 +840,16 @@ views:
           # tap-button-card rather than button cards, which take two rows whatever grid_options
           # say, or tiles, which take half the column at the least.
           [%- for key, icon, action in [('previous', 'mdi:skip-previous', 'media_previous_track'), ('pause', 'mdi:pause', 'media_pause'), ('play', 'mdi:play', 'media_play'), ('next', 'mdi:skip-next', 'media_next_track')] %]
+          [%- set expand = inputs.media_service_sensor is defined and key in ('pause', 'play') %]
+          [%- for full_row in ([false, true] if expand else [false]) %]
+          [%- set transport_columns = 12 if full_row else 4 %]
           - type: custom:tap-button-card
             name: [[ t('ui.media.' ~ key) | yaml ]]
             icon: [[ icon ]]
             taps: 1
             action: media_player.[[ action ]]
             target: {entity_id: [[ mp ]]}
-            columns: 4
+            columns: [[ transport_columns ]]
             rows: 1
             visibility:
             [%- if key == 'pause' %]
@@ -857,11 +860,13 @@ views:
             [%- endif %]
               - {condition: state, entity: [[ mp ]], state_not: "off"}
               - {condition: state, entity: [[ mp ]], state_not: [unknown, unavailable]}
-            [%- if key in ('previous', 'next') and inputs.media_service_sensor is defined %]
-              # A service that gives the player no skip (Spotify Connect on some players).
-              - {condition: state, entity: [[ inputs.media_service_sensor ]], state_not: [[ inputs.media_service_no_skip | default('Spotify') | yaml ]]}
             [%- endif %]
+            [%- if inputs.media_service_sensor is defined %]
+              # The sole transport action fills its row when the source has no skip buttons.
+            [%- set service_condition = 'state' if full_row else 'state_not' %]
+              - {condition: state, entity: [[ inputs.media_service_sensor ]], [[ service_condition ]]: [[ inputs.media_service_no_skip | default('Spotify') | yaml ]]}
             [%- endif %]
+          [%- endfor %]
           [%- endfor %]
           # Volume: − and + step one unit, the level as a number between them, the slider under it
           # for big jumps.
