@@ -105,9 +105,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.22.1",
-      "tag": "ramka/0.22.1",
-      "commit": "61c970d831c969671e570db81dc2735897c5b500",
+      "version": "0.23.0",
+      "tag": "ramka/0.23.0",
+      "commit": "4c8c5418b9904e9d2de3d5b986eba2eca8edcc2e",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
@@ -125,9 +125,9 @@
     },
     {
       "id": "weather",
-      "version": "0.2.0",
-      "tag": "weather/0.2.0",
-      "commit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.3.0",
+      "tag": "weather/0.3.0",
+      "commit": "4c8c5418b9904e9d2de3d5b986eba2eca8edcc2e",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
