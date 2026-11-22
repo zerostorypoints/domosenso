@@ -1,4 +1,4 @@
-// The weather indicator (SPEC-053 amendment 1): dangerous weather, said from across the room. While
+// The weather indicator (SPEC-056 amendment 1): dangerous weather, said from across the room. While
 // the weather component's binary_sensor.weather_warning is on: the most severe official warning
 // ("Orange warning: Thunderstorm · until 22:00 · +1", its type's icon, its level's colour), or
 // without one the wind level ("Strong wind · 45 km/h SW"). The texts: lib/weather-warnings.js.

@@ -154,7 +154,7 @@ when the row has a level. A row that opens something is a `button`.
   is information, not a dash.
 - Issues are also Home's first pills (red), each opening Safety; they come before readings.
 
-### 4.6b Weather, the wind and the warning chip (SPEC-053, amendment 1)
+### 4.6b Weather, the wind and the warning chip (SPEC-056, amendment 1)
 
 Dangerous weather is the `weather` component's judgement (`binary_sensor.weather_warning`,
 `sensor.weather_warnings`, `sensor.weather_wind_level`, `sensor.weather_wind_gust`, read by
@@ -456,8 +456,8 @@ it, or it does not go in.
 | Risky acts confirm in place with a second tap, not a dialog | one hand, no modal to dismiss; the safe direction (lock, stop) acts at once |
 | A component's own flag is never an alarm | climate-air's "bathroom humidity high" carries the moisture class of a leak sensor |
 | A kiosk's account is no one at home (`person_role: kiosk`, set by the Ramka) | HA makes a person for every user, the wall tablet's login too; the component that owns the kiosk marks it |
-| The warning chip stands in for "All good" while the weather warning is on; it opens the forecast sheet (SPEC-053) | the owner's choice: a gale outside is not all good; the forecast says how long it lasts |
-| The chip names the most severe official warning by its level and type ("Orange warning · Thunderstorm +1"), not by its headline; the forecast sheet lists every warning with its headline and until when (SPEC-053 amendment 1) | a headline is long and in the feed's language; the type fits a pill in every language, and the sheet holds the rest |
+| The warning chip stands in for "All good" while the weather warning is on; it opens the forecast sheet (SPEC-056) | the owner's choice: a gale outside is not all good; the forecast says how long it lasts |
+| The chip names the most severe official warning by its level and type ("Orange warning · Thunderstorm +1"), not by its headline; the forecast sheet lists every warning with its headline and until when (SPEC-056 amendment 1) | a headline is long and in the feed's language; the type fits a pill in every language, and the sheet holds the rest |
 | An official warning's colour follows its level (yellow `--warn`, orange `--orange`, red `--bad`); Met.no's strong and gale use fair and poor | the warning services' scale is known to people; Pocket's own levels stay one vocabulary |
 | A page is registered once (`TABS`); every list of pages is derived, and contract tests check the rest | Safety shipped without its back arrow: the shell kept its own copy of the Systems pages, the router another, the audit a third (review 2026-11-05) |
 

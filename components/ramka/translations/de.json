@@ -141,9 +141,36 @@
     },
     "photo_albums": {
       "all": "Alle Alben",
+      "all_hint": "Jedes Album, auch später hinzugefügte",
       "missing": "nicht gefunden",
-      "filter": "Alben filtern",
-      "none": "Noch keine Alben im Fotoordner."
+      "filter": "Nach Name filtern",
+      "none": "Noch keine Alben im Fotoordner.",
+      "title": "Alben wählen",
+      "choose": "Alben wählen",
+      "summary_all": "Alle Alben ({total})",
+      "summary_some": "{n} von {total} Alben",
+      "more": "und {n} weitere",
+      "missing_count": "Gewählte Alben, die nicht mehr im Fotoordner sind: {n}",
+      "count": "{n} von {total} ausgewählt",
+      "show_label": "Zeigen",
+      "show": {
+        "all": "Alle",
+        "chosen": "Ausgewählt",
+        "unchosen": "Nicht ausgewählt"
+      },
+      "sort_label": "Sortieren",
+      "sort": {
+        "newest": "Neueste zuerst",
+        "oldest": "Älteste zuerst",
+        "az": "Name A–Z",
+        "za": "Name Z–A"
+      },
+      "select_all": "Alle auswählen",
+      "deselect_all": "Alle abwählen",
+      "no_match": "Kein Album passt.",
+      "pick_one": "Mindestens ein Album auswählen oder Alle Alben.",
+      "cancel": "Abbrechen",
+      "save": "Speichern"
     },
     "climate_rooms": {
       "label": "Name",
@@ -547,7 +574,7 @@
       "calendar_by_url": "Kalender per URL hinzufügen",
       "calendar_by_url_how": "Ohne Konto-Anmeldung: [ein ICS-Link](/config/integrations/dashboard/add?domain=remote_calendar) (Remote-Kalender, einmal am Tag aktualisiert) oder [ein CalDAV-Konto](/config/integrations/dashboard/add?domain=caldav) (Server-URL, Benutzer und App-Passwort, alle 15 Minuten aktualisiert). Danach die neue `calendar.*`-Entität unter `calendar` in `domosenso/ramka.inputs.yaml` eintragen, `domosenso render ramka` ausführen und bereitstellen.",
       "photo_albums": "Alben",
-      "photo_albums_how": "Die Fotoserien kommen aus den angehakten Alben, den obersten Ordnern des Fotoordners. Mit Alle Alben angehakt kommen sie aus allen, und die Haken warten ausgegraut, bis es wieder abgehakt ist; ohne Haken ebenfalls aus allen. Die Liste folgt dem Ordner innerhalb von 15 Minuten.",
+      "photo_albums_how": "Die Fotoserien kommen aus den gewählten Alben, den obersten Ordnern des Fotoordners. Alben wählen öffnet die Liste: nach Name filtern, nach dem Datum im Namen sortieren, das Gezeigte aus- oder abwählen, dann Speichern. Alle Alben schliesst später hinzugefügte Alben ein. Die Liste folgt dem Ordner innerhalb von 15 Minuten.",
       "photo_count": "Fotos pro Serie",
       "photo_s": "Zeit pro Foto",
       "plants_per_page": "Pflanzen pro Seite",
@@ -641,6 +668,10 @@
       "music_strip": "Musik-Streifen",
       "music_strip_palette_sync": "Streifen übernimmt die Farben der Ramka",
       "music_strip_device": "Alle Streifen-Einstellungen auf der Geräteseite",
+      "music_mode": "Wiedergabe an der Wand",
+      "music_mode_takeover": "Während Musik läuft, bleibt die Wiedergabe an der Wand; ein Wischen auf der Bedienung zeigt die Rotation.",
+      "music_mode_rotation": "Während Musik läuft, geht die Rotation weiter, und die Wiedergabe ist eine weitere Ansicht darin, einmal pro Durchgang.",
+      "music_turn_s": "Now-Playing-Dauer",
       "weather_banner": "Wetterbanner",
       "weather_banner_s": "Wetterbanner-Text für",
       "weather_banner_icon": "Über den Ambient-Seiten: der ganze Text für die eingestellte Zeit, dann nur sein Symbol, bis sich die Warnungen oder der Wind ändern.",

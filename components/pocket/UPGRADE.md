@@ -2,7 +2,7 @@
 
 Newest first. Each entry says what changed and what a home that already runs the pocket has to do.
 
-## Unreleased (SPEC-053 and its amendment 1): the wind and the weather warnings from the weather component
+## Unreleased (SPEC-056 and its amendment 1): the wind and the weather warnings from the weather component
 
 - **The weather row and the forecast sheet** show the wind: now "32 km/h SW", from breezy the level
   word ("Breezy · 32 km/h SW"), the gust when known (", gusts 49"); each forecast day its wind speed
@@ -15,7 +15,7 @@ Newest first. Each entry says what changed and what a home that already runs the
 - **The forecast sheet** starts with a list of every official warning in effect (the type's icon in
   its level's colour, the warning's headline in the feed's language, the level and until when) and,
   while the wind is strong or a gale, the wind line.
-- **What a home does:** update `weather` to the version with the wind status and warnings (SPEC-053
+- **What a home does:** update `weather` to the version with the wind status and warnings (SPEC-056
   amendment 1) first and render it; Pocket reads `binary_sensor.weather_warning`,
   `sensor.weather_warnings`, `sensor.weather_wind_level` and `sensor.weather_wind_gust` when they
   are there. Without them nothing changes; without weather's `warnings` input only the wind level

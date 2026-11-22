@@ -14,7 +14,7 @@ a pattern updates it.
   weather component's warning is on, a warning chip that stands in for "All good", DESIGN.md 4.6b), widgets
   (inside and outside, the air score, lights on, power now and plants, each opening its details or
   page), the weather in one row (with a `weather` entity: the condition now, today's high / low and
-  chance of rain, and with the weather component's wind status (SPEC-053) the wind now, opening the
+  chance of rain, and with the weather component's wind status (SPEC-056) the wind now, opening the
   forecast sheet, whose days then carry their wind and gusts, under a list of the official warnings in effect), now playing (whatever plays anywhere, else the first
   area's player) and quick light tiles. **Systems** (`#/systems`): the same pills and a tile per
   aspect the home has, on the bar or not (Areas, Climate, Media, Power, Plants, Scenes, Floor plan,

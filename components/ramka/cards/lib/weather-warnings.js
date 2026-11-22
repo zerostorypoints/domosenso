@@ -1,4 +1,4 @@
-// The weather component's dangerous-weather status (SPEC-053 amendment 1), described once for the
+// The weather component's dangerous-weather status (SPEC-056 amendment 1), described once for the
 // Ramka's cards that show it: the floating indicator (weather-banner-card), the controls' warnings
 // list (weather-warnings-card) and the Climate page's weather widget (clock-weather-card).
 //

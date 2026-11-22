@@ -1,4 +1,4 @@
-# SPEC-053: wind status from the weather component, on the Ramka and in Pocket
+# SPEC-056: wind status from the weather component, on the Ramka and in Pocket
 
 - **Status:** approved 2026-11-18 (open questions answered by the owner the same day: hysteresis on
   the level too; the wind chip replaces "All good"; gusts are wanted)

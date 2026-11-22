@@ -1,5 +1,5 @@
 [#
-  The weather component's Home Assistant package (SPEC-053): one judged wind status every surface
+  The weather component's Home Assistant package (SPEC-056): one judged wind status every surface
   reads the same way. Rendered once per home by tools/domosenso_render.py; double square brackets
   are the renderer's, {{ }} / {% %} stay for Home Assistant. Inputs: component.yaml `inputs:`.
 
@@ -41,7 +41,7 @@
 {%- set waited = low and since is not none and (now() - as_datetime(since)).total_seconds() >= 900 -%}
 {%- set new = ns.up if ns.up >= pi else (pi - 1 if waited else pi) -%}
 [%- endmacro -%]
-# The wind status and the official warnings, from the Domosenso catalog (component weather, SPEC-053). Edit the inputs and
+# The wind status and the official warnings, from the Domosenso catalog (component weather, SPEC-056). Edit the inputs and
 # render again rather than editing this file; the thresholds are helpers, tuned in Home Assistant.
 
 input_number:

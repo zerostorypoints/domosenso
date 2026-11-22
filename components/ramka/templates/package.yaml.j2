@@ -60,6 +60,7 @@
 [%- set general = {'near_enabled': ('bool', true), 'off_delay_s': ('number', 300, 10, 1800), 'brightness_min': ('number', 16, 1, 255),
     'brightness_max': ('number', 204, 1, 255), 'near_cm': ('number', 100, 10, 400), 'near_s': ('number', 1, 1, 10),
     'controls_hold_s': ('number', 5, 1, 600), 'lux_max': ('number', 200, 20, 2000), 'theme_mode': ('choice', 'dark', ['dark', 'light']),
+    'music_mode': ('choice', 'takeover', ['takeover', 'rotation']), 'music_turn_s': ('number', 30, 10, 600),
     'weather_banner': ('choice', 'off', ['off', 'icon', 'hide', 'always']), 'weather_banner_s': ('number', 30, 5, 600)} -%]
 [%- set sd = inputs.settings_defaults | default({}) -%]
 [%- if sd is not mapping -%][[ fail('ramka: settings_defaults must be a mapping') ]][%- endif -%]
@@ -169,7 +170,14 @@
 [%- set _ = settings.append(('input_boolean', 'ambient_music', '', 'presence_display', true)) -%]
 [%- set _ = settings.append(('input_select', 'theme_mode', 'general', 'pages', d.theme_mode)) -%]
 [%- set _ = settings.append(('input_boolean', 'settings_advanced', 'general', 'pages', false)) -%]
-[#- SPEC-053: the weather banner, a group of its own: seeded whenever its number is untouched, so a
+[#- SPEC-054: how the now-playing card shares ambient, the Music page's, with a media player only. A
+    group of its own, seeded whenever its number is untouched: a home that ran the Ramka
+    before it gets 30 s, not the slider's 10 (and takeover, today's behaviour). -#]
+[%- if mp -%]
+[%- set _ = settings.append(('input_select', 'music_mode', 'music', 'music_turn', d.music_mode)) -%]
+[%- set _ = settings.append(('input_number', 'music_turn_s', 'music', 'music_turn', d.music_turn_s)) -%]
+[%- endif -%]
+[#- SPEC-056: the weather banner, a group of its own: seeded whenever its number is untouched, so a
     home that ran the Ramka before it gets 30 s, not the slider's 5 (and the banner off). -#]
 [%- set _ = settings.append(('input_select', 'weather_banner', 'general', 'weather', d.weather_banner)) -%]
 [%- set _ = settings.append(('input_number', 'weather_banner_s', 'general', 'weather', d.weather_banner_s)) -%]
@@ -344,7 +352,18 @@ input_select:
     name: [[ named(' theme mode') ]]
     icon: mdi:theme-light-dark
     options:[[ options(d.theme_mode, ['dark', 'light']) ]]
-  # SPEC-053 amendment 1: the weather banner (custom:weather-banner-card) and the Climate page's
+  [%- if mp %]
+  # SPEC-054: how the now-playing card shares ambient while the player plays. takeover (the
+  # default, as before): it stays on the wall (input_boolean.[[ p ]]_ambient_music, the swipes);
+  # rotation: the rotation keeps running and the card is one more view of it, once per pass for
+  # input_number.[[ p ]]_music_turn_s (input_boolean.[[ p ]]_music_turn). The default first, so a
+  # fresh helper has it.
+  [[ p ]]_music_mode:
+    name: [[ named(' music mode') ]]
+    icon: mdi:music-box-multiple
+    options:[[ options(d.music_mode, ['takeover', 'rotation']) ]]
+  [%- endif %]
+  # SPEC-056 amendment 1: the weather banner (custom:weather-banner-card) and the Climate page's
   # warning line: off (none, the default: a home that updates sees nothing new until it turns it
   # on), or on: after its full text only its icon, nothing, or the text always. The default first,
   # so a fresh helper has it.
@@ -418,11 +437,21 @@ input_select:
 # Ambient has two faces while the media player plays: the now-playing card (default) or the
 # home-info rotation. A swipe up on the controls picks the rotation, a swipe down the music, both
 # leave to ambient; the player starting from silence, or nobody at the Ramka any more (the near
-# zone left, the screen off), sets it back to the music.
+# zone left, the screen off), sets it back to the music. Read in the music mode takeover only
+# (SPEC-054); in rotation, input_boolean.[[ p ]]_music_turn decides.
 input_boolean:
   [[ p ]]_ambient_music:
     name: [[ named(' ambient shows the music') ]]
     icon: mdi:music-note
+  [%- if mp %]
+  # SPEC-054: the now-playing card's turn in the rotation (music mode rotation), on for
+  # input_number.[[ p ]]_music_turn_s while script.[[ p ]]_music_turn runs. State, not a setting:
+  # `initial: false`, so a restart never opens on a turn whose script is gone.
+  [[ p ]]_music_turn:
+    name: [[ named(' music turn') ]]
+    icon: mdi:album
+    initial: false
+  [%- endif %]
   # Controls on approach (the radar's near zone). Off: only a tap shows them; leaving the zone
   # still ends them. A tile on the controls panel flips it.
   [[ p ]]_near_enabled:
@@ -527,7 +556,7 @@ input_number:
     step: 1
     unit_of_measurement: s
     mode: slider
-  # SPEC-053: how long the weather banner says its full text, each time it is about something new.
+  # SPEC-056: how long the weather banner says its full text, each time it is about something new.
   [[ p ]]_weather_banner_s:
     name: [[ named(' weather banner text') ]]
     icon: mdi:timer-outline
@@ -536,6 +565,18 @@ input_number:
     step: 5
     unit_of_measurement: s
     mode: box
+  [%- if mp %]
+  # SPEC-054: rotation mode, how long the now-playing card stays, once per pass (script
+  # [[ p ]]_music_turn).
+  [[ p ]]_music_turn_s:
+    name: [[ named(' music turn') ]]
+    icon: mdi:timer-music-outline
+    min: 10
+    max: 600
+    step: 5
+    unit_of_measurement: s
+    mode: box
+  [%- endif %]
   [[ p ]]_off_delay_s:
     name: [[ named(' off delay (s)') ]]
     icon: mdi:timer-sand
@@ -778,8 +819,8 @@ shell_command:
   # shell/ramka_index.py writes index.json (event and EXIF date per photo) into the photo folder for
   # the photo card's caption; it runs at start and whenever the number of photos changes.
   [[ p ]]_index: [[ index_command | yaml ]]
-  # The next series: one folder with photos drawn at random (any depth, inside the chosen albums
-  # when there are any), `count` shuffled photos from it, as JSON on stdout for the loop's
+  # The next series: the next album, event and `count` photos of the rotation cycles (inside the
+  # chosen albums when there are any; shell/ramka_pick.py, its cycles in .ramka_rotation.json), as JSON on stdout for the loop's
   # response_variable. A templated command runs without a shell, its arguments split like a shell's:
   # each album is single-quoted, a quote in its name closed, escaped and reopened.
   [[ p ]]_pick: >-
@@ -900,18 +941,26 @@ template:
         [%- else %]
         state: "{{ false }}"
         [%- endif %]
-      # Ambient shows the now-playing card: the player plays, the music face is chosen and the
-      # music view is switched on (input_boolean.[[ p ]]_page_music; off, ambient keeps the
-      # rotation). Every view condition and the loop's start/stop read this one sensor. The marker
-      # lets every Ramka's music_watching automation see the others' music views.
+      # Ambient shows the now-playing card: the player plays, the music view is switched on
+      # (input_boolean.[[ p ]]_page_music; off, ambient keeps the rotation) and the card's time has
+      # come: in the music mode takeover (the default) the music face is chosen
+      # (input_boolean.[[ p ]]_ambient_music), in rotation it is the card's turn in the pass
+      # (input_boolean.[[ p ]]_music_turn, SPEC-054). Every view condition and the loop's start/stop
+      # read this one sensor. The marker lets every Ramka's music_watching automation see the
+      # others' music views.
       - name: [[ named(' music view') ]]
         unique_id: [[ p ]]_music_view
         default_entity_id: binary_sensor.[[ p ]]_music_view
         icon: mdi:album
         state: >-
           {{ is_state('binary_sensor.[[ p ]]_media_playing', 'on')
-             and is_state('input_boolean.[[ p ]]_ambient_music', 'on')
-             and is_state('input_boolean.[[ p ]]_page_music', 'on') }}
+             and is_state('input_boolean.[[ p ]]_page_music', 'on')
+             [%- if mp %]
+             and (is_state('input_boolean.[[ p ]]_music_turn', 'on') if is_state('input_select.[[ p ]]_music_mode', 'rotation')
+                  else is_state('input_boolean.[[ p ]]_ambient_music', 'on')) }}
+             [%- else %]
+             and is_state('input_boolean.[[ p ]]_ambient_music', 'on') }}
+             [%- endif %]
         attributes:
           component: ramka
       # "Someone at the tablet", debounced. An LD2410's moving-target flag flickers off for a
@@ -1150,6 +1199,23 @@ script:
     icon: mdi:chevron-up
     mode: single
     sequence:
+      [%- if mp %]
+      # SPEC-054: a swipe up on the now-playing card's turn (music mode rotation) ends the turn: the
+      # music view goes and automation [[ p ]]_ambient_start runs the loop from the first page, the
+      # next one after the card. The page does not move here.
+      - if:
+          - condition: state
+            entity_id: input_boolean.[[ p ]]_music_turn
+            state: "on"
+        then:
+          - action: script.turn_off
+            target:
+              entity_id: script.[[ p ]]_music_turn
+          - action: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.[[ p ]]_music_turn
+          - stop: The now-playing card's turn ended.
+      [%- endif %]
       # The live list (sensor.[[ p ]]_ambient_pages): the pages this home has whose switch is on.
       # From a page switched off, the next one on after it.
       - action: input_select.select_option
@@ -1377,8 +1443,8 @@ script:
           entity_id: input_text.[[ p ]]_photo
         data:
           value: "{{ photos[index] }}"
-  # A new series (SPEC-026): shell/ramka_pick.py draws one folder that holds photos, at any depth
-  # (inside the chosen albums), with equal chances, then up to `count` different photos from it. An
+  # A new series (SPEC-026): shell/ramka_pick.py takes the next album of its cycle (inside the
+  # chosen albums), the next event in it, then up to `count` photos not yet shown from it. An
   # empty folder tree gives an empty series. Returns once sensor.[[ p ]]_photo_series holds it.
   [[ p ]]_photo_series_new:
     alias: [[ named(' photo series new') ]]
@@ -1538,6 +1604,30 @@ script:
           message: command_screen_brightness_level
           data:
             command: 0
+
+[%- if mp %]
+  # SPEC-054: the now-playing card's turn in the rotation (music mode rotation): the music view for
+  # input_number.[[ p ]]_music_turn_s, then the rotation again from the first page. Started by
+  # automation [[ p ]]_music_turn_start when the loop turns from the last live page to the first,
+  # or by the loop itself when one page is live; the music view coming stops the loop
+  # ([[ p ]]_ambient_stop), going restarts it ([[ p ]]_ambient_start). Ended early by a swipe up on
+  # the card (script [[ p ]]_ambient_next) and by automation [[ p ]]_music_turn_end, which turn the
+  # switch off themselves: a stopped script skips its last step.
+  [[ p ]]_music_turn:
+    alias: [[ named(' music turn') ]]
+    icon: mdi:album
+    mode: single
+    max_exceeded: silent
+    sequence:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.[[ p ]]_music_turn
+      - delay:
+          seconds: "{{ states('input_number.[[ p ]]_music_turn_s') | int([[ d.music_turn_s ]]) }}"
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.[[ p ]]_music_turn
+[%- endif %]
 
   # The ambient loop (see automation [[ p ]]_ambient_start). Each pass: climate page 30 s, air
   # quality 15 s, plants 20 s, a series of photos from one folder drawn at random (the Photos
@@ -1748,6 +1838,26 @@ script:
                     option: >-
                       [[ after('status') ]]
 [%- endif %]
+[%- if mp %]
+            # SPEC-054: with one live page the loop's turn to the first page changes nothing, so
+            # automation [[ p ]]_music_turn_start never sees it: the pass's end gives the now-playing
+            # card its turn instead (music mode rotation, the player playing, its page switched on).
+            # Not waited for: the music view coming stops this loop.
+            - if:
+                - condition: template
+                  value_template: >-
+                    {{ [[ live ]] | count == 1
+                       and is_state('input_select.[[ p ]]_music_mode', 'rotation')
+                       and is_state('binary_sensor.[[ p ]]_media_playing', 'on')
+                       and is_state('input_boolean.[[ p ]]_page_music', 'on')
+                       and is_state('input_select.[[ p ]]_mode', 'ambient')
+                       and is_state('input_boolean.[[ p ]]_paused', 'off')
+                       and is_state('binary_sensor.[[ p ]]_music_view', 'off') }}
+              then:
+                - action: script.turn_on
+                  target:
+                    entity_id: script.[[ p ]]_music_turn
+[%- endif %]
 
 [%- if inputs.photo_dir is defined %]
   # The albums the photo series come from. Called by the settings page's album card, always with
@@ -1928,7 +2038,7 @@ script:
         selector:
           select:
             multiple: true
-            options: ["presence_display", "pages", "weather", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate", "climate_slots"]
+            options: ["presence_display", "pages", "music_turn", "weather", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate", "climate_slots"]
     sequence:
       - variables:
           only_page: "{{ page | default('', true) }}"
@@ -2447,6 +2557,77 @@ automation:
       - action: input_boolean.turn_on
         target:
           entity_id: input_boolean.[[ p ]]_ambient_music
+  # SPEC-054, music mode rotation: the loop turned from the last live page to the first while the
+  # player plays, so the now-playing card has its turn before the first page (script
+  # [[ p ]]_music_turn). Only that step: ambient_stop resting on the first page after it, a page
+  # switched off or a restart change nothing or start elsewhere. A swipe up from the last page takes
+  # the same step and gets the card too, as it is the next view of the rotation. One live page
+  # makes no step at all: the loop's pass end starts the turn then.
+  - id: [[ p ]]_music_turn_start
+    alias: [[ named(' music turn start') ]]
+    description: "Rotation mode, the music playing: the loop went from the last page to the first, so the now-playing card has its turn."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.[[ p ]]_ambient
+        to: ~
+    conditions:
+      - condition: template
+        value_template: >-
+          {% set live = [[ live ]] %}{{ trigger.from_state is not none and trigger.to_state is not none and live | count > 1
+             and trigger.from_state.state == live | last and trigger.to_state.state == live | first }}
+      - condition: state
+        entity_id: input_select.[[ p ]]_music_mode
+        state: rotation
+      - condition: state
+        entity_id: binary_sensor.[[ p ]]_media_playing
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.[[ p ]]_page_music
+        state: "on"
+      - condition: state
+        entity_id: input_select.[[ p ]]_mode
+        state: ambient
+      - condition: state
+        entity_id: input_boolean.[[ p ]]_paused
+        state: "off"
+      - condition: state
+        entity_id: binary_sensor.[[ p ]]_music_view
+        state: "off"
+    actions:
+      - action: script.turn_on
+        target:
+          entity_id: script.[[ p ]]_music_turn
+  # The turn ends early when ambient is left, the player stops, the music view is switched off or
+  # the music mode changes (to takeover, ambient_music decides again; a new rotation waits for its
+  # pass). Stopping the script skips its last step, so the switch goes off here.
+  - id: [[ p ]]_music_turn_end
+    alias: [[ named(' music turn end') ]]
+    description: "Ambient left, the player stopped, the music page off or the music mode changed: the now-playing card's turn ends."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.[[ p ]]_mode
+        from: ambient
+      - trigger: state
+        entity_id: binary_sensor.[[ p ]]_media_playing
+        to: "off"
+      - trigger: state
+        entity_id: input_boolean.[[ p ]]_page_music
+        to: "off"
+      - trigger: state
+        entity_id: input_select.[[ p ]]_music_mode
+        to: ~
+    conditions:
+      - condition: template
+        value_template: "{{ is_state('input_boolean.[[ p ]]_music_turn', 'on') or is_state('script.[[ p ]]_music_turn', 'on') }}"
+    actions:
+      - action: script.turn_off
+        target:
+          entity_id: script.[[ p ]]_music_turn
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.[[ p ]]_music_turn
 [%- endif %]
 [%- if music_visual %]
   # audio-sensor sends its fast data only while someone can see it: the watching flag is on while
@@ -2623,7 +2804,9 @@ automation:
   #   until input_boolean.<prefix>_climate_slots_seeded is on, and only while it is the slider's min
   #   (a fresh helper's state; a home that had another number keeps it), or whenever it is unknown.
   #   Its own flag, since 1 is also a home's choice: after the first seed a 1 stays.
-  # - weather (SPEC-053): the banner's seconds untouched (5 s, the minimum); also after the flag is
+  # - music_turn (SPEC-054, with a media player): the now-playing turn's seconds untouched (10 s,
+  #   the minimum); also after the flag is on, so a home that ran the Ramka before it gets 30 s.
+  # - weather (SPEC-056): the banner's seconds untouched (5 s, the minimum); also after the flag is
   #   on, so a home that ran the Ramka before the banner gets 30 s.
   # Home Assistant's start trigger fires after the restored states are in place.
   - id: [[ p ]]_settings_seed
@@ -2636,9 +2819,12 @@ automation:
     actions:
       - variables:
           seed_groups: >-
-            {% set untouched = namespace(presence=true, weather=true, music=true, look=true, profiles=true, photos=true, plants=true, air=true, climate_slots=true) %}
+            {% set untouched = namespace(presence=true, music_turn=true, weather=true, music=true, look=true, profiles=true, photos=true, plants=true, air=true, climate_slots=true) %}
 [%- if inputs.climate is defined %]
             {% set untouched_climate = state_attr('sensor.[[ p ]]_climate_rooms', 'rooms') is none %}
+[%- endif %]
+[%- if mp %]
+            {% set turn_s = 'input_number.[[ p ]]_music_turn_s' %}{% set untouched.music_turn = states(turn_s) in ['unknown', 'unavailable'] or states(turn_s) | float(-1) == state_attr(turn_s, 'min') | float(-2) %}
 [%- endif %]
             {% set banner_s = 'input_number.[[ p ]]_weather_banner_s' %}{% set untouched.weather = states(banner_s) in ['unknown', 'unavailable'] or states(banner_s) | float(-1) == state_attr(banner_s, 'min') | float(-2) %}
             {% for e in ['input_number.[[ p ]]_off_delay_s', 'input_number.[[ p ]]_brightness_min', 'input_number.[[ p ]]_brightness_max', 'input_number.[[ p ]]_near_cm', 'input_number.[[ p ]]_near_s', 'input_number.[[ p ]]_controls_hold_s', 'input_number.[[ p ]]_lux_max'] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.presence = false %}{% endfor %}
@@ -2663,7 +2849,7 @@ automation:
             {% for e in [[ profile_numbers | tojson ]] if states(e) not in ['unknown', 'unavailable'] and states(e) | float(-1) != state_attr(e, 'min') | float(-2) %}{% set untouched.profiles = false %}{% endfor %}
 [%- endif %]
             {% set first = not is_state('input_boolean.[[ p ]]_settings_seeded', 'on') %}
-            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else []) + (['weather'] if untouched.weather else [])[% if music_visual %] + (['music_visual'] if untouched.music else []) + (['music_look'] if untouched.look else []) + (['music_profiles'] if untouched.profiles else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if plant_numbers %] + (['plants'] if untouched.plants else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else []) + (['climate_slots'] if untouched.climate_slots else [])[% endif %] }}
+            {{ ((['pages'] + (['presence_display'] if untouched.presence else [])) if first else [])[% if mp %] + (['music_turn'] if untouched.music_turn else [])[% endif %] + (['weather'] if untouched.weather else [])[% if music_visual %] + (['music_visual'] if untouched.music else []) + (['music_look'] if untouched.look else []) + (['music_profiles'] if untouched.profiles else [])[% endif %][% if photo_numbers %] + (['photos'] if untouched.photos else [])[% endif %][% if plant_numbers %] + (['plants'] if untouched.plants else [])[% endif %][% if air_numbers %] + (['air'] if untouched.air else [])[% endif %][% if inputs.climate is defined %] + (['climate'] if untouched_climate else []) + (['climate_slots'] if untouched.climate_slots else [])[% endif %] }}
       - if:
           - condition: template
             value_template: "{{ seed_groups | count > 0 }}"

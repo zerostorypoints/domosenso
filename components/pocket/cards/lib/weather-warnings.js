@@ -1,4 +1,4 @@
-// Dangerous weather as the weather component judges it (SPEC-053 and its amendment 1), as Pocket
+// Dangerous weather as the weather component judges it (SPEC-056 and its amendment 1), as Pocket
 // shows it: the wind in the weather row and the forecast sheet's days, Home's warning chip and the
 // forecast sheet's list of warnings. Plain ES module: no DOM. Without the weather component's
 // entities every function gives null, [] or "", so Pocket looks as it did before.

@@ -1,4 +1,4 @@
-// The weather component's entities (SPEC-053 amendment 1) for the cards' tests: a hass with
+// The weather component's entities (SPEC-056 amendment 1) for the cards' tests: a hass with
 // binary_sensor.weather_warning, sensor.weather_wind_level and, given `warnings`,
 // sensor.weather_warnings. Fictional warnings; the time zone UTC, "now" NOW.
 

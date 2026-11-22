@@ -42,6 +42,9 @@ states:
   light.dining: "off"
   light.kitchen: "off"
   light.office: "off"
+  binary_sensor.office_presence: "off"   # lights presence room (0.5.0)
+  sensor.office_illuminance: 40
+  sensor.office_presence_distance: 0
   light.bedroom: "off"
   light.kids_room: "off"
   light.hall: "off"

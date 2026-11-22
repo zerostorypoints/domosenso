@@ -1,4 +1,4 @@
-"""SPEC-053 amendment 1: shell/weather_warnings.py picks a region's official warnings from the
+"""SPEC-056 amendment 1: shell/weather_warnings.py picks a region's official warnings from the
 MeteoAlarm feed. The feed below is made up in the feed's shape (fictional areas)."""
 import importlib.util
 import json

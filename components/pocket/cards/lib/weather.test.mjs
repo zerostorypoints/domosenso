@@ -273,7 +273,7 @@ test("the strip names today and the weekdays in Home Assistant's time zone", () 
   assert.equal(text(shadow(widget).querySelectorAll(".day .dn")[1]), tomorrow);
 });
 
-// --- the wind (SPEC-053) ------------------------------------------------------------------------
+// --- the wind (SPEC-056) ------------------------------------------------------------------------
 
 const localDate = (offset) => new Intl.DateTimeFormat("en-CA").format(new Date(dayAt(offset).datetime));
 const windStates = ({ level = "breezy", speed = 32, gust = 48.6, direction = "SW", daily = true } = {}) => ({
@@ -332,7 +332,7 @@ test("the forecast sheet's days: each day's wind_speed in km/h and its gust maxi
   assert.equal(shadow(widget).querySelector(".day .wind").hidden, true);
 });
 
-// --- the warnings list at the sheet's top (SPEC-053 amendment 1) --------------------------------
+// --- the warnings list at the sheet's top (SPEC-056 amendment 1) --------------------------------
 
 test("the forecast sheet without dangerous weather has no warnings list, as before", () => {
   for (const states of [{}, windStates()]) {

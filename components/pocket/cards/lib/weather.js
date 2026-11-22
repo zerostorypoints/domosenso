@@ -308,7 +308,7 @@ class PocketForecast extends HTMLElement {
       timeZoneOf(ctx.hass));
     const days = [today, ...next].filter(Boolean);
     const current = state && !GONE.has(state.state) ? state.state : today?.condition;
-    // The wind is the weather component's (SPEC-053); without it the texts are empty.
+    // The wind is the weather component's (SPEC-056); without it the texts are empty.
     const wind = mode === "row" ? windText(ctx, windOf(ctx.hass)) : "";
     const zone = timeZoneOf(ctx.hass);
     const winds = mode === "list"

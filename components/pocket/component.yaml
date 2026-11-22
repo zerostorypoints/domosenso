@@ -109,7 +109,7 @@ consumes:
   - {component: plants, id: "plant.<plant>"}
   - {component: plants, id: "sensor.<plant>_{moisture,conductivity,illuminance,temperature,battery}"}
   - {component: plants, id: "sensor.<plant>_illuminance_max_24h"}
-  # With weather's wind status and warnings (SPEC-053): the wind in the weather row and the forecast
+  # With weather's wind status and warnings (SPEC-056): the wind in the weather row and the forecast
   # sheet, Home's warning chip while binary_sensor.weather_warning is on, and the sheet's list of
   # every official warning (sensor.weather_warnings, only in homes that configured warnings).
   # Without them Pocket shows no wind and no warnings.

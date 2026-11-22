@@ -128,7 +128,7 @@ test("All good is a button: it opens the checks sheet", () => {
   assert.deepEqual(ctx.sheets, [{ kind: "checks", title: "What was checked" }]);
 });
 
-// The weather component's wind status (SPEC-053).
+// The weather component's wind status (SPEC-056).
 const windStates = ({ level = "strong", speed = 45, gust = null, on = true, warnings } = {}) => ({
   "sensor.weather_wind_level": st(level, { speed, gust, judged: speed, direction: "SW" }),
   "binary_sensor.weather_warning": st(on ? "on" : "off"),

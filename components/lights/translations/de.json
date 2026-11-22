@@ -1,6 +1,6 @@
 {
   "meta": {
-    "description": "Philips-Hue-Lampen raumweise schalten und dimmen, über die Raumgruppen der Hue Bridge. Ein Paket ergänzt pro Raum eine Leuchte, die nur dann als eingeschaltet gilt, wenn eine ihrer Lampen erreichbar und an ist: Ein Raum, dessen Lampen am Wandschalter den Strom verloren haben, zeigt aus. Dazu die Zahl der eingeschalteten Lampen und die schwächste Batterie des Hue-Zubehörs.",
+    "description": "Philips-Hue-Lampen raumweise schalten und dimmen, über die Raumgruppen der Hue Bridge. Ein Paket ergänzt pro Raum eine Leuchte, die nur dann als eingeschaltet gilt, wenn eine ihrer Lampen erreichbar und an ist: Ein Raum, dessen Lampen am Wandschalter den Strom verloren haben, zeigt aus. Dazu die Zahl der eingeschalteten Lampen und die schwächste Batterie des Hue-Zubehörs. Optional folgt das Licht eines Raums einem Anwesenheitssensor: beim Eintreten an, wenn es dunkel ist, eine einstellbare Zeit nach dem Verlassen aus, und es kommt so zurück, wie es verlassen wurde.",
     "devices": {
       "hue-bridge": {
         "description": "Die Zentrale, die Hue-Lampen und -Zubehör per Zigbee verbindet und im Heimnetz verfügbar macht.",
@@ -36,6 +36,12 @@
           "Schalte das Licht im Büro aus"
         ]
       }
+    }
+  },
+  "ui": {
+    "presence": {
+      "on": "beim Eintreten eingeschaltet, Helligkeit {value}",
+      "off": "nach {minutes} Min. ohne Anwesenheit ausgeschaltet, zuletzt erkannt bei {distance}"
     }
   }
 }

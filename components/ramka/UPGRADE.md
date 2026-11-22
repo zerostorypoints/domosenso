@@ -3,11 +3,11 @@
 Newest first. Each entry says what changed and what a home that already runs the Ramka has to do.
 `<prefix>` is the home's `prefix` input.
 
-## 0.22.0
+## 0.23.0
 
 ### Dangerous weather from the weather component
 
-With `weather` at the release that brings SPEC-053 and its amendment 1 (`sensor.weather_wind_level`,
+With `weather` at the release that brings SPEC-056 and its amendment 1 (`sensor.weather_wind_level`,
 `binary_sensor.weather_warning`, `sensor.weather_warnings` and `input_number.weather_wind_*`), the
 Ramka shows the wind and the official weather warnings:
 
@@ -45,6 +45,49 @@ sensor (`wind_sensor`) is on, their own heading shows instead of the banner, as 
 preview frames show the banner over the ambient screens but the Climate page, and the warnings
 button over the controls, whatever the tablet's mode. Official warnings need the weather
 component's `warnings` input (its UPGRADE.md).
+
+## 0.22.1
+
+### The only transport button fills its row
+
+With `media_service_sensor` set, the music view hides Previous and Next while the source has no
+skip (`media_service_no_skip`, default `Spotify`). The Pause or Play button left on its own now
+takes the whole row above the volume instead of a third of it, and keeps its third when the skip
+buttons are shown. Nothing to do: `update` renders the new dashboard.
+
+## 0.22.0
+
+### Photos in rotation cycles
+
+The photos page no longer draws one event folder at random. It goes round the albums (the
+top-level folders of `photo_dir`) in cycles: every album once per cycle, in random order, never
+the same album twice in a row. Inside an album its events take turns the same way, and inside an
+event the series show the photos not yet shown, each still with the Photos page's count of photos.
+So an album with many events is not shown more often than one with a single event, and every
+photo of a big album comes round.
+
+The picker keeps its cycles in `.ramka_rotation.json` next to `photo_dir` and removes the old
+`.ramka_last_pick` on its first draw. Nothing to do: the first series after the update starts the
+first cycle.
+
+### Now playing in the rotation
+
+A new setting on the Ramka Settings' **Music** page decides how the now-playing card shares the wall
+while the player plays (only with a `media_player`):
+
+- **Now playing on the wall** (`input_select.<prefix>_music_mode`): `takeover`, **the default and
+  first option**, is today's behaviour: the now-playing card stays on ambient, and the swipes on the
+  controls switch between it and the rotation. `rotation`: the rotation keeps running and the
+  now-playing card is one more view of it, once per pass, after the last page and before the first.
+  A swipe up on the card ends its turn early (the rotation goes on with the first page).
+- **Now playing time** (`input_number.<prefix>_music_turn_s`, 10-600 s, default 30, seeded once):
+  how long the card stays each pass in rotation mode.
+
+Both are on the Music page's reset; `settings_defaults` accepts `music_mode` and `music_turn_s`. New
+entities: `input_boolean.<prefix>_music_turn` (the card's turn, internal state),
+`script.<prefix>_music_turn`, automations `<prefix>_music_turn_start` and `<prefix>_music_turn_end`.
+`binary_sensor.<prefix>_music_view` keeps its id and meaning. Nothing to do: a home that updates
+stays on takeover until it chooses rotation.
 
 ## 0.21.1
 

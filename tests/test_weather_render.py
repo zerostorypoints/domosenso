@@ -1,4 +1,4 @@
-"""SPEC-053: the weather component's wind status.
+"""SPEC-056: the weather component's wind status.
 
 The package renders; its Home Assistant templates are then evaluated here with a small stand-in for
 Home Assistant's template functions (states, state_attr, is_state, now, as_datetime and the float,

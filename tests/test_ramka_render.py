@@ -55,6 +55,10 @@ def walk(node):
             yield from walk(item)
 
 
+def cards_of(node, kind):
+    return [c for c in walk(node) if isinstance(c, dict) and c.get("type") == f"custom:{kind}"]
+
+
 def strings(node):
     """Every string value in a YAML tree (keys are configuration, not text on screen)."""
     if isinstance(node, str):
@@ -158,7 +162,8 @@ def test_every_mode_and_page_reference_is_an_option(demo):
             if isinstance(entity, str) and entity in allowed:
                 for field in ("state", "state_not", "states", "to", "from"):
                     if field in node:
-                        used[entity].update(as_list(node[field]))
+                        # `to: ~` is any state (SPEC-054's turn trigger), no option.
+                        used[entity].update(v for v in as_list(node[field]) if v is not None)
             target = (node.get("target") or {}).get("entity_id") if isinstance(node.get("target"), dict) else None
             # Since 0.4.0 the page steps are templates over the live list (SPEC-021), evaluated in
             # test_loop_and_swipes_read_the_live_list; the literal options are checked here.
@@ -181,7 +186,7 @@ def test_no_wind_sensor_no_banner(tmp_path):
         assert not wind_banners(rendered[f"dashboard.{lang}.yaml"], text)
 
 
-# ---- SPEC-053: the weather component's banner, the controls' warnings, the Climate line ---------
+# ---- SPEC-056: the weather component's banner, the controls' warnings, the Climate line ---------
 def cards_of(node, kind):
     return [c for c in walk(node) if isinstance(c, dict) and c.get("type") == f"custom:{kind}"]
 
@@ -325,6 +330,20 @@ def test_media_service_sensor_is_optional(demo, tmp_path):
     assert len(buttons) == 2
     for button in buttons:
         assert {"condition": "state", "entity": "sensor.speaker_streaming_service", "state_not": "Spotify"} in button["visibility"]
+
+
+@pytest.mark.parametrize("player_state, transport", [("playing", "media_pause"), ("paused", "media_play")])
+@pytest.mark.parametrize("service, columns", [("Spotify", [12]), ("Other", [4, 4, 4])])
+def test_transport_fills_its_row_before_volume(tmp_path, player_state, transport, service, columns):
+    inputs = demo_inputs()
+    inputs["media_service_sensor"] = "sensor.speaker_streaming_service"
+    cards = [card for card in walk(render(tmp_path, inputs)["dashboard.pl.yaml"])
+             if card.get("action") in {f"media_player.{action}" for action in
+                                      ("media_play", "media_pause", "media_previous_track", "media_next_track")}]
+    states = {inputs["media_player"]: player_state, inputs["media_service_sensor"]: service}
+    shown = [card for card in cards if visible(card.get("visibility"), states)]
+    assert [card["columns"] for card in shown] == columns
+    assert sum(card["action"] == f"media_player.{transport}" for card in shown) == 1
 
 
 def test_prefix_names_every_helper(tmp_path):
@@ -493,7 +512,8 @@ def test_all_pages_step_through_the_live_list_too(demo):
     the live list as well and the loop's guard is always there (SPEC-021; was
     test_all_pages_keep_select_next_and_no_guard)."""
     package = demo["package.yaml"]
-    assert package["script"]["ramka_ambient_next"]["sequence"][0]["action"] == "input_select.select_option"
+    # SPEC-054: ambient_next's first step ends the now-playing turn; the page step follows it.
+    assert [s for s in package["script"]["ramka_ambient_next"]["sequence"] if "action" in s][0]["action"] == "input_select.select_option"
     assert package["script"]["ramka_ambient_prev"]["sequence"][0]["action"] == "input_select.select_option"
     first = package["script"]["ramka_ambient_loop"]["sequence"][0]["repeat"]["sequence"][0]
     assert first["if"][0]["condition"] == "template"
@@ -867,7 +887,10 @@ def test_music_visual_bad_input_fails(tmp_path, inputs, message):
 
 # ---- 0.4.0: live settings (SPEC-021) ------------------------------------------------------------
 
-# SPEC-053: the weather banner's settings, General's, a seed group of their own; off by default.
+# SPEC-054: how the now-playing card shares ambient, the Music page's, a seed group of its own;
+# takeover (today's behaviour) by default. Every fixture here has a media player.
+MUSIC_TURN_DEFAULTS = {"input_select.ramka_music_mode": "takeover", "input_number.ramka_music_turn_s": 30}
+# SPEC-056: the weather banner's settings, General's, a seed group of their own; off by default.
 WEATHER_DEFAULTS = {"input_select.ramka_weather_banner": "off", "input_number.ramka_weather_banner_s": 30}
 PRESENCE_NUMBERS = ["off_delay_s", "brightness_min", "brightness_max", "near_cm", "near_s", "controls_hold_s", "lux_max"]
 MUSIC_DB = ["music_spectrum_neutral_db", "music_spectrum_hot_db", "music_level_neutral_db", "music_level_hot_db"]
@@ -881,6 +904,7 @@ DEFAULTS = {
     "input_select.ramka_theme_mode": "dark", "input_boolean.ramka_settings_advanced": "off",
     **{f"input_boolean.ramka_page_{v}": "on" for v in PAGE_VIEWS},
     **PHOTO_DEFAULTS, **PLANT_SETTINGS, **AIR_DEFAULTS, **CLIMATE_THRESHOLDS, **CLIMATE_NEUTRAL, **CLIMATE_SLOTS,
+    **MUSIC_TURN_DEFAULTS,
     **WEATHER_DEFAULTS,
 }
 EQ_KEYS = ["sub", "bass", "low_mid", "mid", "presence", "air"]
@@ -934,10 +958,12 @@ PAGE_OF = {
     # The visual's settings are the Live visualization sub-view's (SPEC-025 amendment 1); its switch
     # is the Music page's.
     **{e: "music_live" for e in MUSIC_DEFAULTS}, MUSIC_LIVE: "music", STRIP_SYNC: "music_sensor",
+    **{e: "music" for e in MUSIC_TURN_DEFAULTS},
 }
 GROUP_OF = {
     **{e: "presence_display" for e in DEFAULTS},
     "input_select.ramka_theme_mode": "pages", "input_boolean.ramka_settings_advanced": "pages",
+    **{e: "music_turn" for e in MUSIC_TURN_DEFAULTS},
     **{e: "weather" for e in WEATHER_DEFAULTS},
     **{f"input_boolean.ramka_page_{v}": "pages" for v in PAGE_VIEWS},
     **{e: "music_visual" for e in MUSIC_DEFAULTS}, **{e: "music_look" for e in LOOK_DEFAULTS},
@@ -950,7 +976,9 @@ GROUP_OF = {
 STATE_HELPERS = {"input_select.ramka_mode", "input_select.ramka_ambient", "input_boolean.ramka_ambient_music",
                  "input_boolean.ramka_settings_seeded", "input_boolean.ramka_climate_slots_seeded",
                  # The pause and the plant page on screen (SPEC-026); the plant page with plants.
-                 "input_boolean.ramka_paused", "input_number.ramka_plants_page"}
+                 "input_boolean.ramka_paused", "input_number.ramka_plants_page",
+                 # The now-playing card's turn in the rotation (SPEC-054), with a media player.
+                 "input_boolean.ramka_music_turn"}
 # State with music_visual: none (the blind audition is gone).
 MUSIC_STATE_HELPERS: set[str] = set()
 # State a settings page drives: shown, never reset. None at present.
@@ -1102,6 +1130,10 @@ def test_settings_helpers_stable_ids(plain, demo):
 def test_no_helper_has_initial(plain, demo):
     for package in (plain["package.yaml"], demo["package.yaml"]):
         for entity, helper in helpers(package).items():
+            # SPEC-054: the turn is state whose script a restart ends, so it starts off.
+            if entity == "input_boolean.ramka_music_turn":
+                assert helper["initial"] is False
+                continue
             assert "initial" not in helper, entity
         # helpers() leaves input_text out (it is no setting domain of the page checks), so look at it here.
         for key, helper in (package.get("input_text") or {}).items():
@@ -1142,7 +1174,9 @@ def tuned(package, **values) -> dict[str, object]:
     """A home that has run the Ramka: every number off its minimum, then `values` on top."""
     states = at_minimum(package)
     for entity in states:
-        if entity.startswith("input_number.ramka_") and not entity.startswith("input_number.ramka_music_"):
+        # The music visual's numbers stay untouched; SPEC-054's turn is the home's like General's.
+        if entity.startswith("input_number.ramka_") and (not entity.startswith("input_number.ramka_music_")
+                                                        or entity == "input_number.ramka_music_turn_s"):
             states[entity] = float(package["input_number"][entity.split(".")[1]]["max"])
     states.update({f"input_number.ramka_{k}": v for k, v in values.items()})
     return states
@@ -1152,9 +1186,9 @@ def test_seed_rule_keeps_tuned_values(demo, plain):
     package = demo["package.yaml"]
     fresh = at_minimum(package)
     music = ["music_visual", "music_look", "music_profiles"]
-    assert seed_groups(package, fresh) == ["pages", "presence_display", "weather", *music, "photos", "plants", "air", "climate", "climate_slots"]
+    assert seed_groups(package, fresh) == ["pages", "presence_display", "music_turn", "weather", *music, "photos", "plants", "air", "climate", "climate_slots"]
     upgraded = {**fresh, "input_number.ramka_off_delay_s": 600.0}
-    assert seed_groups(package, upgraded) == ["pages", "weather", *music, "photos", "plants", "air", "climate", "climate_slots"]
+    assert seed_groups(package, upgraded) == ["pages", "music_turn", "weather", *music, "photos", "plants", "air", "climate", "climate_slots"]
     on_purpose = {**tuned(package), "input_number.ramka_near_s": 1.0}
     assert seed_groups(package, on_purpose, rooms=[]) == ["pages", *music]
     seeded = {**tuned(package), "input_boolean.ramka_settings_seeded": "on"}
@@ -1176,13 +1210,13 @@ def test_seed_rule_keeps_tuned_values(demo, plain):
                                                                      if e.startswith("input_number.")}}, rooms=[])
     # unknown and unavailable count as untouched.
     unknown = {**fresh, "input_number.ramka_lux_max": "unknown", "input_number.ramka_near_cm": "unavailable"}
-    assert seed_groups(package, unknown) == ["pages", "presence_display", "weather", *music, "photos", "plants", "air", "climate", "climate_slots"]
+    assert seed_groups(package, unknown) == ["pages", "presence_display", "music_turn", "weather", *music, "photos", "plants", "air", "climate", "climate_slots"]
     # Without music_visual there is no music group at all.
-    assert seed_groups(plain["package.yaml"], at_minimum(plain["package.yaml"])) == ["pages", "presence_display", "weather", "photos", "plants", "air", "climate", "climate_slots"]
+    assert seed_groups(plain["package.yaml"], at_minimum(plain["package.yaml"])) == ["pages", "presence_display", "music_turn", "weather", "photos", "plants", "air", "climate", "climate_slots"]
     # Photos and air are seeded while untouched after the flag too: a home that ran 0.4.0 before
     # amendment 1 gets them at its next start (unknown), one that tuned them keeps them.
     assert seed_groups(plain["package.yaml"], {**at_minimum(plain["package.yaml"]),
-                                               "input_boolean.ramka_settings_seeded": "on"}, rooms=[]) == ["weather", "photos", "plants", "air", "climate_slots"]
+                                               "input_boolean.ramka_settings_seeded": "on"}, rooms=[]) == ["music_turn", "weather", "photos", "plants", "air", "climate_slots"]
     one_tuned = {**music_tuned, "input_number.ramka_photo_count": "unknown", "input_number.ramka_photo_s": "unknown",
                  **{f"input_number.ramka_air_{k}": "unknown" for k in AIR_LIMITS}, "input_number.ramka_air_co2_high": 1500.0}
     assert seed_groups(package, one_tuned, rooms=[]) == ["photos"]
@@ -1219,7 +1253,7 @@ def test_reset_page_and_groups(demo):
     assert run_reset(package) == everything
     for page in ["general"] + PAGE_VIEWS + ["controls", "music_live"]:
         assert set(run_reset(package, page=page)) == {e for e in everything if PAGE_OF[e] == page}, page
-    for group in ("presence_display", "pages", "weather", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate",
+    for group in ("presence_display", "pages", "music_turn", "weather", "music_visual", "music_look", "music_profiles", "photos", "plants", "air", "climate",
                   "climate_slots"):
         assert set(run_reset(package, groups=[group])) == {e for e in everything if GROUP_OF[e] == group}, group
     assert set(run_reset(package, groups="pages")) == {e for e in everything if GROUP_OF[e] == "pages"}
@@ -1238,7 +1272,7 @@ def test_reset_page_and_groups(demo):
     fields = reset_script(package)["fields"]
     assert set(fields) == {"page", "groups"}
     assert fields["page"]["selector"]["select"]["options"] == ["general"] + PAGE_VIEWS + ["controls", "music_live", "music_sensor"]
-    assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "weather", "music_visual", "music_look", "music_profiles",
+    assert fields["groups"]["selector"]["select"]["options"] == ["presence_display", "pages", "music_turn", "weather", "music_visual", "music_look", "music_profiles",
                                                                  "photos", "plants", "air", "climate", "climate_slots"]
 
 
@@ -1458,8 +1492,14 @@ def next_page(template, here, live):
     return ha(template, states={"input_select.ramka_ambient": here}, attrs=attrs)
 
 
+def is_turn_step(step) -> bool:
+    """SPEC-054: the loop's pass end that starts the now-playing turn with one live page."""
+    return any(a.get("target", {}).get("entity_id") == "script.ramka_music_turn" for a in step.get("then", []))
+
+
 def loop_stages(package):
-    return package["script"]["ramka_ambient_loop"]["sequence"][0]["repeat"]["sequence"]
+    """The loop's guard and page stages, without SPEC-054's turn step at the pass end."""
+    return [s for s in package["script"]["ramka_ambient_loop"]["sequence"][0]["repeat"]["sequence"] if not is_turn_step(s)]
 
 
 def run_rotation(package, start, live, steps=6) -> list[str]:
@@ -1910,7 +1950,7 @@ def test_settings_page_not_configured(tmp_path, page, dropped):
         assert f"`{dropped}`" in text and "`domosenso/ramka.inputs.yaml`" in text and "`domosenso render ramka`" in text
         if page == "music":
             # The now-playing view is there without the visual: its switch stays, the visual parts go.
-            assert shown_entities(view) == {"input_boolean.ramka_page_music"}
+            assert shown_entities(view) == {"input_boolean.ramka_page_music", *MUSIC_TURN_DEFAULTS}
             assert not [n for n in walk(view) if n.get("type") == "custom:ambient-wave-card"]
             assert not {e for e in AUDIO_SENSOR_IDS if e in json.dumps(view)}
             assert len(list(reset_actions(view))) == 1
@@ -2136,7 +2176,7 @@ def test_music_page_rows(demo, live):
     for lang in LANGS:
         t = translations(lang)
         view = settings_views(demo[f"ramka-settings.{lang}.yaml"])["music"]
-        assert shown_with(view, states) == {"input_boolean.ramka_page_music", MUSIC_LIVE}, lang
+        assert shown_with(view, states) == {"input_boolean.ramka_page_music", MUSIC_LIVE, *MUSIC_TURN_DEFAULTS}, lang
         notes = [c["content"] for s_, c in view_cards(view) if c.get("type") == "markdown"
                  and visible(s_.get("visibility"), states) and visible(c.get("visibility"), states)]
         assert (t["ui.settings.music_live_off"] in notes) is (live == "off"), lang
@@ -3957,7 +3997,9 @@ def test_music_visuals_without_music_visual_have_no_look(plain):
     for lang in LANGS:
         view = settings_views(plain[f"ramka-settings.{lang}.yaml"])["music"]
         text = json.dumps(view)
-        assert "music_template" not in text and "music_colour" not in text and INFO_ROW not in text, lang
+        assert "music_template" not in text and "music_colour" not in text, lang
+        # The one info select is SPEC-054's music mode, which needs only the media player.
+        assert [n["entity"] for n in walk(view) if n.get("type") == INFO_ROW] == ["input_select.ramka_music_mode"], lang
 
 
 def grid_with_heading(view, text):
@@ -3984,8 +4026,10 @@ def test_music_settings_page_layout(demo):
         basic = music["sections"][0]
         assert [c["type"] for c in basic["cards"]] == ["heading", "entities", "markdown", "markdown"], lang
         switches, live_off, page_off = basic["cards"][1:]
-        assert [r.get("entity") for r in switches["entities"]] == ["input_boolean.ramka_page_music", MUSIC_LIVE, None], lang
-        assert [r["name"] for r in switches["entities"][:2]] == [t["ui.settings.page_music"], t["ui.settings.music_live"]], lang
+        assert [r.get("entity") for r in switches["entities"]] == ["input_boolean.ramka_page_music", *MUSIC_TURN_DEFAULTS,
+                                                                    MUSIC_LIVE, None], lang
+        assert [r["name"] for r in switches["entities"][:4]] == [t["ui.settings.page_music"], t["ui.settings.music_mode"],
+                                                                 t["ui.settings.music_turn_s"], t["ui.settings.music_live"]], lang
         assert live_off["visibility"] == [LIVE_OFF] and live_off["content"] == t["ui.settings.music_live_off"], lang
         assert page_off["content"] == t["ui.settings.page_off"], lang
         assert [a["data"] for a in reset_actions(music)] == [{"page": "music"}], lang
@@ -4077,7 +4121,7 @@ def test_music_settings_page_layout(demo):
         assert set(f"input_number.ramka_{k}" for k in MUSIC_DB) <= set(written), lang
         assert set(LOOK_DEFAULTS) | set(PROFILE_DEFAULTS) | {MUSIC_VISUAL, "input_select.ramka_music_spectrum_flavour"} <= set(written), lang
         assert MUSIC_LIVE not in written and run_reset(package, page="music") == {
-            "input_boolean.ramka_page_music": "on", MUSIC_LIVE: "off"}, lang
+            "input_boolean.ramka_page_music": "on", MUSIC_LIVE: "off", **MUSIC_TURN_DEFAULTS}, lang
 
 
 COLOUR_ROW = "custom:ramka-colour-select-row"
@@ -4392,13 +4436,13 @@ def test_leaving_the_ramka_gives_the_music_back(demo):
 def test_page_swipes_keep_a_pause(demo, tmp_path):
     package = demo["package.yaml"]
     for script in ("ramka_ambient_next", "ramka_ambient_prev"):
-        [after] = [s for s in package["script"][script]["sequence"] if "if" in s]
+        after = [s for s in package["script"][script]["sequence"] if "if" in s][-1]
         assert after["if"] == [PAUSED_OFF]
         assert after["then"] == [{"action": "script.turn_on", "target": {"entity_id": "script.ramka_ambient_loop"}}]
         # Paused onto the photos: the series' photo, since no loop shows one.
         assert after["else"][0]["then"] == [{"action": "script.ramka_photo_show"}]
     without = render(tmp_path, without_pages("photos"))["package.yaml"]
-    [after] = [s for s in without["script"]["ramka_ambient_next"]["sequence"] if "if" in s]
+    after = [s for s in without["script"]["ramka_ambient_next"]["sequence"] if "if" in s][-1]
     assert "else" not in after
 
 
@@ -4892,3 +4936,225 @@ def test_hifisync_opt_in_only_enriches_the_live_player_gesture_card(tmp_path):
         }
         assert enabled[key] == original[key]
     assert enabled == original
+
+
+# ---- SPEC-054: Now playing in the rotation --------------------------------------------------------
+
+MUSIC_MODE = "input_select.ramka_music_mode"
+MUSIC_TURN = "input_boolean.ramka_music_turn"
+MUSIC_TURN_S = "input_number.ramka_music_turn_s"
+
+
+def without_player() -> dict:
+    inputs = demo_inputs()
+    inputs.pop("media_player")
+    return inputs
+
+
+def test_music_mode_helpers_only_with_a_player(demo, tmp_path):
+    package = demo["package.yaml"]
+    assert package["input_select"]["ramka_music_mode"]["options"] == ["takeover", "rotation"]
+    number = package["input_number"]["ramka_music_turn_s"]
+    assert (number["min"], number["max"], number["step"], number["unit_of_measurement"]) == (10, 600, 5, "s")
+    assert package["input_boolean"]["ramka_music_turn"]["initial"] is False
+    assert "ramka_music_turn" in package["script"]
+    assert {"ramka_music_turn_start", "ramka_music_turn_end"} <= {a["id"] for a in package["automation"]}
+    bare = render(tmp_path, without_player())
+    text = json.dumps(bare)
+    for name in ("ramka_music_mode", "ramka_music_turn"):
+        assert name not in text, name
+    # The music view reads ambient_music only, as before.
+    [view] = [s for t in bare["package.yaml"]["template"] for s in t.get("binary_sensor", [])
+              if s["unique_id"] == "ramka_music_view"]
+    assert "music_mode" not in view["state"] and "ramka_ambient_music" in view["state"]
+    assert "music_turn" not in run_reset(bare["package.yaml"]) and "music_turn" not in json.dumps(
+        reset_script(bare["package.yaml"])["sequence"])
+
+
+def test_music_mode_default_is_settable(tmp_path):
+    inputs = demo_inputs()
+    inputs["settings_defaults"] = {"music_mode": "rotation", "music_turn_s": 45}
+    package = render(tmp_path, inputs)["package.yaml"]
+    assert package["input_select"]["ramka_music_mode"]["options"] == ["rotation", "takeover"]
+    assert {e: v for e, v in run_reset(package, groups=["music_turn"]).items()} == {MUSIC_MODE: "rotation", MUSIC_TURN_S: 45}
+    # The script's fallback is the home's default too.
+    assert "| int(45)" in package["script"]["ramka_music_turn"]["sequence"][1]["delay"]["seconds"]
+
+
+@pytest.mark.parametrize("defaults, message", [
+    ({"music_mode": "shuffle"}, r"settings_defaults.music_mode must be takeover or rotation"),
+    ({"music_turn_s": 5}, r"settings_defaults.music_turn_s must be within 10 and 600"),
+])
+def test_music_mode_bad_defaults_fail(tmp_path, defaults, message):
+    inputs = demo_inputs()
+    inputs["settings_defaults"] = defaults
+    with pytest.raises(dr.RenderError, match=message):
+        render(tmp_path, inputs)
+
+
+def test_music_turn_seeded_while_untouched(demo):
+    package = demo["package.yaml"]
+    seeded = {**tuned(package), "input_boolean.ramka_settings_seeded": "on",
+              **{f"input_number.ramka_{k}": v for k, v in zip(MUSIC_DB, (35.0, 75.0, 30.0, 70.0))},
+              "input_number.ramka_music_hold_s": 0.5, "input_number.ramka_music_calm_fall_s": 6.0}
+    assert seed_groups(package, seeded, rooms=demo_rooms()) == []
+    # At its minimum (a home that ran the Ramka before SPEC-054) or unknown: seeded, after the flag too.
+    for untouched in (10.0, "unknown", "unavailable"):
+        assert seed_groups(package, {**seeded, MUSIC_TURN_S: untouched}, rooms=demo_rooms()) == ["music_turn"], untouched
+    after = run_seed(package, {**seeded, MUSIC_TURN_S: 10.0, MUSIC_MODE: "takeover"})
+    assert (after[MUSIC_TURN_S], after[MUSIC_MODE]) == (30, "takeover")
+
+
+def music_view_state(package) -> str:
+    [view] = [s for t in package["template"] for s in t.get("binary_sensor", []) if s["unique_id"] == "ramka_music_view"]
+    return view["state"]
+
+
+@pytest.mark.parametrize("mode, ambient_music, turn, playing, page, shown", [
+    ("takeover", "on", "off", "on", "on", True),
+    ("takeover", "off", "on", "on", "on", False),
+    ("takeover", "on", "on", "off", "on", False),
+    ("takeover", "on", "off", "on", "off", False),
+    ("rotation", "on", "off", "on", "on", False),
+    ("rotation", "off", "on", "on", "on", True),
+    ("rotation", "on", "on", "off", "on", False),
+    ("rotation", "on", "on", "on", "off", False),
+    # A helper not there yet (unknown) reads as takeover, today's behaviour.
+    ("unknown", "on", "off", "on", "on", True),
+])
+def test_music_view_per_mode(demo, mode, ambient_music, turn, playing, page, shown):
+    states = {MUSIC_MODE: mode, "input_boolean.ramka_ambient_music": ambient_music, MUSIC_TURN: turn,
+              "binary_sensor.ramka_media_playing": playing, "input_boolean.ramka_page_music": page}
+    assert ha(music_view_state(demo["package.yaml"]), states=states) == str(shown)
+
+
+class _State:
+    def __init__(self, state):
+        self.state = state
+
+
+class _Trigger:
+    def __init__(self, before, after):
+        self.from_state = None if before is None else _State(before)
+        self.to_state = None if after is None else _State(after)
+
+
+TURN_STATES = {MUSIC_MODE: "rotation", "binary_sensor.ramka_media_playing": "on", "input_boolean.ramka_page_music": "on",
+               "input_select.ramka_mode": "ambient", "input_boolean.ramka_paused": "off",
+               "binary_sensor.ramka_music_view": "off"}
+
+
+def turn_starts(package, before, after, live, states) -> bool:
+    """Whether automation ramka_music_turn_start runs on input_select.ramka_ambient going before -> after."""
+    start = automation(package, "music_turn_start")
+    trigger = _Trigger(before, after)
+    attrs = {"sensor.ramka_ambient_pages": {"pages": live}}
+    for condition in start["conditions"]:
+        if condition["condition"] == "template":
+            if ha(condition["value_template"], states=states, attrs=attrs, trigger=trigger) != "True":
+                return False
+        else:
+            assert condition["condition"] == "state"
+            if states.get(condition["entity_id"], "unavailable") != condition["state"]:
+                return False
+    return True
+
+
+def test_music_turn_start_on_the_step_from_last_to_first(demo):
+    package = demo["package.yaml"]
+    start = automation(package, "music_turn_start")
+    assert start["triggers"] == [{"trigger": "state", "entity_id": "input_select.ramka_ambient", "to": None}]
+    assert start["actions"] == [{"action": "script.turn_on", "target": {"entity_id": "script.ramka_music_turn"}}]
+    live = ["climate", "air", "status"]
+    assert turn_starts(package, "status", "climate", live, TURN_STATES)
+    # Every other step, and ambient_stop resting on the first page it is already on (no change, no trigger).
+    for before, after in (("climate", "air"), ("air", "status"), ("air", "climate"), ("photos", "climate"), (None, "climate")):
+        assert not turn_starts(package, before, after, live, TURN_STATES), (before, after)
+    # The live list read (a switched-off page leaves it): plants last, then round.
+    assert turn_starts(package, "plants", "climate", ["climate", "plants"], TURN_STATES)
+    assert not turn_starts(package, "status", "climate", ["climate", "plants"], TURN_STATES)
+    # Only in rotation, playing, the music page on, in ambient, not paused, the music view off.
+    for entity, value in ((MUSIC_MODE, "takeover"), ("binary_sensor.ramka_media_playing", "off"),
+                          ("input_boolean.ramka_page_music", "off"), ("input_select.ramka_mode", "controls"),
+                          ("input_boolean.ramka_paused", "on"), ("binary_sensor.ramka_music_view", "on")):
+        assert not turn_starts(package, "status", "climate", live, {**TURN_STATES, entity: value}), entity
+    # A one-page live list makes no step: the template says no even if a state change came.
+    assert not turn_starts(package, "climate", "climate", ["climate"], TURN_STATES)
+
+
+def test_one_live_page_gets_its_turn_at_the_pass_end(demo):
+    package = demo["package.yaml"]
+    sequence = package["script"]["ramka_ambient_loop"]["sequence"][0]["repeat"]["sequence"]
+    [step] = [s for s in sequence if is_turn_step(s)]
+    assert sequence[-1] is step
+    assert step["then"] == [{"action": "script.turn_on", "target": {"entity_id": "script.ramka_music_turn"}}]
+    template = step["if"][0]["value_template"]
+    one = {"sensor.ramka_ambient_pages": {"pages": ["status"]}}
+    two = {"sensor.ramka_ambient_pages": {"pages": ["climate", "status"]}}
+    assert ha(template, states=TURN_STATES, attrs=one) == "True"
+    assert ha(template, states=TURN_STATES, attrs=two) == "False"
+    for entity, value in ((MUSIC_MODE, "takeover"), ("binary_sensor.ramka_media_playing", "off"),
+                          ("input_boolean.ramka_page_music", "off"), ("input_boolean.ramka_paused", "on")):
+        assert ha(template, states={**TURN_STATES, entity: value}, attrs=one) == "False", entity
+
+
+def test_music_turn_script_and_its_end(demo):
+    package = demo["package.yaml"]
+    script = package["script"]["ramka_music_turn"]
+    assert script["mode"] == "single"
+    on, delay, off = script["sequence"]
+    assert on == {"action": "input_boolean.turn_on", "target": {"entity_id": MUSIC_TURN}}
+    assert off == {"action": "input_boolean.turn_off", "target": {"entity_id": MUSIC_TURN}}
+    seconds = delay["delay"]["seconds"]
+    assert ha(seconds, states={MUSIC_TURN_S: "45.0"}) == "45" and ha(seconds) == "30"
+    end = automation(package, "music_turn_end")
+    assert {(t["entity_id"], t.get("to", "-"), t.get("from", "-")) for t in end["triggers"]} == {
+        ("input_select.ramka_mode", "-", "ambient"), ("binary_sensor.ramka_media_playing", "off", "-"),
+        ("input_boolean.ramka_page_music", "off", "-"), (MUSIC_MODE, None, "-")}
+    [condition] = end["conditions"]
+    assert ha(condition["value_template"], states={MUSIC_TURN: "on"}) == "True"
+    assert ha(condition["value_template"], states={"script.ramka_music_turn": "on", MUSIC_TURN: "off"}) == "True"
+    assert ha(condition["value_template"], states={MUSIC_TURN: "off", "script.ramka_music_turn": "off"}) == "False"
+    assert end["actions"] == [{"action": "script.turn_off", "target": {"entity_id": "script.ramka_music_turn"}},
+                              {"action": "input_boolean.turn_off", "target": {"entity_id": MUSIC_TURN}}]
+
+
+def test_swipe_up_on_the_turn_ends_it(demo):
+    """The now-playing card's turn: a swipe up runs ambient_next, whose first step ends the turn
+    (the page stays; ambient_start then runs the loop from the first page)."""
+    first = demo["package.yaml"]["script"]["ramka_ambient_next"]["sequence"][0]
+    assert first["if"] == [{"condition": "state", "entity_id": MUSIC_TURN, "state": "on"}]
+    assert first["then"][:2] == [{"action": "script.turn_off", "target": {"entity_id": "script.ramka_music_turn"}},
+                                 {"action": "input_boolean.turn_off", "target": {"entity_id": MUSIC_TURN}}]
+    assert "stop" in first["then"][2]
+    for lang in LANGS:
+        [card] = cards_of(demo[f"dashboard.{lang}.yaml"], "corner-taps-card")
+        [rule] = [r for r in card["swipe"] if any(c["entity"] == MUSIC_TURN for c in r["conditions"])]
+        assert rule == {"conditions": [{"entity": "input_select.ramka_mode", "states": ["ambient"]},
+                                       {"entity": MUSIC_TURN, "states": ["on"]}], "up": "script.ramka_ambient_next"}, lang
+
+
+def test_swipe_rule_without_a_player(tmp_path):
+    rendered = render(tmp_path, without_player())
+    [card] = cards_of(rendered["dashboard.en.yaml"], "corner-taps-card")
+    assert MUSIC_TURN not in json.dumps(card)
+    assert "ramka_music_turn" not in json.dumps(rendered["package.yaml"]["script"]["ramka_ambient_next"])
+
+
+def test_music_mode_rows_on_the_music_page(demo, plain):
+    for rendered in (demo, plain):
+        for lang in LANGS:
+            t = translations(lang)
+            view = settings_views(rendered[f"ramka-settings.{lang}.yaml"])["music"]
+            [select] = [n for n in walk(view) if n.get("entity") == MUSIC_MODE]
+            assert select["type"] == INFO_ROW and select["name"] == t["ui.settings.music_mode"], lang
+            assert select["descriptions"] == {"takeover": t["ui.settings.music_mode_takeover"],
+                                              "rotation": t["ui.settings.music_mode_rotation"]}, lang
+            [number] = [n for n in walk(view) if n.get("entity") == MUSIC_TURN_S]
+            assert number["name"] == t["ui.settings.music_turn_s"], lang
+    en = translations("en")
+    assert en["ui.settings.music_turn_s"] == "Now playing time"
+    assert en["ui.settings.music_mode_rotation"] == ("While the music plays, the rotation keeps running and Now playing "
+                                                     "is one more view of it, once per pass.")
+    assert translations("de")["ui.settings.music_turn_s"] == "Now-Playing-Dauer"
+    assert translations("pl")["ui.settings.music_turn_s"] == "Czas widoku Teraz gra"

@@ -208,7 +208,7 @@ test("the weather entity appearing after a restart subscribes again at once, no 
   assert.equal(connection.subs.length, 2);
 });
 
-// SPEC-053: the weather component's judged wind level on the wind part of the line.
+// SPEC-056: the weather component's judged wind level on the wind part of the line.
 const level = (state, attributes = {}) => ({
   "sensor.weather_wind_level": { state, attributes: { speed: 31.7, gust: null, direction: "SW", ...attributes } },
 });
@@ -256,7 +256,7 @@ test("every wind level and direction has its word in en, de and pl", () => {
   assert.deepEqual(Object.keys(dict("en").card.clock.wind_level), ["calm", "breezy", "strong", "gale"]);
 });
 
-// SPEC-053 amendment 1: the Climate page's warning line (option `warnings`, the banner's select).
+// SPEC-056 amendment 1: the Climate page's warning line (option `warnings`, the banner's select).
 const BANNER = "input_select.ramka_weather_banner";
 const STORM = { type: "thunderstorm", level: "orange", severity: 3, event: "Thunderstorm", headline: "Thunderstorms",
   onset: "2026-10-24T08:00:00Z", expires: "2026-10-24T20:00:00Z" };

@@ -11,7 +11,7 @@
 //   forecast: 4                              # optional: the next N days (icon, max/min) on the right,
 //                                            # from HA's weather/subscribe_forecast (daily)
 //
-// With the weather component (SPEC-053) the wind part reads sensor.weather_wind_level from breezy up:
+// With the weather component (SPEC-056) the wind part reads sensor.weather_wind_level from breezy up:
 // the level word, speed and direction, and the gust when known.
 //
 //   warnings: input_select.ramka_weather_banner  # optional (the Climate page's): while the weather
@@ -40,7 +40,7 @@ const ICONS = {
   snowy: "mdi:weather-snowy", "snowy-rainy": "mdi:weather-snowy-rainy", sunny: "mdi:weather-sunny",
   windy: "mdi:weather-windy", "windy-variant": "mdi:weather-windy-variant", exceptional: "mdi:alert-circle-outline",
 };
-// The weather component's wind status (SPEC-053), consumed by the Ramka; the levels that change the line.
+// The weather component's wind status (SPEC-056), consumed by the Ramka; the levels that change the line.
 const WIND_LEVEL = "sensor.weather_wind_level";
 const WIND_SHOWN = ["breezy", "strong", "gale"];
 // Seconds to wait for a forecast with days before subscribing again; the last one repeats.
@@ -206,7 +206,7 @@ class ClockWeatherCard extends HTMLElement {
     return name === key ? w.state : name;
   }
 
-  // From breezy up, the weather component's judged level (SPEC-053) says more than the raw speed:
+  // From breezy up, the weather component's judged level (SPEC-056) says more than the raw speed:
   // "Breezy, 32 km/h SW, gusts 49". Calm, or a home without the weather component's sensor, keeps
   // the plain speed line, so nothing changes there.
   _windLevel() {
@@ -228,7 +228,7 @@ class ClockWeatherCard extends HTMLElement {
     return text;
   }
 
-  // The warning (SPEC-053 amendment 1, the Climate page's): {text, colour, about} while the weather
+  // The warning (SPEC-056 amendment 1, the Climate page's): {text, colour, about} while the weather
   // component's warning is on and the indicator's setting (config.warnings) is not off, else null.
   // An official warning says what and until when in its colour ("Gale force wind · until Sat 12:00",
   // "+1" for more), no level word: the colour says the level. `about`: the value it concerns (wind,

@@ -1,4 +1,4 @@
-// The controls' weather warnings (SPEC-053 amendment 1). The indicator says something is up from
+// The controls' weather warnings (SPEC-056 amendment 1). The indicator says something is up from
 // across the room; this is where it is read when someone walks up and the controls come up. While
 // the weather component's binary_sensor.weather_warning is on (whatever the indicator's setting):
 // a "Weather warnings" button with the number of official warnings, in the most severe one's icon

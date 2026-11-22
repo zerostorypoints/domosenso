@@ -11,7 +11,7 @@
 //     in the pills), problems first. Safety's issues come first; then, while the weather
 //     component's binary_sensor.weather_warning is on, the warning chip (lib/weather-warnings.js
 //     warningChip: "Orange warning · Thunderstorm +1", "Strong wind · 45 km/h"), which opens the
-//     forecast sheet and stands in for "all good" (SPEC-053: the owner's choice);
+//     forecast sheet and stands in for "all good" (SPEC-056: the owner's choice);
 //   - metric chips: inside and outside (SPEC-038 §3.9: the areas of that type, lib/areas.js typed:
 //     the range of their main temperatures; "No areas assigned" when no area has the type, opening
 //     Settings → Areas; "Main sensor not set" when none of its areas has one), the home's air score
@@ -299,7 +299,7 @@ function updatePills(parts, ctx) {
   // matter before a reading. Each opens the Safety page.
   const safety = issuesOf(ctx.hass, ctx.config).map((issue) => ({ level: "poor", safety: true, target: "#/safety",
     text: ctx.t(`card.pocket.safety.issue.${issue.kind}`, { name: labelOf(ctx.hass, ctx.config, issue.id) }) }));
-  // Dangerous weather (SPEC-053): after safety, before the readings; it opens the forecast sheet.
+  // Dangerous weather (SPEC-056): after safety, before the readings; it opens the forecast sheet.
   // With it nothing is "all good", even when every reading is.
   const wind = warningChip(ctx.hass);
   const windPill = wind ? [{ level: wind.tone, wind: true, target: "forecast", text: chipText(ctx, wind) }] : [];

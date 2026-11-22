@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The official weather warnings in effect for one MeteoAlarm region, as JSON on stdout for the
-weather component's command_line sensor (sensor.weather_warnings, SPEC-053 amendment 1).
+weather component's command_line sensor (sensor.weather_warnings, SPEC-056 amendment 1).
 
 Home Assistant's meteoalarm integration keeps one warning; a home with wind and rain at once needs
 every one, and their severity, to show the most severe and a count. Standard library only: it runs
