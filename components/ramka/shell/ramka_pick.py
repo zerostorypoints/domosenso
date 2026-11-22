@@ -1,34 +1,42 @@
 #!/usr/bin/env python3
-"""Pick the Ramka's next photo series from the photo tree's albums, in rotation cycles, so every
-album, every event and every photo comes round.
+"""Pick the Ramka's next photo series from the photo tree, taking turns level by level, so every
+folder, every event and every photo comes round.
 
-An album is a top-level folder of the photo tree; an event is a folder that actually holds JPEGs, at
-any depth (2026/07/lake-trip is event lake-trip in album 2026; a top-level folder with photos is an
-album of one event). Folders that only contain other folders, hidden folders and @-folders such as
-a NAS's @eaDir are skipped. Each draw:
+The photo tree is every folder below the root that holds JPEGs at some depth; hidden folders and
+@-folders such as a NAS's @eaDir are skipped, and photos directly in the root are not shown. Each
+draw walks down from the root:
 
-1. takes an album not yet shown in the current album cycle (random among them); when every album
-   has been shown, a new cycle starts, without the album shown last when there are others;
-2. inside it, an event not yet shown in that album's event cycle, the same way;
-3. inside it, up to N photos not yet shown in that event's photo cycle, in random order; when fewer
-   than N are left, the series is topped up from the event's next cycle (never a photo twice in
-   one series), so every series has N photos when the event holds that many.
+1. at each folder, its turns are its child folders that hold photos, plus its own photos when it
+   holds some (one turn); it takes a turn not yet shown in that folder's running cycle (random
+   among those left); when every turn has been shown, a new cycle starts, without the turn shown
+   last when there are others;
+2. a child folder drawn is walked into the same way; the folder's own photos end the walk: that
+   folder is the event;
+3. up to N of the event's photos not yet shown in its photo cycle, in random order; when fewer than
+   N are left, the series is topped up from the event's next cycle (never a photo twice in one
+   series), so every series has N photos when the event holds that many.
+
+So each top-level folder gets the same share of series, each folder inside it the same share of
+its parent's, and so on; a flat tree (albums with photos, or albums of event folders) draws as an
+album, then an event, then photos.
 
 The cycles live in <root>/../.ramka_rotation.json, outside the photo tree. Folders and photos added
 since join the running cycle, removed ones drop out. With albums chosen on the settings dashboard's
-Photos page, only those are drawn from; an album that is gone is skipped, and with none left every
-album is, each said on stderr. Prints JSON for the ambient loop's response_variable:
+Photos page (folder paths, "2025" or "2025/Lisbon"), only folders inside them are drawn from; a
+chosen path that is gone is skipped, and with none left every folder is, each said on stderr.
+Prints JSON for the ambient loop's response_variable:
 
-    {"event": "lake-trip", "folder": "2026/07/lake-trip", "photos": ["2026/07/lake-trip/a.jpg", ...]}
+    {"event": "Day 1", "folder": "2025/Lisbon/Day 1", "photos": ["2025/Lisbon/Day 1/a.jpg", ...]}
 
 Called by the ramka package's shell_command.<prefix>_pick with the photo_dir input (installed as
 /config/shell/ramka_pick.py):
 
-    python3 /config/shell/ramka_pick.py [/config/www/ramka] [5] [<album> ...]
+    python3 /config/shell/ramka_pick.py [/config/www/ramka] [5] [<album path> ...]
 
-and with --albums, the albums to choose from (the index automation's shell_command.<prefix>_albums):
+and with --albums, every folder that holds photos at some depth, the albums to choose from (the
+index automation's shell_command.<prefix>_albums):
 
-    python3 /config/shell/ramka_pick.py /config/www/ramka --albums  ->  {"albums": ["2025", "2026"]}
+    python3 /config/shell/ramka_pick.py /config/www/ramka --albums  ->  {"albums": ["2025", "2025/Lisbon", ...]}
 """
 import json
 import os
@@ -48,13 +56,30 @@ def leaf_folders(root):
     return out
 
 
-def album_of(folder):
-    return folder.split(os.sep)[0]
+OWN = "."  # the turn of a folder's own photos, next to its child folders
+
+
+def nodes(folders):
+    """Every folder that holds photos at some depth: the folders with photos and their parents."""
+    out = set()
+    for folder in folders:
+        parts = folder.split(os.sep)
+        out.update(os.sep.join(parts[:i]) for i in range(1, len(parts) + 1))
+    return out
 
 
 def albums(folders):
-    """The top-level folders that hold photos at some depth, sorted."""
-    return sorted({album_of(folder) for folder in folders})
+    """The folders to choose from: every one that holds photos at some depth, as '/' paths, sorted."""
+    return sorted(n.replace(os.sep, "/") for n in nodes(folders))
+
+
+def in_branch(folder, chosen):
+    return any(folder == c or folder.startswith(c + os.sep) for c in chosen)
+
+
+def turns(node, children, folders):
+    """A folder's turns: its child folders with photos, and its own photos ('.') when it has some."""
+    return sorted(children.get(node, ())) + ([OWN] if node in folders else [])
 
 
 def load_state(path):
@@ -108,37 +133,56 @@ def series(photos, cycle, count):
     return picked
 
 
-def main(root, count, chosen=()):
-    folders = leaf_folders(root)
-    chosen = [a for a in chosen if a]
-    known = albums(folders)
-    valid = [a for a in chosen if a in known]
-    for a in chosen:
-        if a not in valid:
-            print(f"album {a} not found" + ("" if valid else ", using all"), file=sys.stderr)
-    if valid:
-        folders = {f: p for f, p in folders.items() if album_of(f) in valid}
-    if not folders:
-        print(json.dumps({"event": "", "folder": "", "photos": []}))
-        return
-    parent = os.path.dirname(os.path.abspath(root))
-    state_path = os.path.join(parent, STATE_NAME)
-    state = load_state(state_path)
-    all_folders = leaf_folders(root) if valid else folders
-    state = {
-        "albums": [a for a in state.get("albums", []) if a in known],
-        "last_album": state.get("last_album", ""),
-        "events": {a: c for a, c in state.get("events", {}).items() if a in known and isinstance(c, list)},
-        "last_event": {a: e for a, e in state.get("last_event", {}).items() if a in known},
+def fresh_state(state, children, folders, all_folders):
+    """The saved cycles kept for the folders and turns that still exist; a file from before the
+    level-by-level draw (albums and events) keeps its top-level cycle."""
+    if "cycles" not in state and "albums" in state:
+        state = {"cycles": {"": state.get("albums", [])}, "last": {"": state.get("last_album", "")},
+                 "photos": state.get("photos", {})}
+    cycles, last = state.get("cycles", {}), state.get("last", {})
+    known = {"", *children, *folders}
+    return {
+        "cycles": {n: [t for t in c if t in turns(n, children, folders)]
+                   for n, c in cycles.items() if n in known and isinstance(c, list)},
+        "last": {n: t for n, t in last.items() if n in known and isinstance(t, str)},
         "photos": {f: [p for p in c if p in set(all_folders[f])]
                    for f, c in state.get("photos", {}).items() if f in all_folders and isinstance(c, list)},
     }
 
-    album = draw(albums(folders), state["albums"], state["last_album"])
-    state["last_album"] = album
-    events = sorted(f for f in folders if album_of(f) == album)
-    folder = draw(events, state["events"].setdefault(album, []), state["last_event"].get(album, ""))
-    state["last_event"][album] = folder
+
+def main(root, count, chosen=()):
+    folders = leaf_folders(root)
+    all_folders = folders
+    chosen = [os.path.normpath(a.replace("/", os.sep)) for a in chosen if a]
+    known = nodes(folders)
+    valid = [a for a in chosen if a in known]
+    for a in chosen:
+        if a not in valid:
+            print(f"album {a.replace(os.sep, '/')} not found" + ("" if valid else ", using all"), file=sys.stderr)
+    if valid:
+        folders = {f: p for f, p in folders.items() if in_branch(f, valid)}
+    if not folders:
+        print(json.dumps({"event": "", "folder": "", "photos": []}))
+        return
+    children = {}
+    for n in nodes(folders):
+        children.setdefault(os.path.dirname(n), set()).add(n)
+    parent = os.path.dirname(os.path.abspath(root))
+    state_path = os.path.join(parent, STATE_NAME)
+    every = nodes(all_folders)
+    every_children = {}
+    for n in every:
+        every_children.setdefault(os.path.dirname(n), set()).add(n)
+    state = fresh_state(load_state(state_path), every_children, all_folders, all_folders)
+
+    node = ""
+    while True:
+        turn = draw(turns(node, children, folders), state["cycles"].setdefault(node, []), state["last"].get(node, ""))
+        state["last"][node] = turn
+        if turn == OWN:
+            break
+        node = turn
+    folder = node
     names = series(folders[folder], state["photos"].setdefault(folder, []), max(count, 0))
     save_state(state_path, state)
     try:  # the picker before rotation cycles (ramka 0.21 and older) remembered only the last folder
@@ -146,9 +190,10 @@ def main(root, count, chosen=()):
     except OSError:
         pass
 
-    picked = [f"{folder}/{p}" for p in names]
+    rel = folder.replace(os.sep, "/")
+    picked = [f"{rel}/{p}" for p in names]
     refresh_index_if_stale(root, picked)
-    print(json.dumps({"event": os.path.basename(folder), "folder": folder, "photos": picked}, ensure_ascii=False))
+    print(json.dumps({"event": os.path.basename(folder), "folder": rel, "photos": picked}, ensure_ascii=False))
 
 
 def refresh_index_if_stale(root, picked):
