@@ -157,6 +157,8 @@ test("without caption_levels_entity the caption is the event, as before", async 
 test("a change of the levels redraws the caption of the photo on screen", async () => {
   const card = treeCard("2025/Lisbon/Day 1/a.jpg", "1");
   await card._loadIndex();
+  for (const img of card._layer.querySelectorAll(".photo")) if (img.onload) img.onload();  // the photo is on screen
+  card.hass = { ...card._hass };  // the same photo again: nothing to load
   card.hass = { ...card._hass, states: { ...card._hass.states, "input_select.levels": { state: "2", attributes: {} } } };
   assert.equal(caption(card).querySelector(".c1").textContent, "Lisbon › Day 1 · 8 July 2025");
 });

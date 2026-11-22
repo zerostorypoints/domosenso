@@ -57,6 +57,14 @@ class PhotoFrameCard extends HTMLElement {
     if (!this._layer) this._buildLayer();
     this._claim();
     this._update();
+    // A new caption level shows on the photo already on screen, not only on the next one.
+    const levels = this._config.caption_levels_entity && hass.states[this._config.caption_levels_entity];
+    const level = levels ? levels.state : "1";
+    if (level !== this._level) {
+      const first = this._level === undefined;
+      this._level = level;
+      if (!first) this._caption();
+    }
   }
 
   // Hidden like a false conditional card; the sections grid then takes this element out of the
