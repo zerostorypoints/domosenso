@@ -19,6 +19,8 @@ from datetime import datetime
 
 from PIL import Image
 
+from ramka_pick import LONG_DIR, shown_path
+
 EXIF_DATE_TIME_ORIGINAL = 36867
 EXIF_DATE_TIME = 306
 EXIF_IFD = 0x8769
@@ -83,21 +85,38 @@ def taken(path):
     return when or datetime.fromtimestamp(os.path.getmtime(path)).isoformat(), size, info
 
 
+def prune_stand_ins(folder, used):
+    """Remove the stand-ins no photo needs any more."""
+    long_dir = os.path.join(folder, LONG_DIR)
+    try:
+        names = os.listdir(long_dir)
+    except OSError:
+        return
+    for name in names:
+        if name.endswith(".jpg") and f"{LONG_DIR}/{name}" not in used:
+            try:
+                os.remove(os.path.join(long_dir, name))
+            except OSError:
+                pass
+
+
 def main(folder):
     photos = []
     for dirpath, dirnames, filenames in os.walk(folder):
         dirnames[:] = sorted(d for d in dirnames if not d.startswith("@") and not d.startswith("."))
         if dirpath == folder:
             continue
-        rel = os.path.relpath(dirpath, folder)
+        rel = os.path.relpath(dirpath, folder).replace(os.sep, "/")
         for name in sorted(filenames):
             if not name.lower().endswith((".jpg", ".jpeg")) or name.startswith("."):
                 continue
             when, size, info = taken(os.path.join(dirpath, name))
             if when is None:
                 continue
-            photos.append({"path": f"{rel}/{name}", "event": os.path.basename(rel), "folder": rel,
+            # A path too long for the photo helper is listed under its stand-in (SPEC-057 amendment 1).
+            photos.append({"path": shown_path(folder, f"{rel}/{name}"), "event": os.path.basename(rel), "folder": rel,
                            "date": when, "width": size[0], "height": size[1], **info})
+    prune_stand_ins(folder, {p["path"] for p in photos})
     index = {"generated": datetime.now().isoformat(timespec="seconds"), "count": len(photos), "photos": photos}
     tmp = os.path.join(folder, "index.json.tmp")
     with open(tmp, "w", encoding="utf-8") as f:

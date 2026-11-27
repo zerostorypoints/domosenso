@@ -349,11 +349,13 @@ lovelace:
   shows the one it opens (the tablet user's default dashboard, or the Companion app's start page);
   General says so. A live switch waits for the spike (SPEC-021, "language, a spike first"), which
   has not run on the tested tablet yet.
-- **Photos**: photos per series (5), the time per photo (10 s) and, in Advanced, the albums (their
+- **Photos**: photos per series (5), the time per photo (10 s), the folder levels in the caption
+  (1, 2, 3 or all; 1 shows the photo's folder only, SPEC-057) and, in Advanced, the albums (their
   own section, in the right column next to Basic; the render-time inputs and Reset below): a
-  summary of the choice and Choose albums, which opens the album picker, a dialog listing the
-  top-level folders of `photo_dir` that hold photos. It filters by name, shows all, the ticked or the
-  unticked albums, sorts by the date at the start of the name (`DD.MM.YYYY`, a span
+  summary of the choice and Choose albums, which opens the album picker, a dialog listing every
+  folder of `photo_dir` that holds photos at some depth, as a tree (ticking a folder chooses
+  everything inside it). It filters by the folder's path (showing each match with its parents),
+  shows all, the ticked or the unticked albums, sorts siblings by the date at the start of the name (`DD.MM.YYYY`, a span
   `DD.MM-DD.MM.YYYY`, `YYYY-MM-DD`, `YYYY`; else a year anywhere) or by name, and selects or deselects
   every album shown at once (Select all, Deselect all). Ticks are a draft: Save writes them once, Cancel or Escape drops them.
   "All albums" is every album, later ones too; under it every box shows ticked, and unticking a few
