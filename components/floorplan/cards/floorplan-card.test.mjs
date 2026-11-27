@@ -3583,3 +3583,107 @@ test("edit panel: a client matched to this point's own device is not marked else
   assert.equal(text(LAPTOP), "laptop", "its own device's client");
   assert.equal(text(NAS), ENv("card.floorplan.traffic.edit.elsewhere", { name: "nas" }), "another point's device");
 });
+
+function plantProbeHass() {
+  const hass = hassOf();
+  const plant = "plant.monstera", probe = "d_probe";
+  const photo = "/local/plants/monstera.jpg";
+  hass.devices[probe] = { id: probe, name: "Monstera", area_id: "kitchen" };
+  hass.devices.d_climate.name = "Monstera";
+  hass.entities["sensor.probe_moisture"] = { device_id: probe };
+  hass.entities["sensor.monstera_reading"] = { device_id: null, platform: "template" };
+  hass.states["sensor.probe_moisture"] = { state: "31", attributes: { device_class: "moisture", unit_of_measurement: "%" } };
+  hass.states["sensor.monstera_reading"] = { state: "31", attributes: {
+    device_class: "moisture", unit_of_measurement: "%", source_entity: "sensor.probe_moisture",
+  } };
+  hass.states[plant].attributes = { friendly_name: "Monstera", entity_picture: photo,
+    sensors: { moisture: "sensor.monstera_reading" } };
+  return { hass, plant, probe, photo };
+}
+
+test("the Floorplan hides duplicate automatic plant probes and keeps the photo and independent markers", async () => {
+  const { hass, plant, probe, photo } = plantProbeHass();
+  const placeholder = { ...pt(probe, 6.5, 2), placed: false };
+  const pot = { ...plantPt(6.5, 2), placed: false };
+  const sameName = { ...pt("d_climate", 1, 1), placed: false };
+  const saved = planOf([placeholder, pot, sameName, pt("d_office", 2, 2)]);
+  const card = await make({ plan: saved }, hass);
+  assert.equal(clusterOf(card, "kitchen"), null, "the template's source probe is filtered from the cluster");
+  const marker = markerOf(card, plant);
+  assert.ok(marker);
+  const [x, y] = clientAt(card, 6.5, 2);
+  pointer(marker, "pointermove", x, y);
+  assert.equal(tip(card).querySelector("img")?.getAttribute("src"), photo);
+  assert.ok(markerOf(card, "d_climate"), "same name alone does not hide a point");
+  assert.ok(saved.floors[0].points.includes(placeholder));
+
+  const explicit = await make({ plan: planOf([pot, pt(probe, 7, 3)]) }, hass);
+  assert.ok(markerOf(explicit, probe), "a manual placement remains available");
+
+  const fresh = await make({ plan: planOf([]) }, hass);
+  click($(fresh, "[data-action=edit]"));
+  assert.ok(markerOf(fresh, plant));
+  assert.ok(!fresh._doc.floors[0].points.some((p) => p.device_id === probe), "the editor cannot recreate the duplicate");
+});
+
+test("a probe with independent room readings or controls stays on the floor plan", async () => {
+  const { hass, probe } = plantProbeHass();
+  hass.entities["sensor.room_humidity"] = { device_id: probe };
+  hass.states["sensor.room_humidity"] = { state: "51", attributes: { device_class: "humidity" } };
+  hass.entities["switch.valve"] = { device_id: probe };
+  hass.states["switch.valve"] = { state: "off", attributes: {} };
+  const card = await make({ plan: planOf([plantPt(6, 1), { ...pt(probe, 7, 3), placed: false }]) }, hass);
+  assert.ok(markerOf(card, probe));
+});
+
+test("the card refreshes plant probe links when an unavailable reading starts naming its source", async () => {
+  const { hass, probe } = plantProbeHass();
+  const source = "sensor.monstera_reading";
+  const live = hass.states[source];
+  hass.states[source] = { state: "unavailable", attributes: { device_class: "moisture" } };
+  const card = await make({ plan: planOf([plantPt(6, 1), { ...pt(probe, 7, 3), placed: false }]) }, hass);
+  assert.ok(markerOf(card, probe));
+  card.hass = { ...hass, states: { ...hass.states, [source]: live } };
+  assert.equal(markerOf(card, probe), null);
+});
+
+test("a plant attached to its own registered device hides the separate probe placeholder", async () => {
+  const { hass, plant, probe } = plantProbeHass();
+  hass.entities[plant].device_id = "d_pot";
+  hass.devices.d_pot = { id: "d_pot", name: "Monstera", area_id: "kitchen" };
+  const card = await make({ plan: planOf([pt("d_pot", 6, 1), { ...pt(probe, 7, 3), placed: false }]) }, hass);
+  assert.ok(markerOf(card, "d_pot"));
+  assert.equal(markerOf(card, probe), null);
+});
+
+test("separating a selected composite probe refreshes the plan when its automatic point disappears", async () => {
+  const { hass, probe, plant } = plantProbeHass();
+  const card = await make({ plan: planOf([plantPt(6, 1), { ...pt(probe, 7, 3), placed: false, also: ["d_office"] }]) }, hass);
+  editTap(card, probe, 7, 3);
+  const separate = $(card, '[data-action="separate"][data-device="d_office"]');
+  assert.ok(separate);
+  click(separate);
+  assert.ok(markerOf(card, plant), "the SVG draws the plant even when the selected probe is no longer visible");
+  assert.equal(markerOf(card, probe), null);
+});
+
+test("a late independent sensor state restores its registered device marker", async () => {
+  const { hass, probe } = plantProbeHass();
+  const humidity = "sensor.room_humidity";
+  hass.entities[humidity] = { device_id: probe };
+  const card = await make({ plan: planOf([plantPt(6, 1), { ...pt(probe, 7, 3), placed: false }]) }, hass);
+  assert.equal(markerOf(card, probe), null);
+  card.hass = { ...hass, states: { ...hass.states, [humidity]: { state: "51", attributes: { device_class: "humidity" } } } };
+  assert.ok(markerOf(card, probe));
+});
+
+test("a pot created in HA state only can hide its automatic probe marker", async () => {
+  const { hass, plant, probe } = plantProbeHass();
+  const live = hass.states[plant];
+  delete hass.states[plant];
+  delete hass.entities[plant];
+  const card = await make({ plan: planOf([plantPt(6, 1), { ...pt(probe, 7, 3), placed: false }]) }, hass);
+  assert.ok(markerOf(card, probe));
+  card.hass = { ...hass, states: { ...hass.states, [plant]: live } };
+  assert.equal(markerOf(card, probe), null);
+});

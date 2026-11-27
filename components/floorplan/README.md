@@ -199,9 +199,12 @@ room on a small circle there), drawn faded (`placed: false`) until it is dragged
 - The tray lists the devices not on the plan yet (no area, or an area without a room on this floor):
   every enabled device with an entity that is not a diagnostic, a computed sensor or a light group
   (a Hue room or zone), except phones, Bluetooth tags and network clients, which move. A device
-  whose entities a plant names as its `sensors` is that plant's point, not one of its own,
-  and an ESPHome Bluetooth proxy is one point, not two. They are
-  grouped by room: the area, or for a plant without an area the HA area named like the room the
+  whose entities a plant names as its `sensors` is represented by the plant's point. Floorplan
+  follows reading templates to their source entities when the same probe supplies every configured
+  reading, including soil moisture. An automatic probe point is hidden once the pot has its own point
+  on the floor. Explicit probe positions stay visible.
+  An ESPHome Bluetooth proxy is represented by one point. The tray groups points by area. A plant
+  without an area is grouped by the HA area named like the room the
   plants component gives it, in any of its languages (case, spaces and diacritics aside: `Hobbyraum`
   is the area `Hobby Raum`), so such a plant is also placed in that room on its own; a room naming
   no area groups under its own name, else *No room*. Tap a group to open it; drag one sensor onto the plan, or drag a group's title to
