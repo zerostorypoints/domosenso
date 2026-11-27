@@ -80,6 +80,68 @@ function isPointEntity(hass, entityId) {
   return POINT_CLASSES.includes(cls);
 }
 
+// A reading template exposes the entity of the physical sensor it reads.
+function plantReadingSource(hass, id) {
+  return hass.states?.[id]?.attributes?.source_entity;
+}
+
+// Follow changes to a template's source independently of changes to its numeric reading.
+export function plantSourceStamp(hass, plantIds) {
+  return JSON.stringify(plantIds.map((id) => Object.entries(hass.states?.[id]?.attributes?.sensors || {})
+    .map(([kind, sensor]) => [kind, sensor, plantReadingSource(hass, sensor)])));
+}
+
+export function registryDeviceEntities(entities) {
+  const byDevice = new Map();
+  for (const [id, reg] of Object.entries(entities)) {
+    if (!reg.device_id) continue;
+    if (!byDevice.has(reg.device_id)) byDevice.set(reg.device_id, []);
+    byDevice.get(reg.device_id).push(id);
+  }
+  return byDevice;
+}
+
+export function plantProbeOwners(hass, plantIds, byDevice = registryDeviceEntities(hass.entities || {})) {
+  const entities = hass.entities || {};
+  const resolve = (id) => {
+    if (typeof id !== "string" || !id.startsWith("sensor.")) return null;
+    const source = plantReadingSource(hass, id);
+    if (entities[id]?.device_id) return id;
+    return typeof source === "string" && source.startsWith("sensor.") && entities[source]?.device_id ? source : null;
+  };
+  const owners = new Map();
+  for (const plant of plantIds) {
+    const sensors = hass.states?.[plant]?.attributes?.sensors;
+    const soil = resolve(sensors?.moisture);
+    const device = entities[soil]?.device_id;
+    const point = entities[plant]?.device_id ?? plant;
+    if (!device || point === device) continue;
+    const readings = new Set(Object.values(sensors).map(resolve));
+    if (![...readings].every((id) => entities[id]?.device_id === device)) continue;
+    const independent = (byDevice.get(device) || []).some((id) => {
+      if (readings.has(id) || !usable(hass, id, entities[id])) return false;
+      if (id.startsWith("sensor.")) return isPointEntity(hass, id);
+      if (id.startsWith("binary_sensor.")) return PRESENCE_CLASSES.includes(hass.states?.[id]?.attributes?.device_class);
+      return true;
+    });
+    if (independent) continue;
+    owners.set(device, owners.has(device) ? null : { plant, point });
+  }
+  return new Map([...owners].filter(([, owner]) => owner !== null));
+}
+
+// A saved automatic point adds nothing once the pot is represented. Keep deliberate placements,
+// explicit network bindings, and points that still represent multiple devices.
+export function hidePlantProbePlaceholders(floor, owners) {
+  const represented = new Set(floor.points.flatMap(keysOf));
+  const points = floor.points.filter((point) => {
+    const owner = owners.get(point.device_id);
+    return !owner || point.placed !== false || point.also?.length || point.mac
+      || !(represented.has(owner.plant) || represented.has(owner.point));
+  });
+  return points.length === floor.points.length ? floor : { ...floor, points };
+}
+
 // What can be put on the plan (SPEC-028 Amendment 5): every enabled hardware device with a usable
 // entity whose category is placeable, and an entity without a device when it is a plant or a point
 // class. `entities` are the readings a marker shows (point classes and plants); a device whose

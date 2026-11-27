@@ -2,6 +2,14 @@
 
 Newest first. Each entry says what changed and what a home that already runs the floor plan has to do.
 
+## 0.5.1 (2026-11-27): one marker per pot
+
+- Floorplan resolves a plant's reading templates to the physical probe. A saved
+  automatic probe marker is hidden when the plant is already on the floor.
+  Placing a plant in the editor keeps its photo and readings together.
+- **What a home does:** update and reload the dashboard. The existing plan,
+  registry and history require no migration.
+
 ## 0.5.0 (2026-11-15): network traffic on the plan (SPEC-047)
 
 Written after the tag: the `floorplan/0.5.0` tag holds this work, but its `UPGRADE.md` had no entry
