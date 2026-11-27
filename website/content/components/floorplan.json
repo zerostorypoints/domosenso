@@ -20,7 +20,7 @@
       "preview": "/previews/floorplan.svg",
       "previewType": "illustration",
       "layout": "Native Home Assistant dashboard; zoom and pan by wheel, pinch or buttons; editing on a desktop or tablet.",
-      "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
+      "sourceCommit": "7709bb25807f8d64ef85268000b73b6a9a4ed8ef",
       "evidencePath": "components/floorplan/cards/floorplan-card.js"
     },
     {
@@ -45,8 +45,8 @@
     "Optionally show it on the Ramka with floorplan: true, and mark rooms open to each other without doors as one open space so their maps share readings. For Wi-Fi coverage, mark the access points and set the walls' materials in edit mode, and optionally walk the home with domosenso floorplan survey."
   ],
   "id": "floorplan",
-  "version": "0.5.0",
-  "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
+  "version": "0.5.1",
+  "sourceCommit": "7709bb25807f8d64ef85268000b73b6a9a4ed8ef",
   "evidencePaths": [
     "components/floorplan/component.yaml"
   ],

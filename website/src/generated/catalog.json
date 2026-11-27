@@ -557,9 +557,9 @@
     },
     {
       "id": "floorplan",
-      "version": "0.5.0",
-      "sourceTag": "floorplan/0.5.0",
-      "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
+      "version": "0.5.1",
+      "sourceTag": "floorplan/0.5.1",
+      "sourceCommit": "7709bb25807f8d64ef85268000b73b6a9a4ed8ef",
       "summary": "A floor plan of the home with rooms, sensor readings and plants at their positions",
       "requirements": [],
       "integrations": [
@@ -587,8 +587,8 @@
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ],
       "inputs": [],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/d9da47444ed0db3a8f1f9a317234e7bbf6df8664/components/floorplan",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/d9da47444ed0db3a8f1f9a317234e7bbf6df8664/components/floorplan/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/7709bb25807f8d64ef85268000b73b6a9a4ed8ef/components/floorplan",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/7709bb25807f8d64ef85268000b73b6a9a4ed8ef/components/floorplan/UPGRADE.md"
     },
     {
       "id": "gate-remote",

@@ -58,9 +58,9 @@
     },
     {
       "id": "floorplan",
-      "version": "0.5.0",
-      "tag": "floorplan/0.5.0",
-      "commit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
+      "version": "0.5.1",
+      "tag": "floorplan/0.5.1",
+      "commit": "7709bb25807f8d64ef85268000b73b6a9a4ed8ef",
       "limitations": [
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ]
