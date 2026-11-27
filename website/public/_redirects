@@ -1,0 +1,5 @@
+# Repository-shaped paths of device assets go to where the site serves them, so a link copied from a
+# device guide on GitHub keeps working with domosenso.org as host (tests/test_website_redirects.py).
+/devices/wiring/* /wiring/:splat 301
+/devices/dimensions/* /dimensions/:splat 301
+/devices/enclosures/:id/preview/:name /enclosures/:id/:name 301
