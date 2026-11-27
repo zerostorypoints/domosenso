@@ -745,6 +745,7 @@ views:
             fit: contain          # the whole photo; square and portrait ones get black margins
             blur_background: false
             path_entity: input_text.[[ p ]]_photo
+            caption_levels_entity: input_select.[[ p ]]_photo_caption_levels
             index: [[ photo_index | yaml ]]
             [%- if preview %]
             # In the preview the layer stays inside the frame and shows whatever the Ramka shows.
