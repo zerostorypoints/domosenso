@@ -44,7 +44,8 @@ import {
   supported, emptyPlan, autoPlace, tray, trayGroups, roomLabel, homeRoom, movePoint, moveCorner, insertCorner, removeCorner,
   splitRoom, joinRooms, linkRoom, withPlan, extract, addPoint, addPoints, candidateName, pointName,
   candidates, pointCategory, setPointCategory, joinPoint, separatePoint, registryLinks, presenceEntities,
-  openSpaces, openRooms, closeRoom, facingWalls,
+  openSpaces, openRooms, closeRoom, facingWalls, plantProbeOwners, plantSourceStamp,
+  registryDeviceEntities, hidePlantProbePlaceholders,
 } from "./lib/plan.js";
 import { categoryById, categoryName, colourOf, PLACEABLE } from "./lib/categories.js";
 import { esc, dotHtml } from "./lib/html.js";
@@ -346,16 +347,26 @@ class FloorplanCard extends HTMLElement {
     this._render();
   }
 
-  // The candidates and each point's readings, worked out again only when the registries or the
-  // entry domains change: hass is set for every state change in Home Assistant. A device class or a
-  // plant's sensors (states) changing alone shows with the next registry change or page load.
+  // Most state changes are just new readings. Keep the device index while the registry is unchanged,
+  // but watch for plants, source links and independent sensor classes becoming available.
   _registry() {
     const h = this._hass || {};
     const key = [h.entities, h.devices, h.areas, this._entryDomains];
-    if (this._regKey && key.every((v, i) => v === this._regKey[i])) return;
+    const registryChanged = !this._regKey || key.some((value, i) => value !== this._regKey[i]);
+    if (registryChanged) this._plantDeviceEntities = registryDeviceEntities(h.entities || {});
+    const plantIds = Object.keys(h.states || {}).filter((id) => id.startsWith("plant."));
+    const owners = plantProbeOwners(h, plantIds, this._plantDeviceEntities);
+    const ownership = JSON.stringify([...owners]);
+    const sources = plantSourceStamp(h, plantIds);
+    if (!registryChanged && sources === this._plantSources && ownership === this._plantOwnership) return;
     this._regKey = key;
+    this._plantSources = sources;
+    this._plantOwnership = ownership;
     const list = candidates(h, this._entryDomains);
     this._cands = new Map(list.map((c) => [c.key, c]));
+    this._plantProbes = owners;
+    this._displayFloors = new WeakMap();
+    this._placeable = list.filter((c) => !this._plantProbes.has(c.key));
     this._entities = entityMap(h, list);
     this._catCache = new WeakMap();
     this._readCache = new WeakMap();
@@ -618,7 +629,16 @@ class FloorplanCard extends HTMLElement {
 
   get _floor() {
     const floor = this._doc?.floors.find((f) => f.floor_id === this._floorId) ?? null;
-    return floor && this._config.area ? this._scope(floor) : floor;
+    if (!floor) return null;
+    let visible = floor;
+    if (this._plantProbes?.size) {
+      visible = this._displayFloors.get(floor);
+      if (!visible) {
+        visible = hidePlantProbePlaceholders(floor, this._plantProbes);
+        this._displayFloors.set(floor, visible);
+      }
+    }
+    return this._config.area ? this._scope(visible) : visible;
   }
 
   // The view fitted to the floor drawn; with `area` and `context`, CONTEXT_M more on every side, so
@@ -1212,7 +1232,7 @@ ${STYLE}
   }
 
   _trayHtml() {
-    const groups = trayGroups(this._doc, this._hass, [...this._cands.values()]);
+    const groups = trayGroups(this._doc, this._hass, this._placeable);
     this._oneGroup = groups.length === 1;    // a lone group starts open, several start collapsed
     return trayHtml(this._hass, t, groups, (key) => this._groupOpen(key));
   }
@@ -1312,7 +1332,7 @@ ${STYLE}
     // The registry links of the point dragged, hovered or (in edit mode) tapped. A device inside a
     // cluster has no marker of its own: its links end at the cluster's dot, which is named there.
     const linked = this._drag?.kind === "point" ? this._drag.key : this._hoverKey ?? (editing ? this._picked : null);
-    if (linked) {
+    if (linked && floor.points.some((point) => keyOf(point) === linked)) {
       const at = new Map(floor.points.map((p) => [keyOf(p), p]));
       const spot = (key) => (inCluster.has(key) ? clusters.get(inCluster.get(key)).at : [at.get(key).x, at.get(key).y]);
       const ends = new Map();     // far end -> {to, names}
@@ -2215,7 +2235,7 @@ ${STYLE}
     // An area created from the card arrives in a later hass and must show by name. JSON keeps a
     // name with a newline on that first line.
     const areas = Object.values(this._hass.areas || {}).map((a) => [a.area_id, a.name]).sort();
-    return [JSON.stringify([this._hass.language, areas, liveness]),
+    return [JSON.stringify([this._hass.language, areas, liveness, this._plantOwnership]),
       ids.map((id) => this._hass.states?.[id]?.state).join("|") + traffic].join("\n");
   }
 
@@ -2310,7 +2330,7 @@ ${STYLE}
   _onChange(e) {
     if (e.target.matches?.("select.floor")) {
       this._floorId = this._doc.floors.find((f) => String(f.floor_id) === e.target.value)?.floor_id ?? this._floorId;
-      this._doc = autoPlace(this._doc, this._hass, this._floorId, [...this._cands.values()]);
+      this._doc = autoPlace(this._doc, this._hass, this._floorId, this._placeable);
       this._view = this._fit();
       this._resetPicks();
       this._render();
@@ -2373,7 +2393,7 @@ ${STYLE}
     this._mode = "edit";
     this._tool = "move";
     this._say(null);
-    this._doc = autoPlace(this._doc, this._hass, this._floorId, [...this._cands.values()]);
+    this._doc = autoPlace(this._doc, this._hass, this._floorId, this._placeable);
     this._loadDisabled();
   }
 
@@ -2765,7 +2785,7 @@ ${STYLE}
 
   _dragLabel(d) {
     if (d.kind === "group") {
-      const g = trayGroups(this._doc, this._hass, [...this._cands.values()]).find((x) => x.key === d.key);
+      const g = trayGroups(this._doc, this._hass, this._placeable).find((x) => x.key === d.key);
       return g ? `${g.name ?? t(this._hass, "card.floorplan.tray.no_room")} (${g.items.length})` : "";
     }
     const c = this._cands.get(d.key);
@@ -2837,7 +2857,7 @@ ${STYLE}
       return void this._toggleGroup(d.key);
     } else if ((d.kind === "tray" || d.kind === "group") && d.moved) {
       if (this._overSvg(e)) {
-        const cands = [...this._cands.values()];
+        const cands = this._placeable;
         const g = d.kind === "group" && trayGroups(this._doc, this._hass, cands).find((x) => x.key === d.key);
         const c = d.kind === "tray" && tray(this._doc, this._hass, cands).find((x) => x.key === d.key);
         // A device dropped on a marker is the same hardware as that point (an amplifier's Cast device).
