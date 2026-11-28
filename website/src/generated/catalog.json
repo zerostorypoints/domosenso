@@ -557,9 +557,9 @@
     },
     {
       "id": "floorplan",
-      "version": "0.5.0",
-      "sourceTag": "floorplan/0.5.0",
-      "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
+      "version": "0.5.1",
+      "sourceTag": "floorplan/0.5.1",
+      "sourceCommit": "7709bb25807f8d64ef85268000b73b6a9a4ed8ef",
       "summary": "A floor plan of the home with rooms, sensor readings and plants at their positions",
       "requirements": [],
       "integrations": [
@@ -587,8 +587,8 @@
         "Field experience is limited to the maintainer’s installation. Review device compatibility for your home."
       ],
       "inputs": [],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/d9da47444ed0db3a8f1f9a317234e7bbf6df8664/components/floorplan",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/d9da47444ed0db3a8f1f9a317234e7bbf6df8664/components/floorplan/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/7709bb25807f8d64ef85268000b73b6a9a4ed8ef/components/floorplan",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/7709bb25807f8d64ef85268000b73b6a9a4ed8ef/components/floorplan/UPGRADE.md"
     },
     {
       "id": "gate-remote",
@@ -923,9 +923,9 @@
     },
     {
       "id": "ramka",
-      "version": "0.22.1",
-      "sourceTag": "ramka/0.22.1",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "version": "0.24.0",
+      "sourceTag": "ramka/0.24.0",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "summary": "Wall tablet with radar wake-up, an ambient page rotation, music, awnings, lights and a calendar",
       "requirements": [
         {
@@ -1256,7 +1256,7 @@
         },
         {
           "name": "settings_defaults",
-          "type": "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light, music_mode?: takeover | rotation, music_turn_s?}",
+          "type": "{near_enabled?: bool, near_cm?, near_s?, controls_hold_s?, off_delay_s?, brightness_min?, brightness_max?, lux_max?, theme_mode?: dark | light, music_mode?: takeover | rotation, music_turn_s?, weather_banner?: off | icon | hide | always, weather_banner_s?}",
           "required": false
         },
         {
@@ -1265,8 +1265,8 @@
           "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/61c970d831c969671e570db81dc2735897c5b500/components/ramka",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/61c970d831c969671e570db81dc2735897c5b500/components/ramka/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/6146173107945fbcdd7a3cdebcd65680f4709835/components/ramka",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/6146173107945fbcdd7a3cdebcd65680f4709835/components/ramka/UPGRADE.md"
     },
     {
       "id": "timers",
@@ -1319,9 +1319,9 @@
     },
     {
       "id": "weather",
-      "version": "0.2.0",
-      "sourceTag": "weather/0.2.0",
-      "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+      "version": "0.3.0",
+      "sourceTag": "weather/0.3.0",
+      "sourceCommit": "4c8c5418b9904e9d2de3d5b986eba2eca8edcc2e",
       "summary": "Current weather and forecast from the Norwegian Meteorological Institute (Met.no)",
       "requirements": [],
       "integrations": [
@@ -1329,10 +1329,22 @@
           "name": "met",
           "source": "core",
           "setup": "the home's location from Home Assistant's own settings; no account or key"
+        },
+        {
+          "name": "command_line",
+          "source": "core",
+          "optional": true,
+          "setup": "none: input warnings names the MeteoAlarm country and region"
+        },
+        {
+          "name": "rest",
+          "source": "core",
+          "optional": true,
+          "setup": "none: the package's rest sensor calls api.open-meteo.com with the home's coordinates rounded to two decimals"
         }
       ],
       "optionalRequirements": [],
-      "installationRole": "describes",
+      "installationRole": "installs",
       "testedHa": [
         "2026.9.2"
       ],
@@ -1354,10 +1366,35 @@
           "name": "weather",
           "type": "entity_id",
           "required": true
+        },
+        {
+          "name": "wind_breezy",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "wind_strong",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "wind_gale",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "warnings",
+          "type": "{country, region, language?}",
+          "required": false
+        },
+        {
+          "name": "gusts",
+          "type": "none | open_meteo",
+          "required": false
         }
       ],
-      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/weather",
-      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/af0d3f27a30a04e9fd5cb3cf9b5458deb182753f/components/weather/UPGRADE.md"
+      "sourceUrl": "https://github.com/zerostorypoints/domosenso/tree/4c8c5418b9904e9d2de3d5b986eba2eca8edcc2e/components/weather",
+      "upgradeUrl": "https://github.com/zerostorypoints/domosenso/blob/4c8c5418b9904e9d2de3d5b986eba2eca8edcc2e/components/weather/UPGRADE.md"
     }
   ]
 }

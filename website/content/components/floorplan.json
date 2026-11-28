@@ -16,11 +16,11 @@
         "floorplan"
       ],
       "availability": "default",
-      "condition": "domosenso floorplan push creates the floorplan dashboard; every user can read it, an administrator edits rooms, walls, doors and positions on it. With floorplan 0.5.0 the radio layer has Wi-Fi coverage maps per band once an access point is marked in edit mode, and traffic maps with a supported router integration (tplink_deco); with Wi-Fi on, walls are drawn by weight (wifi: false keeps the room outlines).",
+      "condition": "domosenso floorplan push creates the floorplan dashboard; every user can read it, an administrator edits rooms, walls, doors and positions on it. With floorplan 0.5.0 the radio layer has Wi-Fi coverage maps per band once an access point is marked in edit mode, and traffic maps with a supported router integration (tplink_deco); with Wi-Fi on, walls are drawn by weight (wifi: false keeps the room outlines). Floorplan 0.5.1 keeps a placed plant's photo and readings on one marker and hides the automatic duplicate for its probe. Update and reload the dashboard to pick up the fix.",
       "preview": "/previews/floorplan.svg",
       "previewType": "illustration",
       "layout": "Native Home Assistant dashboard; zoom and pan by wheel, pinch or buttons; editing on a desktop or tablet.",
-      "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
+      "sourceCommit": "7709bb25807f8d64ef85268000b73b6a9a4ed8ef",
       "evidencePath": "components/floorplan/cards/floorplan-card.js"
     },
     {
@@ -35,7 +35,7 @@
       "preview": "/previews/floorplan.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
@@ -45,8 +45,8 @@
     "Optionally show it on the Ramka with floorplan: true, and mark rooms open to each other without doors as one open space so their maps share readings. For Wi-Fi coverage, mark the access points and set the walls' materials in edit mode, and optionally walk the home with domosenso floorplan survey."
   ],
   "id": "floorplan",
-  "version": "0.5.0",
-  "sourceCommit": "d9da47444ed0db3a8f1f9a317234e7bbf6df8664",
+  "version": "0.5.1",
+  "sourceCommit": "7709bb25807f8d64ef85268000b73b6a9a4ed8ef",
   "evidencePaths": [
     "components/floorplan/component.yaml"
   ],
