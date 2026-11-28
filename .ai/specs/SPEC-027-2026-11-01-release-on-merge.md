@@ -168,7 +168,8 @@ and publishes a PR for human approval.
 
 The merge workflow starts when either required PR workflow succeeds. It verifies the
 latest runs of both standard workflows for the exact head SHA, associated with a same-
-repository `website: publish` PR to main from the dedicated App. In a trusted checkout
+repository `website: publish` PR to main from the dedicated App. A reused source branch or
+a PR whose target changed stays in review. In a trusted checkout
 of current main it replays the existing publisher and exporter using public tags and
 compares the entire generated Git tree. A stale base, any extra commit, an editorial
 edit, a modified executable bit, a missing tag or a failed check leaves the PR for the
@@ -186,8 +187,10 @@ required checks and up-to-date rule are still enforced at merge time.
 3. Keep the existing strict GitHub Actions checks `framework` and `website` and
    conversation resolution on main with admin enforcement. Add an active main-only
    ruleset requiring one PR approval. Add only this App to that ruleset's bypass list
-   with **For pull requests only**. Check the new review rule is effective for ordinary
-   PRs before removing the duplicate approval count from classic branch protection.
+   with **For pull requests only**. Preserve the live review settings, including
+   stale-review dismissal, code-owner approval and last-push approval if enabled.
+   Check the rule is effective for ordinary PRs before removing only the duplicate
+   approval count from classic branch protection. Preserve the other live protections.
    Do not grant bypass on the CI rules. Do not grant a direct-push exception.
 4. Set the repository variables `WEBSITE_PUBLISH_APP_SLUG` (without `[bot]`) and
    `WEBSITE_PUBLISH_APP_ID`. Set the ID last so the workflow starts after the secret

@@ -43,7 +43,7 @@ def green_checks(runs, repository, branch, head):
     for workflow, check in CHECKS.items():
         run = runs.get(workflow) or {}
         if not (
-            run.get("path") == f".github/workflows/{workflow}"
+            (run.get("path") or "").partition("@")[0] == f".github/workflows/{workflow}"
             and run.get("event") == "pull_request"
             and (run.get("head_repository") or {}).get("full_name") == repository
             and run.get("head_branch") == branch and run.get("head_sha") == head
@@ -105,7 +105,9 @@ def evaluate(root, repository, bot, event):
         return json.loads(command(root, "gh", "api", "-X", "GET", f"repos/{repository}/{path}", *args))
 
     owner = repository.partition("/")[0]
-    pulls = api("pulls", state="open", base="main", head=f"{owner}:{branch}")
+    # Some Actions runs have no pull_requests metadata. The branch must have
+    # belonged to exactly one PR, including closed PRs with runs still visible.
+    pulls = api("pulls", state="all", head=f"{owner}:{branch}", per_page=100)
     if len(pulls) != 1 or not eligible_pull(pulls[0], repository, bot, branch, head):
         return None
     pr = pulls[0]
@@ -114,6 +116,11 @@ def evaluate(root, repository, bot, event):
         raise ValueError("invalid PR number or base SHA")
     if base != command(root, "git", "rev-parse", "HEAD"):
         return None
+    timeline = api(f"issues/{number}/timeline", per_page=100)
+    if len(timeline) >= 100 or any(
+        item["event"] in {"base_ref_changed", "automatic_base_change_succeeded"} for item in timeline
+    ):
+        return None
     runs = {}
     for workflow in CHECKS:
         latest = api(f"actions/workflows/{workflow}/runs", event="pull_request",
@@ -121,6 +128,8 @@ def evaluate(root, repository, bot, event):
         if not latest or latest[0]["conclusion"] != "success":
             return None
         run = latest[0]
+        if any(link["number"] != number for link in run.get("pull_requests", [])):
+            return None
         run_id, attempt = int(run["id"]), int(run["run_attempt"])
         run["jobs"] = api(f"actions/runs/{run_id}/attempts/{attempt}/jobs", per_page=100)["jobs"]
         runs[workflow] = run

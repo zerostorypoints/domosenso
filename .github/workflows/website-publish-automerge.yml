@@ -69,10 +69,16 @@ jobs:
             echo "Main changed since verification."
             exit 0
           fi
-          # The native required checks still apply to this App. The API rejects a different head SHA.
-          if [ "$(gh api "$api/pulls/$PR_NUMBER" --jq .merged)" = "true" ]; then
-            echo "Already merged."
+          pr=$(gh api "$api/pulls/$PR_NUMBER")
+          if ! jq -e --arg repo "$GITHUB_REPOSITORY" --arg base "$BASE_SHA" \
+              --arg head "$PR_SHA" --arg bot "${EXPECTED_APP_SLUG}[bot]" '
+              .state == "open" and .draft == false and .user.login == $bot and
+              .base.ref == "main" and .base.repo.full_name == $repo and .base.sha == $base and
+              .head.repo.full_name == $repo and .head.sha == $head
+            ' <<<"$pr" >/dev/null; then
+            echo "The verified pull request changed or was closed."
             exit 0
           fi
+          # The native required checks still apply to this App. The API rejects a different head SHA.
           gh api --method PUT "$api/pulls/$PR_NUMBER/merge" \
             -f sha="$PR_SHA" -f merge_method=merge --jq '.merged | select(. == true)' | grep -x true

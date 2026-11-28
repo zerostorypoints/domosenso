@@ -26,7 +26,10 @@ def test_automatic_merge_uses_both_checks_and_protected_environment():
     assert merge["environment"] == "website-publish"
     assert merge["steps"][0]["with"]["permission-contents"] == "write"
     assert "steps.token.outputs.app-slug" in merge["steps"][1]["env"]["MERGE_APP_SLUG"]
-    assert "-f sha=\"$PR_SHA\"" in merge["steps"][1]["run"]
+    merge_script = merge["steps"][1]["run"]
+    assert "-f sha=\"$PR_SHA\"" in merge_script
+    for condition in ('.base.ref == "main"', '.base.repo.full_name == $repo', '.head.sha == $head'):
+        assert condition in merge_script.split('gh api --method PUT')[0]
     assert not any(step.get("uses", "").startswith("actions/checkout") for step in merge["steps"])
 
 
@@ -143,3 +146,48 @@ def test_release_uses_app_for_publication_prs_only_when_configured():
     publish = next(step for step in release["steps"] if "gh pr create" in step.get("run", ""))
     assert "steps.publisher.outputs.token" in publish["env"]["PUBLISH_TOKEN"]
     assert 'GH_TOKEN="${PUBLISH_TOKEN:-$GH_TOKEN}" gh pr create' in publish["run"]
+
+
+@pytest.mark.parametrize(("case", "expected"), [
+    ("unique", True), ("path-with-ref", True), ("different-associated-pr", False),
+    ("second-pr-with-same-branch", False), ("changed-target", False),
+])
+def test_evaluate_cannot_reuse_checks_from_another_pr(monkeypatch, case, expected):
+    import json
+    import website_publish_automerge as verifier
+
+    pr = pull()
+    base = pr["base"]["sha"]
+
+    def command(root, *args):
+        if args[0] == "git":
+            if args[1] == "rev-parse":
+                return SHA if args[2] == "FETCH_HEAD" else base
+            assert args[1:] == ("fetch", "--no-tags", "origin", "refs/pull/123/head")
+            return ""
+        path = args[4]
+        prefix = f"repos/{REPOSITORY}/"
+        assert path.startswith(prefix)
+        path = path.removeprefix(prefix)
+        if path == "pulls":
+            other = {**pr, "number": 234, "state": "closed"}
+            result = [pr, other] if case == "second-pr-with-same-branch" and "state=all" in args else [pr]
+        elif path == "issues/123/timeline":
+            result = [{"event": "base_ref_changed"}] if case == "changed-target" else []
+        elif path.startswith("actions/workflows/"):
+            name = path.split("/")[2]
+            item = run(name, id=1 if name == "check.yml" else 2, run_attempt=1)
+            item["pull_requests"] = [{"number": 234}] if case == "different-associated-pr" else []
+            if case == "path-with-ref":
+                item["path"] += "@refs/pull/123/merge"
+            result = {"workflow_runs": [item]}
+        else:
+            name = "check.yml" if path.split("/")[2] == "1" else "website.yml"
+            result = {"jobs": run(name)["jobs"]}
+        return json.dumps(result)
+
+    monkeypatch.setattr(verifier, "command", command)
+    monkeypatch.setattr(verifier, "verify_tree", lambda root, base, head: True)
+    event = {"workflow_run": run("website.yml")}
+    result = verifier.evaluate(Path("."), REPOSITORY, BOT, event)
+    assert (result == {"number": 123, "head": SHA, "base": base}) is expected
