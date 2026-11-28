@@ -1,0 +1,78 @@
+name: Merge generated website publication
+on:
+  workflow_run:
+    workflows: [Framework checks, Framework website]
+    types: [completed]
+    branches: ['release/website-*']
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate:
+    if: >-
+      vars.WEBSITE_PUBLISH_APP_ID != '' && vars.WEBSITE_PUBLISH_APP_SLUG != '' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      number: ${{ steps.verified.outputs.number }}
+      head: ${{ steps.verified.outputs.head }}
+      base: ${{ steps.verified.outputs.base }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+      - id: verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH_APP_SLUG: ${{ vars.WEBSITE_PUBLISH_APP_SLUG }}
+        run: uv run --frozen tools/website_publish_automerge.py
+
+  merge:
+    needs: validate
+    if: needs.validate.outputs.number != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: website-publish
+    concurrency:
+      group: website-publish-merge-${{ needs.validate.outputs.number }}
+      cancel-in-progress: false
+    steps:
+      - id: token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ vars.WEBSITE_PUBLISH_APP_ID }}
+          private-key: ${{ secrets.WEBSITE_PUBLISH_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: read
+      - name: Merge the verified head
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          MERGE_APP_SLUG: ${{ steps.token.outputs.app-slug }}
+          EXPECTED_APP_SLUG: ${{ vars.WEBSITE_PUBLISH_APP_SLUG }}
+          PR_NUMBER: ${{ needs.validate.outputs.number }}
+          PR_SHA: ${{ needs.validate.outputs.head }}
+          BASE_SHA: ${{ needs.validate.outputs.base }}
+        run: |
+          set -euo pipefail
+          test "$MERGE_APP_SLUG" = "$EXPECTED_APP_SLUG"
+          api="repos/$GITHUB_REPOSITORY"
+          live_base=$(gh api "$api/git/ref/heads/main" --jq .object.sha)
+          if [ "$live_base" != "$BASE_SHA" ]; then
+            echo "Main changed since verification."
+            exit 0
+          fi
+          # The native required checks still apply to this App. The API rejects a different head SHA.
+          if [ "$(gh api "$api/pulls/$PR_NUMBER" --jq .merged)" = "true" ]; then
+            echo "Already merged."
+            exit 0
+          fi
+          gh api --method PUT "$api/pulls/$PR_NUMBER/merge" \
+            -f sha="$PR_SHA" -f merge_method=merge --jq '.merged | select(. == true)' | grep -x true
