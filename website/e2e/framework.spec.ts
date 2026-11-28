@@ -11,8 +11,10 @@ test('start a separate home project from the homepage',async({page}, testInfo)=>
  await expect(page.getByText(/HAOS is not supported/)).toBeVisible();
 });
 test('catalog distinguishes descriptive integrations and links to immutable source',async({page})=>{
- await page.goto('/components/weather/');
+ await page.goto('/components/calendar/');
  await expect(page.getByText('Integration guide',{exact:true}).first()).toBeVisible();
+ await page.goto('/components/weather/');
+ await expect(page.getByText('Installable component',{exact:true}).first()).toBeVisible();
  await expect(page.getByRole('link',{name:'View release source'})).toHaveAttribute('href',/github.com\/zerostorypoints\/domosenso\/tree\/[a-f0-9]{40}\//);
 });
 test('deep links, canonical origin, narrow layout and services bridge',async({page})=>{

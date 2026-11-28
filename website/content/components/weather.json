@@ -1,5 +1,5 @@
 {
-  "outcome": "Bring the forecast into Home Assistant.",
+  "outcome": "Use a Home Assistant forecast to show wind strength and add official regional warnings.",
   "categories": [
     "climate",
     "utilities"
@@ -16,22 +16,23 @@
         "weather"
       ],
       "availability": "conditional",
-      "condition": "Provide the weather entity to Ramka, or with Ramka 0.17.0 or later name it in the home's shared inputs. Current weather appears with now playing; the configured climate page also includes a four-day forecast.",
+      "condition": "Provide the weather entity to Ramka, or with Ramka 0.17.0 or later name it in the home's shared inputs. Current weather appears with now playing; the configured climate page also includes a four-day forecast. With Weather 0.3.0 and Ramka 0.23.0 or later, the clock shows wind strength from breezy upwards and the controls offer a warnings list when strong wind or an official warning is active. The ambient warning banner is off by default and can be enabled in General settings.",
       "preview": "/previews/clock-weather.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
   "setup": [
     "Set up the Met.no integration with the location you choose in Home Assistant.",
-    "Verify its weather entity and forecast.",
-    "Map the weather entity in Ramka to show current weather alongside now playing and a four-day forecast on the configured climate page."
+    "Verify the weather entity and forecast, then add or update the DomoSenso Weather component. Wind strength uses the weather entity's wind speed.",
+    "For optional gusts, set gusts: open_meteo. For official warnings, provide the MeteoAlarm country and warning region in warnings. Follow the upgrade notes for the data sent and supported inputs.",
+    "Update Weather before Ramka. Ramka adds wind details and the warning controls when the corresponding Home Assistant entities are available."
   ],
   "id": "weather",
-  "version": "0.2.0",
-  "sourceCommit": "af0d3f27a30a04e9fd5cb3cf9b5458deb182753f",
+  "version": "0.3.0",
+  "sourceCommit": "4c8c5418b9904e9d2de3d5b986eba2eca8edcc2e",
   "evidencePaths": [
     "components/weather/component.yaml"
   ],

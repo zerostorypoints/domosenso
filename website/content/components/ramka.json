@@ -23,7 +23,7 @@
       "preview": "/previews/climate.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -38,7 +38,7 @@
       "preview": "/previews/air.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -53,7 +53,7 @@
       "preview": "/previews/plants.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -64,11 +64,11 @@
         "ramka"
       ],
       "availability": "conditional",
-      "condition": "Provide photo_dir and permit the directory in Home Assistant; albums, photos per series and time per photo are set on the Ramka settings dashboard. Swipe left or right for the next or previous photo of the series. From 0.22.0 the albums take turns in cycles: every album once per cycle, never the same album twice in a row, and inside an album its events take turns the same way.",
+      "condition": "Provide photo_dir and allow the directory in Home Assistant. On the Photos settings page, choose albums, photos per series and time per photo. Ramka 0.24.0 browses nested folders, lets you exclude a child folder separately and rotates through the folder tree one level at a time. The caption shows the immediate folder by default. Change Folder levels in the caption to show more of the path. Swipe left or right for the next or previous photo of the series.",
       "preview": "/previews/photos.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -83,7 +83,7 @@
       "preview": "/previews/status.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -102,7 +102,7 @@
       "preview": "/previews/controls.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -117,7 +117,7 @@
       "preview": "/previews/floorplan.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -133,7 +133,7 @@
       "preview": "/previews/music.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -148,7 +148,7 @@
       "preview": "/previews/calendar.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     },
     {
@@ -159,11 +159,11 @@
         "weather"
       ],
       "availability": "conditional",
-      "condition": "Provide the weather entity to Ramka, or with Ramka 0.17.0 or later name it in the home's shared inputs. Current weather appears with now playing; the configured climate page also includes a four-day forecast.",
+      "condition": "Provide the weather entity to Ramka, or with Ramka 0.17.0 or later name it in the home's shared inputs. Current weather appears with now playing; the configured climate page also includes a four-day forecast. With Weather 0.3.0 and Ramka 0.23.0 or later, the clock shows wind strength from breezy upwards and the controls offer a warnings list when strong wind or an official warning is active. The ambient warning banner is off by default and can be enabled in General settings.",
       "preview": "/previews/clock-weather.svg",
       "previewType": "illustration",
       "layout": "Ramka landscape layout: 1024–1280 × 720–800 CSS px; phone/portrait dashboard not claimed.",
-      "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+      "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
       "evidencePath": "components/ramka/templates/dashboard.lang.yaml.j2"
     }
   ],
@@ -172,11 +172,12 @@
     "Install the radar through Room presence and map its presence and distance entities.",
     "Choose the optional page inputs, render the dashboard and check each configured page before deployment. From 0.17.0, what the Ramka's file leaves out (lights, climate, outside, air, weather, covers, status contacts and locks) comes from the home's shared inputs, and a panel works without a media player or calendars.",
     "Add the lovelace entries of the Ramka settings dashboard and the Ramka preview dashboard (one tab per screen); pages, presence, controls, display, photos, air limits and colours, climate widgets, plants per page and the music visual are tuned on the settings dashboard live, without a render.",
+    "For wind strength and regional warnings, update Weather before Ramka. The ambient warning banner can be enabled in General settings.",
     "On the tablet: tap to show the controls, swipe up or down for the next or previous page, swipe left or right through a page's plant pages or photos, and tap the bottom-right corner to pause the rotation (a play button resumes it)."
   ],
   "id": "ramka",
-  "version": "0.22.1",
-  "sourceCommit": "61c970d831c969671e570db81dc2735897c5b500",
+  "version": "0.24.0",
+  "sourceCommit": "6146173107945fbcdd7a3cdebcd65680f4709835",
   "evidencePaths": [
     "components/ramka/component.yaml"
   ],
