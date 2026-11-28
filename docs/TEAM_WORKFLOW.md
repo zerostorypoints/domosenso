@@ -25,7 +25,8 @@ checks through forks. A home adopts a released version separately, through its o
 5. **Review.** Open a normal, ready-for-review PR when authorised and complete, with test evidence,
    compatibility notes and applicable screenshots. Do not create a draft PR unless explicitly
    requested; unfinished work stays on its task branch. An independent agent reviews the current revision; an eligible core maintainer manually approves.
-   AI review is additional evidence, not the required human approval.
+   AI review is additional evidence, not the required human approval. The release App's generated
+   website publications follow [SPEC-027](../.ai/specs/SPEC-027-2026-11-01-release-on-merge.md).
 6. **Merge.** Required CI is green, the branch is current, review conversations are resolved and a
    core maintainer has manually approved (subject to GitHub's author-account restriction). Material new commits invalidate old evidence. Prefer squash for
    one-issue PRs; an integration PR may preserve its child commits. Delete a merged task branch once

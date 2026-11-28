@@ -158,3 +158,45 @@ combined PR (2026-11-02) and asked for the workflow to do that from now on.
   `## <version>` entry of UPGRADE.md in its own collapsed section.
 - Tests: `tests/test_release_workflow.py::test_one_website_pull_request_per_run`.
 
+## Amendment 3 (2026-11-28): merge generated website publications after CI
+
+The release App opens the website PR on the current main commit. The earlier tag is
+still published from the reviewed version bump. The public PR keeps the generated
+selection, pinned references and upgrade notes visible. Editorial updates go through a
+reviewed PR. If the App is unconfigured, the release workflow uses its ordinary token
+and publishes a PR for human approval.
+
+The merge workflow starts when either required PR workflow succeeds. It verifies the
+latest runs of both standard workflows for the exact head SHA, associated with a same-
+repository `website: publish` PR to main from the dedicated App. A reused source branch or
+a PR whose target changed stays in review. In a trusted checkout
+of current main it replays the existing publisher and exporter using public tags and
+compares the entire generated Git tree. A stale base, any extra commit, an editorial
+edit, a modified executable bit, a missing tag or a failed check leaves the PR for the
+ordinary review process. The merge request specifies the verified head. GitHub's
+required checks and up-to-date rule are still enforced at merge time.
+
+### Repository activation
+
+1. Create a private GitHub App for website publication. Disable webhooks and install it
+   only on this repository. Grant repository **Contents: read and write** and
+   **Pull requests: read and write**. Create its private key.
+2. Create the GitHub Actions environment `website-publish`. Under deployment branches,
+   allow only the branch `main`. Store the private key as the environment secret
+   `WEBSITE_PUBLISH_APP_PRIVATE_KEY`. Keep the key out of repository secrets and logs.
+3. Keep the existing strict GitHub Actions checks `framework` and `website` and
+   conversation resolution on main with admin enforcement. Add an active main-only
+   ruleset requiring one PR approval. Add only this App to that ruleset's bypass list
+   with **For pull requests only**. Preserve the live review settings, including
+   stale-review dismissal, code-owner approval and last-push approval if enabled.
+   Check the rule is effective for ordinary PRs before removing only the duplicate
+   approval count from classic branch protection. Preserve the other live protections.
+   Do not grant bypass on the CI rules. Do not grant a direct-push exception.
+4. Set the repository variables `WEBSITE_PUBLISH_APP_SLUG` (without `[bot]`) and
+   `WEBSITE_PUBLISH_APP_ID`. Set the ID last so the workflow starts after the secret
+   and both merge rules are in place. To disable, remove the ID first. Review
+   ruleset changes as a separate administrative operation.
+5. On the first release verify the bot opens the PR, both jobs succeed on its head,
+   the verifier matches its entire tree and the PR is merged by the App. Verify a
+   regular PR still reports a required review. The normal main push runs the website
+   and Search engines workflows.

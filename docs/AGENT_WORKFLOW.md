@@ -174,8 +174,9 @@ the required human approval**, even if its GitHub CLI is authenticated as a core
 Piotr or Łukasz makes an explicit acceptance decision after seeing the result; use the short
 [staging guide](STAGING_QUICKSTART.md) to request and inspect a preview. Merely adding a reviewer,
 reviewing your own change locally, a successful demo or green CI never counts as acceptance.
-Agents never auto-approve PRs. Auto-merge may execute only after the required human approval;
-it does not replace this extra step.
+Agents never auto-approve PRs. For ordinary PRs, auto-merge still waits for the required human
+approval. The [SPEC-027](../.ai/specs/SPEC-027-2026-11-01-release-on-merge.md) release App can
+merge its fully generated website PRs after both required workflows and exact tree verification.
 
 Piotr or Łukasz manually approves in GitHub. GitHub cannot distinguish a human and an agent sharing
 one account, so account credentials are not a technical proof of human action. Also, an author
